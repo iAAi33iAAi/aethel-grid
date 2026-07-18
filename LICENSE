@@ -1,0 +1,34 @@
+AETHEL Grid - Multi-license mapping
+
+This repository uses a per-component licensing strategy described below.
+
+Component license mapping:
+
+- Core Libraries / Protocols: Apache-2.0
+  - Rationale: These are the "plumbing." A permissive license with an explicit patent grant encourages adoption and protects implementers from patent claims.
+  - Full text provided in: LICENSE-APACHE-2.0.txt
+
+- Nodes / Services / UI: AGPLv3
+  - Rationale: These are the "brain." AGPLv3 ensures that if someone runs the Grid as a network service, any modifications must be released to the community (closes the SaaS loophole).
+  - Full text provided in: LICENSE-AGPL-3.0.txt
+
+How this applies to the repository:
+
+- Files under directories that implement core libraries or low-level protocols should include a short header indicating Apache-2.0, and a reference to LICENSE-APACHE-2.0.txt.
+- Files implementing nodes, services, or any network-facing UI/service code should include a short header indicating AGPLv3, and a reference to LICENSE-AGPL-3.0.txt.
+- If a file combines code from both categories, the more restrictive license (AGPLv3) should apply to the combined work to avoid license incompatibility.
+
+Recommended repo maintainer actions:
+
+- Add license headers to source files indicating the applicable license and copyright holder.
+- Add a NOTICE file if you need to include attribution or third-party notices for Apache-2.0 components.
+- Document licensing expectations in README or CONTRIBUTING so contributors know how to license new components.
+
+Copyright
+
+Copyright (c) 2026 iAAi33iAAi
+
+Files in this repository:
+- LICENSE-APACHE-2.0.txt  (Apache License, Version 2.0)
+- LICENSE-AGPL-3.0.txt    (GNU Affero General Public License v3)
+
