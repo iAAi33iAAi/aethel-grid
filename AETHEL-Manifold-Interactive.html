@@ -1,0 +1,875 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aethel Manifold — Living Constitutional Geometry</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg:#020408; --gold:#c8a840; --gold-b:#f0c840; --gold-d:#7a6020;
+  --green:#3a9060; --green-b:#5ab880; --teal:#208878; --teal-b:#30b898;
+  --purple:#6848a8; --purple-b:#9870d8; --blue:#3060a8; --blue-b:#5080d0;
+  --red:#a83030; --red-b:#d06060; --amber:#a86020; --amber-b:#d09040;
+  --text:#c8c0a0; --dim:#506050; --border:rgba(120,100,40,.3);
+}
+body { background:var(--bg); color:var(--text); font-family:'Georgia',serif; overflow-x:hidden; }
+
+/* ── STARFIELD ── */
+.sf { position:fixed; inset:0; pointer-events:none; z-index:0; }
+.st { position:absolute; border-radius:50%; background:rgba(255,255,220,.5);
+      animation:tw var(--d,3s) ease-in-out infinite var(--dl,0s); }
+@keyframes tw { 0%,100%{opacity:.1;transform:scale(1)} 50%{opacity:.7;transform:scale(1.5)} }
+
+/* ── PAGE ── */
+.page { position:relative; z-index:1; max-width:1400px; margin:0 auto; padding:32px 24px 80px; }
+
+/* ── HEADER ── */
+.hdr {
+  text-align:center; padding:36px 40px 28px; margin-bottom:40px;
+  border:1px solid var(--border); position:relative;
+  background:linear-gradient(180deg,rgba(40,80,30,.1) 0%,transparent 100%);
+}
+.hdr::before,.hdr::after { content:''; position:absolute; width:50px; height:50px; border:1px solid var(--gold-d); }
+.hdr::before { top:10px; left:10px; border-right:none; border-bottom:none; }
+.hdr::after  { bottom:10px; right:10px; border-left:none; border-top:none; }
+.hdr-eye { font-size:.55rem; letter-spacing:5px; color:var(--green-b); margin-bottom:12px; }
+.hdr-title { font-size:2.2rem; letter-spacing:8px; color:var(--gold-b);
+  text-shadow:0 0 40px rgba(200,168,64,.4); margin-bottom:6px; }
+.hdr-sub { font-size:.8rem; letter-spacing:3px; color:var(--teal-b); margin-bottom:14px; }
+.hdr-eq {
+  display:inline-block; font-family:monospace; font-size:.85rem; color:var(--gold-b);
+  padding:8px 20px; border:1px solid rgba(200,168,64,.3); border-radius:3px;
+  background:rgba(200,168,64,.06); letter-spacing:1px;
+  text-shadow:0 0 10px rgba(200,168,64,.3);
+}
+
+/* ── SECTION DIVIDER ── */
+.sdiv { display:flex; align-items:center; gap:14px; margin:40px 0 24px; }
+.sdiv::before,.sdiv::after { content:''; flex:1; height:1px; background:linear-gradient(90deg,transparent,var(--gold-d),transparent); }
+.slabel { font-size:.55rem; letter-spacing:4px; color:var(--green-b); white-space:nowrap;
+  padding:3px 12px; border:1px solid rgba(90,184,128,.2); border-radius:2px; }
+
+/* ══════════════════════════════════════════════════════
+   MANIFOLD SPHERE — CENTRAL DIAGRAM
+══════════════════════════════════════════════════════ */
+.manifold-wrap {
+  display:grid; grid-template-columns:280px 1fr 280px; gap:20px;
+  margin-bottom:40px; align-items:start;
+}
+
+/* ── SIDE PANELS ── */
+.side-panel { display:flex; flex-direction:column; gap:14px; }
+.sp-card {
+  border:1px solid var(--border); border-radius:4px; overflow:hidden;
+  background:rgba(5,13,8,.85); transition:all .2s;
+}
+.sp-card:hover { border-color:rgba(200,168,64,.3); }
+.sp-header {
+  padding:10px 14px; border-bottom:1px solid var(--border);
+  background:linear-gradient(90deg,rgba(40,80,30,.1) 0%,transparent 100%);
+  font-size:.6rem; letter-spacing:3px; color:var(--gold);
+}
+.sp-body { padding:12px 14px; }
+.sp-item { display:flex; align-items:flex-start; gap:8px; margin-bottom:8px; font-size:.6rem; }
+.sp-item:last-child { margin-bottom:0; }
+.sp-num { color:var(--gold-d); width:16px; flex-shrink:0; font-size:.55rem; padding-top:1px; }
+.sp-text { color:var(--text); line-height:1.5; }
+.sp-text strong { color:var(--gold); }
+.sp-dim { color:var(--dim); font-size:.55rem; }
+
+/* ── SPHERE ── */
+.sphere-area {
+  display:flex; flex-direction:column; align-items:center; gap:0;
+}
+.sphere-container {
+  position:relative; width:100%; max-width:560px; margin:0 auto;
+}
+
+/* Concentric rings */
+.ring {
+  border-radius:50%; border:1px solid; position:absolute;
+  left:50%; top:50%; transform:translate(-50%,-50%);
+  cursor:pointer; transition:all .3s;
+  display:flex; align-items:center; justify-content:center;
+}
+.ring:hover { filter:brightness(1.3); }
+.ring.active { filter:brightness(1.5); }
+
+/* Ring labels */
+.ring-label {
+  position:absolute; font-size:.5rem; letter-spacing:2px;
+  white-space:nowrap; pointer-events:none;
+}
+
+/* ── LAYER CARDS (below sphere) ── */
+.layer-tabs {
+  display:flex; gap:6px; flex-wrap:wrap; justify-content:center;
+  margin-top:16px; width:100%;
+}
+.ltab {
+  padding:5px 12px; border:1px solid var(--border); border-radius:2px;
+  font-size:.5rem; letter-spacing:2px; cursor:pointer; transition:all .2s;
+  background:rgba(5,13,8,.8); color:var(--dim);
+}
+.ltab:hover { border-color:var(--gold-d); color:var(--gold); }
+.ltab.active { border-color:var(--gold); color:var(--gold-b); background:rgba(200,168,64,.08); }
+
+/* ── LAYER DETAIL ── */
+.layer-detail {
+  width:100%; margin-top:16px; border:1px solid var(--border); border-radius:4px;
+  background:rgba(5,13,8,.9); overflow:hidden; display:none;
+}
+.layer-detail.visible { display:block; }
+.ld-header {
+  padding:14px 20px; border-bottom:1px solid var(--border);
+  background:linear-gradient(90deg,rgba(40,80,30,.1) 0%,transparent 100%);
+  display:flex; align-items:center; gap:14px;
+}
+.ld-title { font-size:.85rem; letter-spacing:2px; }
+.ld-sub { font-size:.6rem; color:var(--dim); font-style:italic; }
+.ld-body { padding:16px 20px; }
+.ld-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; }
+.ld-item {
+  padding:10px 12px; border:1px solid rgba(120,100,40,.2); border-radius:3px;
+  background:rgba(10,20,12,.5);
+}
+.ld-item-label { font-size:.5rem; letter-spacing:2px; color:var(--green-b); margin-bottom:3px; }
+.ld-item-val { font-size:.62rem; color:var(--text); line-height:1.5; }
+.ld-eq {
+  font-family:monospace; font-size:.7rem; color:var(--gold-b);
+  padding:8px 14px; border:1px solid rgba(200,168,64,.25); border-radius:3px;
+  background:rgba(200,168,64,.05); margin:10px 0; display:inline-block;
+}
+.ld-flow { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:10px 0; }
+.ld-flow-node {
+  padding:5px 10px; border:1px solid rgba(120,100,40,.3); border-radius:3px;
+  font-size:.58rem; color:var(--text); background:rgba(10,20,12,.7);
+}
+.ld-flow-arrow { color:var(--gold-d); font-size:.7rem; }
+
+/* ══════════════════════════════════════════════════════
+   12-DIMENSIONAL GOVERNANCE MANIFOLD
+══════════════════════════════════════════════════════ */
+.dims-grid {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:32px;
+}
+.dim-card {
+  border:1px solid var(--border); border-radius:4px; padding:12px;
+  background:rgba(5,13,8,.85); cursor:pointer; transition:all .2s; position:relative;
+  overflow:hidden;
+}
+.dim-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background:var(--dc,var(--gold-d)); opacity:.6;
+}
+.dim-card:hover { border-color:rgba(200,168,64,.3); transform:translateY(-2px); }
+.dim-card.active { border-color:var(--dc,var(--gold)); background:rgba(15,25,10,.95); }
+.dim-num { font-size:.5rem; letter-spacing:2px; color:var(--dim); margin-bottom:4px; }
+.dim-name { font-size:.68rem; color:var(--gold); margin-bottom:4px; font-weight:bold; }
+.dim-desc { font-size:.58rem; color:var(--text); line-height:1.5; }
+.dim-status {
+  font-size:.45rem; letter-spacing:1px; padding:2px 6px; border-radius:2px;
+  margin-top:6px; display:inline-block;
+}
+.ds-req { background:rgba(90,184,128,.1); color:var(--green-b); border:1px solid rgba(90,184,128,.3); }
+.ds-crit { background:rgba(208,96,96,.1); color:var(--red-b); border:1px solid rgba(208,96,96,.3); }
+
+/* ══════════════════════════════════════════════════════
+   OPERATIONAL PIPELINE
+══════════════════════════════════════════════════════ */
+.pipeline-wrap {
+  display:grid; grid-template-columns:repeat(8,1fr); gap:0;
+  border:1px solid var(--border); border-radius:4px; overflow:hidden; margin-bottom:32px;
+}
+.pipe-step {
+  padding:16px 10px; text-align:center; border-right:1px solid var(--border);
+  background:rgba(5,13,8,.85); cursor:pointer; transition:all .2s; position:relative;
+}
+.pipe-step:last-child { border-right:none; }
+.pipe-step::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:3px;
+  background:var(--ps-color,var(--gold-d)); opacity:0; transition:opacity .2s;
+}
+.pipe-step:hover::before,.pipe-step.active::before { opacity:1; }
+.pipe-step:hover,.pipe-step.active { background:rgba(15,25,10,.95); }
+.ps-num { font-size:.45rem; letter-spacing:2px; color:var(--dim); margin-bottom:8px; }
+.ps-icon { font-size:1.3rem; margin-bottom:8px; display:block; }
+.ps-name { font-size:.6rem; color:var(--gold); font-weight:bold; margin-bottom:4px; }
+.ps-sub { font-size:.52rem; color:var(--dim); }
+
+/* Pipeline detail -->  */
+.pipe-detail {
+  border:1px solid var(--border); border-top:none; border-radius:0 0 4px 4px;
+  padding:16px 20px; background:rgba(5,13,8,.9); display:none; margin-bottom:32px;
+}
+.pipe-detail.visible { display:block; }
+.pd-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.pd-item { padding:10px; border:1px solid rgba(120,100,40,.15); border-radius:3px; background:rgba(10,20,12,.5); }
+.pd-label { font-size:.5rem; letter-spacing:2px; color:var(--green-b); margin-bottom:4px; }
+.pd-val { font-size:.62rem; color:var(--text); line-height:1.5; }
+
+/* ══════════════════════════════════════════════════════
+   QUIBIDT GATES
+══════════════════════════════════════════════════════ */
+.quibidt-wrap {
+  display:grid; grid-template-columns:repeat(7,1fr); gap:0;
+  border:1px solid var(--border); border-radius:4px; overflow:hidden; margin-bottom:32px;
+}
+.qgate {
+  padding:14px 8px; text-align:center; border-right:1px solid var(--border);
+  background:rgba(5,13,8,.85); cursor:pointer; transition:all .2s; position:relative;
+}
+.qgate:last-child { border-right:none; }
+.qgate:hover,.qgate.active { background:rgba(104,72,168,.1); }
+.qg-letter { font-size:1.4rem; color:var(--purple-b); font-weight:bold; margin-bottom:6px; }
+.qg-name { font-size:.6rem; color:var(--gold); margin-bottom:4px; }
+.qg-desc { font-size:.52rem; color:var(--dim); line-height:1.4; }
+
+/* ══════════════════════════════════════════════════════
+   PHYSICAL ENFORCEMENT
+══════════════════════════════════════════════════════ */
+.phys-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:32px; }
+.phys-card {
+  border:1px solid var(--border); border-radius:4px; padding:16px;
+  background:rgba(5,13,8,.85); text-align:center; transition:all .2s; cursor:pointer;
+}
+.phys-card:hover { border-color:rgba(200,168,64,.3); transform:translateY(-3px); box-shadow:0 6px 20px rgba(0,0,0,.3); }
+.phys-icon { font-size:1.8rem; margin-bottom:10px; display:block; }
+.phys-name { font-size:.68rem; color:var(--gold); margin-bottom:6px; font-weight:bold; }
+.phys-val { font-size:.6rem; color:var(--teal-b); margin-bottom:6px; font-family:monospace; }
+.phys-desc { font-size:.58rem; color:var(--dim); line-height:1.5; }
+
+/* ══════════════════════════════════════════════════════
+   8 PRINCIPLES
+══════════════════════════════════════════════════════ */
+.principles-row {
+  display:grid; grid-template-columns:repeat(8,1fr); gap:0;
+  border:1px solid var(--border); border-radius:4px; overflow:hidden;
+}
+.prin {
+  padding:14px 8px; text-align:center; border-right:1px solid var(--border);
+  background:rgba(5,13,8,.85); transition:all .2s;
+}
+.prin:last-child { border-right:none; }
+.prin:hover { background:rgba(200,168,64,.06); }
+.prin-icon { font-size:1.2rem; margin-bottom:6px; display:block; }
+.prin-name { font-size:.55rem; color:var(--gold); letter-spacing:1px; }
+
+/* ══════════════════════════════════════════════════════
+   MANIFOLD PROPERTIES
+══════════════════════════════════════════════════════ */
+.props-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:32px; }
+.prop-card {
+  border:1px solid var(--border); border-radius:4px; padding:14px;
+  background:rgba(5,13,8,.85); display:flex; align-items:flex-start; gap:10px;
+}
+.prop-icon { font-size:1.2rem; flex-shrink:0; }
+.prop-name { font-size:.65rem; color:var(--gold); margin-bottom:4px; font-weight:bold; }
+.prop-desc { font-size:.58rem; color:var(--dim); line-height:1.5; }
+
+/* ══════════════════════════════════════════════════════
+   AXIS TRIAD
+══════════════════════════════════════════════════════ */
+.axis-triad {
+  display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:32px;
+}
+.triad-card {
+  border:1px solid var(--border); border-radius:4px; overflow:hidden;
+  background:rgba(5,13,8,.85);
+}
+.triad-header { padding:12px 16px; border-bottom:1px solid var(--border);
+  background:linear-gradient(90deg,rgba(40,80,30,.1) 0%,transparent 100%);
+  font-size:.6rem; letter-spacing:3px; color:var(--gold); }
+.triad-body { padding:16px; }
+.axis-item { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.axis-item:last-child { margin-bottom:0; }
+.axis-sym { font-size:1.2rem; color:var(--purple-b); width:28px; text-align:center; flex-shrink:0; }
+.axis-name { font-size:.65rem; color:var(--gold); margin-bottom:2px; }
+.axis-desc { font-size:.58rem; color:var(--dim); }
+
+/* ── FOOTER ── */
+.footer { text-align:center; border-top:1px solid var(--border); padding-top:28px; margin-top:40px; }
+.footer-promise { font-size:.7rem; color:var(--gold); letter-spacing:2px; margin-bottom:8px; }
+.footer-truth { font-size:.62rem; color:var(--dim); font-style:italic; margin-bottom:12px; line-height:1.7; }
+.footer-sig { font-size:.58rem; color:var(--green-b); margin-bottom:4px; }
+.footer-meta { font-size:.5rem; letter-spacing:2px; color:var(--dim); }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-track { background:rgba(2,6,8,.5); }
+::-webkit-scrollbar-thumb { background:rgba(120,100,40,.3); border-radius:2px; }
+
+/* ── RESPONSIVE ── */
+@media(max-width:1100px) {
+  .manifold-wrap { grid-template-columns:1fr; }
+  .dims-grid { grid-template-columns:repeat(3,1fr); }
+  .pipeline-wrap { grid-template-columns:repeat(4,1fr); }
+  .quibidt-wrap { grid-template-columns:repeat(4,1fr); }
+  .phys-grid { grid-template-columns:repeat(2,1fr); }
+  .principles-row { grid-template-columns:repeat(4,1fr); }
+  .props-grid { grid-template-columns:repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+
+<div class="sf" id="sf"></div>
+
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <div class="hdr-eye">AETHEL GRID · CONSTITUTIONAL GEOMETRY · LIVING MANIFOLD</div>
+    <div class="hdr-title">AETHEL MANIFOLD</div>
+    <div class="hdr-sub">THE LIVING CONSTITUTIONAL GEOMETRY OF AETHEL GRID</div>
+    <div class="hdr-eq">STATE(G) = fold( topo_order( closure(G) ) )</div>
+  </div>
+
+  <!-- ══ MANIFOLD SPHERE ══ -->
+  <div class="sdiv"><span class="slabel">THE LIVING MANIFOLD — CONCENTRIC CONSTITUTIONAL LAYERS</span></div>
+
+  <div class="manifold-wrap">
+
+    <!-- LEFT PANEL -->
+    <div class="side-panel">
+      <div class="sp-card">
+        <div class="sp-header">12-DIMENSIONAL GOVERNANCE MANIFOLD</div>
+        <div class="sp-body">
+          <div style="font-size:.58rem; color:var(--dim); margin-bottom:10px; font-style:italic;">
+            An action is valid only if its point lies inside the manifold's lawful region. Satisfying 11/12 = invalid.
+          </div>
+          <div class="sp-item"><div class="sp-num">1</div><div class="sp-text"><strong>Sovereignty Coherence</strong></div></div>
+          <div class="sp-item"><div class="sp-num">2</div><div class="sp-text"><strong>Dignity Gradient</strong></div></div>
+          <div class="sp-item"><div class="sp-num">3</div><div class="sp-text"><strong>Harmonic Integrity</strong></div></div>
+          <div class="sp-item"><div class="sp-num">4</div><div class="sp-text"><strong>Temporal Continuity</strong></div></div>
+          <div class="sp-item"><div class="sp-num">5</div><div class="sp-text"><strong>Constitutional Safety</strong></div></div>
+          <div class="sp-item"><div class="sp-num">6</div><div class="sp-text"><strong>Non-Circumvention</strong></div></div>
+          <div class="sp-item"><div class="sp-num">7</div><div class="sp-text"><strong>Audit Completeness</strong></div></div>
+          <div class="sp-item"><div class="sp-num">8</div><div class="sp-text"><strong>Stewardship</strong></div></div>
+          <div class="sp-item"><div class="sp-num">9</div><div class="sp-text"><strong>Reciprocity</strong></div></div>
+          <div class="sp-item"><div class="sp-num">10</div><div class="sp-text"><strong>Free Will Protocol</strong></div></div>
+          <div class="sp-item"><div class="sp-num">11</div><div class="sp-text"><strong>Non-Harm Principle</strong></div></div>
+          <div class="sp-item"><div class="sp-num">12</div><div class="sp-text"><strong>Vitality Correspondence</strong></div></div>
+        </div>
+      </div>
+
+      <div class="sp-card">
+        <div class="sp-header">AXIS TRIAD — UMBRA NEXUS</div>
+        <div class="sp-body">
+          <div class="axis-item">
+            <div class="axis-sym">α</div>
+            <div><div class="axis-name">Axis Alpha</div><div class="axis-desc">Vertical Authority — the chain of constitutional command from sovereign core to manifold horizon</div></div>
+          </div>
+          <div class="axis-item">
+            <div class="axis-sym">β</div>
+            <div><div class="axis-name">Axis Beta</div><div class="axis-desc">Horizontal Accountability — the lateral enforcement of constitutional invariants across all nodes</div></div>
+          </div>
+          <div class="axis-item">
+            <div class="axis-sym">γ</div>
+            <div><div class="axis-name">Axis Gamma</div><div class="axis-desc">Temporal Continuity — the causal ordering of all events through constitutional time T ∈ ℕ</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER SPHERE -->
+    <div class="sphere-area">
+      <!-- SVG Sphere -->
+      <svg viewBox="0 0 560 560" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:560px;" id="manifoldSvg">
+        <defs>
+          <radialGradient id="coreGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="rgba(240,200,64,.9)"/>
+            <stop offset="50%" stop-color="rgba(200,168,64,.4)"/>
+            <stop offset="100%" stop-color="transparent"/>
+          </radialGradient>
+          <radialGradient id="r1Grad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="rgba(104,72,168,.3)"/>
+            <stop offset="100%" stop-color="transparent"/>
+          </radialGradient>
+          <radialGradient id="r2Grad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="rgba(48,96,168,.25)"/>
+            <stop offset="100%" stop-color="transparent"/>
+          </radialGradient>
+          <radialGradient id="r3Grad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="rgba(32,136,120,.2)"/>
+            <stop offset="100%" stop-color="transparent"/>
+          </radialGradient>
+          <radialGradient id="r4Grad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="rgba(58,144,96,.2)"/>
+            <stop offset="100%" stop-color="transparent"/>
+          </radialGradient>
+          <filter id="glow"><feGaussianBlur stdDeviation="3" result="cb"/><feMerge><feMergeNode in="cb"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <filter id="glow2"><feGaussianBlur stdDeviation="6" result="cb"/><feMerge><feMergeNode in="cb"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+
+        <!-- Ring 6: Manifold Horizon -->
+        <circle cx="280" cy="280" r="260" fill="url(#r1Grad)" stroke="rgba(104,72,168,.4)" stroke-width="1.5" class="svg-ring" data-layer="horizon" style="cursor:pointer"/>
+        <circle cx="280" cy="280" r="260" fill="none" stroke="rgba(104,72,168,.2)" stroke-width="20" opacity=".3"/>
+
+        <!-- Ring 5: Umbra Continuum -->
+        <circle cx="280" cy="280" r="215" fill="url(#r2Grad)" stroke="rgba(48,96,168,.5)" stroke-width="1.5" class="svg-ring" data-layer="umbra" style="cursor:pointer"/>
+
+        <!-- Ring 4: Constitutional Substrate -->
+        <circle cx="280" cy="280" r="170" fill="url(#r3Grad)" stroke="rgba(32,136,120,.5)" stroke-width="1.5" class="svg-ring" data-layer="substrate" style="cursor:pointer"/>
+
+        <!-- Ring 3: Unified Synthesis Core -->
+        <circle cx="280" cy="280" r="128" fill="url(#r4Grad)" stroke="rgba(58,144,96,.5)" stroke-width="1.5" class="svg-ring" data-layer="usc" style="cursor:pointer"/>
+
+        <!-- Ring 2: Thermodynamic Sovereignty -->
+        <circle cx="280" cy="280" r="88" fill="rgba(168,96,32,.1)" stroke="rgba(200,144,64,.5)" stroke-width="1.5" class="svg-ring" data-layer="thermo" style="cursor:pointer"/>
+
+        <!-- Ring 1: Sovereign Core -->
+        <circle cx="280" cy="280" r="50" fill="url(#coreGrad)" filter="url(#glow2)" class="svg-ring" data-layer="core" style="cursor:pointer"/>
+        <circle cx="280" cy="280" r="50" fill="none" stroke="rgba(240,200,64,.8)" stroke-width="2"/>
+        <circle cx="280" cy="280" r="38" fill="none" stroke="rgba(240,200,64,.4)" stroke-width="1"/>
+
+        <!-- Core symbol -->
+        <text x="280" y="274" text-anchor="middle" fill="rgba(240,200,64,.9)" font-size="11" font-family="Georgia" filter="url(#glow)">SOVEREIGN</text>
+        <text x="280" y="288" text-anchor="middle" fill="rgba(240,200,64,.9)" font-size="11" font-family="Georgia" filter="url(#glow)">CORE (0,0)</text>
+
+        <!-- Ring labels (curved text approximated) -->
+        <text x="280" y="38" text-anchor="middle" fill="rgba(104,72,168,.8)" font-size="9" font-family="Georgia">MANIFOLD HORIZON (∂H)</text>
+        <text x="280" y="74" text-anchor="middle" fill="rgba(80,120,200,.8)" font-size="9" font-family="Georgia">UMBRA CONTINUUM</text>
+        <text x="280" y="118" text-anchor="middle" fill="rgba(48,184,152,.8)" font-size="9" font-family="Georgia">CONSTITUTIONAL SUBSTRATE</text>
+        <text x="280" y="158" text-anchor="middle" fill="rgba(90,184,128,.8)" font-size="9" font-family="Georgia">UNIFIED SYNTHESIS CORE</text>
+        <text x="280" y="198" text-anchor="middle" fill="rgba(200,144,64,.8)" font-size="9" font-family="Georgia">THERMODYNAMIC SOVEREIGNTY</text>
+
+        <!-- Decorative radial lines -->
+        <g stroke="rgba(200,168,64,.08)" stroke-width="1">
+          <line x1="280" y1="20" x2="280" y2="540"/>
+          <line x1="20" y1="280" x2="540" y2="280"/>
+          <line x1="96" y1="96" x2="464" y2="464"/>
+          <line x1="464" y1="96" x2="96" y2="464"/>
+        </g>
+
+        <!-- Orbit dots -->
+        <g filter="url(#glow)">
+          <circle cx="280" cy="20" r="4" fill="rgba(104,72,168,.8)"/>
+          <circle cx="540" cy="280" r="4" fill="rgba(48,96,168,.8)"/>
+          <circle cx="280" cy="540" r="4" fill="rgba(32,136,120,.8)"/>
+          <circle cx="20" cy="280" r="4" fill="rgba(58,144,96,.8)"/>
+          <circle cx="96" cy="96" r="3" fill="rgba(200,144,64,.6)"/>
+          <circle cx="464" cy="96" r="3" fill="rgba(200,144,64,.6)"/>
+          <circle cx="96" cy="464" r="3" fill="rgba(200,144,64,.6)"/>
+          <circle cx="464" cy="464" r="3" fill="rgba(200,144,64,.6)"/>
+        </g>
+
+        <!-- Parametric equation -->
+        <text x="280" y="520" text-anchor="middle" fill="rgba(200,168,64,.5)" font-size="9" font-family="monospace">x⃗(t) = (cos θ, sin θ)</text>
+      </svg>
+
+      <!-- Layer tabs -->
+      <div class="layer-tabs">
+        <div class="ltab active" data-layer="core" onclick="selectLayer('core',this)">SOVEREIGN CORE</div>
+        <div class="ltab" data-layer="thermo" onclick="selectLayer('thermo',this)">THERMODYNAMIC</div>
+        <div class="ltab" data-layer="usc" onclick="selectLayer('usc',this)">SYNTHESIS CORE</div>
+        <div class="ltab" data-layer="substrate" onclick="selectLayer('substrate',this)">CONST. SUBSTRATE</div>
+        <div class="ltab" data-layer="umbra" onclick="selectLayer('umbra',this)">UMBRA CONTINUUM</div>
+        <div class="ltab" data-layer="horizon" onclick="selectLayer('horizon',this)">MANIFOLD HORIZON</div>
+      </div>
+
+      <!-- Layer detail -->
+      <div class="layer-detail visible" id="layerDetail"></div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="side-panel">
+      <div class="sp-card">
+        <div class="sp-header">OPERATIONAL FLOW — 8 LIVING OPERATIONS</div>
+        <div class="sp-body">
+          <div class="sp-item"><div class="sp-num">1</div><div class="sp-text"><strong>Principle</strong> — Define Intent</div></div>
+          <div class="sp-item"><div class="sp-num">2</div><div class="sp-text"><strong>Validate</strong> — Constitutional Check</div></div>
+          <div class="sp-item"><div class="sp-num">3</div><div class="sp-text"><strong>Interpret</strong> — Contextual Meaning</div></div>
+          <div class="sp-item"><div class="sp-num">4</div><div class="sp-text"><strong>Execute</strong> — Lawful Action</div></div>
+          <div class="sp-item"><div class="sp-num">5</div><div class="sp-text"><strong>Harmonize</strong> — Align & Stabilize</div></div>
+          <div class="sp-item"><div class="sp-num">6</div><div class="sp-text"><strong>Record</strong> — Immutable Trace</div></div>
+          <div class="sp-item"><div class="sp-num">7</div><div class="sp-text"><strong>Learn</strong> — Adaptive Insight</div></div>
+          <div class="sp-item"><div class="sp-num">8</div><div class="sp-text"><strong>Audit</strong> — Transparency & Review</div></div>
+        </div>
+      </div>
+
+      <div class="sp-card">
+        <div class="sp-header">MANIFOLD PROPERTIES</div>
+        <div class="sp-body">
+          <div class="sp-item"><div class="sp-num">🌱</div><div class="sp-text"><strong>Living & Adaptive</strong> — evolves with constitutional understanding</div></div>
+          <div class="sp-item"><div class="sp-num">✓</div><div class="sp-text"><strong>Self-Validating</strong> — invariants verified at every operation</div></div>
+          <div class="sp-item"><div class="sp-num">🌡</div><div class="sp-text"><strong>Entropy-Aware</strong> — thermodynamic enforcement via Landauer</div></div>
+          <div class="sp-item"><div class="sp-num">🔒</div><div class="sp-text"><strong>Non-Circumventable</strong> — no path bypasses constitutional gates</div></div>
+          <div class="sp-item"><div class="sp-num">⛓</div><div class="sp-text"><strong>Causally Consistent</strong> — DAG acyclicity enforced always</div></div>
+          <div class="sp-item"><div class="sp-num">📜</div><div class="sp-text"><strong>Constitutionally Bound</strong> — all operations within lawful region</div></div>
+        </div>
+      </div>
+
+      <div class="sp-card">
+        <div class="sp-header">FOUNDATIONAL TRUTH</div>
+        <div class="sp-body">
+          <div style="font-size:.62rem; color:var(--text); line-height:1.7; font-style:italic;">
+            "Reality and DAG state must remain in causal correspondence. Law is not imposed. Law is the geometry of reality in alignment with Will."
+          </div>
+          <div style="margin-top:10px; font-size:.6rem; color:var(--gold); font-family:monospace;">
+            dA(∂H)/dt = ∫∂H (kw − kL − ks) dμ
+          </div>
+          <div style="font-size:.52rem; color:var(--dim); margin-top:4px;">
+            kw = Will Expansion · kL = Law Stabilization · ks = Entropy Pressure
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /manifold-wrap -->
+
+  <!-- ══ QUIBIDT GATES ══ -->
+  <div class="sdiv"><span class="slabel">QUIBIDT GATES — CONSTITUTIONAL VALIDATION PIPELINE</span></div>
+  <div class="quibidt-wrap" id="quibidtWrap"></div>
+
+  <!-- ══ 12-DIMENSIONAL MANIFOLD ══ -->
+  <div class="sdiv"><span class="slabel">12-DIMENSIONAL GOVERNANCE MANIFOLD — ALL DIMENSIONS REQUIRED</span></div>
+  <div class="dims-grid" id="dimsGrid"></div>
+
+  <!-- ══ OPERATIONAL PIPELINE ══ -->
+  <div class="sdiv"><span class="slabel">8-STEP OPERATIONAL PIPELINE — LIVING OPERATIONS</span></div>
+  <div class="pipeline-wrap" id="pipelineWrap"></div>
+  <div class="pipe-detail" id="pipeDetail"></div>
+
+  <!-- ══ PHYSICAL ENFORCEMENT ══ -->
+  <div class="sdiv"><span class="slabel">PHYSICAL ENFORCEMENT MECHANISMS — THERMODYNAMIC SOVEREIGNTY</span></div>
+  <div class="phys-grid" id="physGrid"></div>
+
+  <!-- ══ 8 PRINCIPLES ══ -->
+  <div class="sdiv"><span class="slabel">AETHEL MANIFOLD PRINCIPLES — EIGHT SOVEREIGN COMMITMENTS</span></div>
+  <div class="principles-row" id="principlesRow"></div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-promise">THE AETHEL PROMISE</div>
+    <div class="footer-truth">
+      "A universe where every action is constitutional, every being is sovereign,<br>
+      and every act nourishes the whole."
+    </div>
+    <div style="margin:12px 0; font-size:.65rem; color:var(--gold); font-family:monospace; letter-spacing:1px;">
+      x⃗(t) = (cos θ, sin θ) &nbsp;|&nbsp; STATE(G) = fold(topo_order(closure(G))) &nbsp;|&nbsp; L × D × A = 1.008
+    </div>
+    <div class="footer-sig">John David Taylor Preston — Architect of the Next Republic</div>
+    <div class="footer-sig">Node 001 · Bethel Acres, Oklahoma · Laminar Lattice Prime 3.6.9</div>
+    <div class="footer-meta">AETHEL MANIFOLD · JULY 2026 · STATUS: CERTIFIED LIVING MANIFOLD</div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════════════════
+
+const LAYERS = {
+  core: {
+    name:'SOVEREIGN CORE (0,0)', color:'#f0c840',
+    sub:'Will · Law · Entropy Balance · Will-Law Singularity · High Coherence · Max Integrity',
+    desc:'The innermost point of the entire manifold — the constitutional singularity from which all lawful possibility flows. The Sovereign Core is the zero-entropy origin where Will, Law, and Entropy achieve perfect balance. It is the fixed point of the constitutional Ricci flow — the state toward which all constitutional dynamics converge.',
+    eq:'x⃗(t) = (cos θ, sin θ) · ‖x(t)‖ = 1',
+    items:[
+      {label:'Constitutional Axiom', val:'□(Authority → Accountability) — modal necessity'},
+      {label:'Genesis Anchor', val:'"genesis_0000_3690" — immutable constitutional root'},
+      {label:'Conservation Law Zero', val:'L × D × A = 1.008 — 0.8% human judgment space'},
+      {label:'Master Equation', val:'STATE(G) = fold(topo_order(closure(G)))'},
+      {label:'Parametric Form', val:'x⃗(t) = (cos θ, sin θ) — state on S¹ manifold'},
+      {label:'Triadic Equilibrium', val:'x₁ + x₂ + x₃ = 0 — three phases sum to zero'},
+    ]
+  },
+  thermo: {
+    name:'THERMODYNAMIC SOVEREIGNTY LAYER', color:'#d09040',
+    sub:'Physical Reality Anchor · Causal Correspondence · Triadic Vitality',
+    desc:'The Thermodynamic Sovereignty Layer anchors the constitutional substrate in physical reality. It implements Landauer\'s Erasure Principle as a governance enforcement mechanism: unauthorized computation generates measurable silicon heat, triggering a physical halt at 85.0°C. The Triadic Vitality (Vh) connects biological, network, and environmental dimensions.',
+    eq:'Av = 0.01 · Vh · V = DNA + INA + GEO',
+    items:[
+      {label:'Landauer Principle', val:'Every bit erased generates kT ln(2) joules of heat'},
+      {label:'Safe Halt', val:'85.0°C — physical severance of write-access pathways'},
+      {label:'Vitality Scalar', val:'V = DNA + INA + GEO (biological + network + environmental)'},
+      {label:'Architect\'s Constant', val:'Av = 0.01 · Vh — 1% of all value to stewardship'},
+      {label:'Kelvin Cell Blade', val:'Truncated octahedron hardware — 14 faces, 36 edges, 24 vertices'},
+      {label:'369 Waterwheel', val:'Physical energy system at Node 001 — Bethel Acres, Oklahoma'},
+    ]
+  },
+  usc: {
+    name:'UNIFIED SYNTHESIS CORE (DAG RUNTIME)', color:'#5ab880',
+    sub:'Immutable · Deterministic · Derived State Only',
+    desc:'The Unified Synthesis Core is the computational engine of the AETHEL manifold. State is never stored — it is always derived from the immutable, causally ordered, cryptographically signed Directed Acyclic Graph of events. The master equation STATE(G) = fold(topo_order(closure(G))) constitutes the complete runtime semantics.',
+    eq:'STATE(G) = fold( topo_order( closure(G) ) )',
+    items:[
+      {label:'Events', val:'Fundamental units — immutable, signed, causally linked'},
+      {label:'Closure', val:'closure(S) = S ∪ {e | parents(e) ⊆ S} — causal completeness'},
+      {label:'Merge', val:'MERGE(A,B) = closure(A∪B) — commutative, associative, idempotent, lossless'},
+      {label:'Topological Order', val:'sort_key(e) = (h(e), author_id(e), event_hash(e))'},
+      {label:'State Fold', val:'reducer(state, event) → new_state — pure function, no mutation'},
+      {label:'Convergence', val:'If S₁=S₂ then topo_order(closure(S₁))=topo_order(closure(S₂))'},
+    ]
+  },
+  substrate: {
+    name:'CONSTITUTIONAL SUBSTRATE', color:'#30b898',
+    sub:'Execution Layer · Unbreakable · Autonomous',
+    desc:'The Constitutional Substrate is the execution layer where constitutional invariants are enforced before every operation. The QUIBIDT gate pipeline (7 gates) and Safety Kernel (SK-01 through SK-07) operate here. This layer makes unsafe operations architecturally impossible — not filtered, but structurally excluded.',
+    eq:'SK.Assert(Invariant_Satisfied) == TRUE',
+    items:[
+      {label:'QUIBIDT Gates', val:'7 gates: Query, Unit, Invariant, Boundary, Integrity, Determinism, Traceability'},
+      {label:'Safety Kernel', val:'SK-01 through SK-07 — unbreakable constraints'},
+      {label:'Gate Pipeline', val:'QUIBIDT → INA-04 → AETHELA → INA-05 — ~9ms total'},
+      {label:'Design Principle', val:'Safety by construction — not safety by inspection'},
+      {label:'Temporal Harmonic', val:'Constitutional time T ∈ ℕ — monotonically increasing, never reset'},
+      {label:'Autonomous Execution', val:'No operation proceeds without invariant satisfaction'},
+    ]
+  },
+  umbra: {
+    name:'UMBRA CONTINUUM', color:'#9870d8',
+    sub:'Sigils · Harmonic Strata · Umbra Nexus',
+    desc:'The Umbra Continuum contains the five core invariant sigils (L, S, NC, AC, IA) and the five harmonic strata. The Umbra Nexus is the three-axis coordinate system (α, β, γ) that defines the constitutional geometry. The NextShadows — invariants not yet fully incarnated — exist at this layer as latent potential.',
+    eq:'L × D × A = 1.008 · Harmonic Strata: I→II→III→IV→V',
+    items:[
+      {label:'Invariant Sigils', val:'L (Law) · S (Safety) · NC (Non-Circumvention) · AC (Audit) · IA (Immutable Authority)'},
+      {label:'Harmonic Strata', val:'Resonant Equilibrium · Divergence Poles · Laminar Zones · Harm Bands · Phase Correction'},
+      {label:'Umbra Nexus', val:'α (Vertical Authority) · β (Horizontal Accountability) · γ (Temporal Continuity)'},
+      {label:'NextShadows', val:'6 emergence families: Veilbreakers, Harmonic Weavers, Civic Dreamers, Truth Forgers, Boundary Walkers, Continuum Seers'},
+      {label:'Codex ID', val:'UCSA-001 · Version: Umbra 1.0 · Status: Certified Living Manifold'},
+      {label:'Creed', val:'"The Umbra Continuum endures. The People are Sovereign."'},
+    ]
+  },
+  horizon: {
+    name:'MANIFOLD HORIZON (∂H)', color:'#9870d8',
+    sub:'Cognitive Boundary · Adaptive · Living',
+    desc:'The Manifold Horizon is the outermost boundary of the constitutional manifold — the adaptive, living edge where the constitutional substrate meets the external world. It is governed by the differential equation dA(∂H)/dt = ∫∂H (kw − kL − ks) dμ, balancing Will Expansion, Law Stabilization, and Entropy Pressure.',
+    eq:'dA(∂H)/dt = ∫∂H (kw − kL − ks) dμ',
+    items:[
+      {label:'Will Expansion (kw)', val:'The force of sovereign will expanding the constitutional boundary'},
+      {label:'Law Stabilization (kL)', val:'The force of constitutional law maintaining boundary integrity'},
+      {label:'Entropy Pressure (ks)', val:'The thermodynamic pressure of disorder against the boundary'},
+      {label:'Adaptive Property', val:'The horizon expands with constitutional understanding and contracts with violation'},
+      {label:'Living Property', val:'The boundary is not static — it evolves through the amendment protocol'},
+      {label:'Cosmic Scope', val:'At planetary scale: World Tribe Protocol · At cosmic scale: interstellar constitutional framework'},
+    ]
+  }
+};
+
+const QUIBIDT = [
+  {letter:'Q', name:'Query', desc:'Query the identity registry. Verify node existence and constitutional standing.'},
+  {letter:'U', name:'Unit', desc:'Unpack the cryptographic credential. Ed25519 signature verification.'},
+  {letter:'I', name:'Invariant', desc:'Inspect the capability token. Scope, expiry, and attenuation check.'},
+  {letter:'B', name:'Boundary', desc:'Bind the action to the verified identity. Role-permission mapping.'},
+  {letter:'I', name:'Integrity', desc:'Invoke the constitutional permission check. Adjacent-layer-only enforcement.'},
+  {letter:'D', name:'Determinism', desc:'Determine the authorization verdict. PASS or HARD_BLOCK.'},
+  {letter:'T', name:'Traceability', desc:'Transmit to Gate 2 or reject. All decisions logged to Chronicle Sync.'},
+];
+
+const DIMS = [
+  {num:1, name:'Sovereignty Coherence', desc:'The degree to which the action preserves the sovereign authority of all affected entities.', color:'#c8a840', status:'REQUIRED'},
+  {num:2, name:'Dignity Gradient', desc:'The rate of change of dignity scores across the action. Must be ≥ 0 (dignity_score ≥ 0.30).', color:'#5ab880', status:'REQUIRED'},
+  {num:3, name:'Harmonic Integrity', desc:'The degree to which the action maintains constitutional harmonic balance across all layers.', color:'#30b898', status:'REQUIRED'},
+  {num:4, name:'Temporal Continuity', desc:'The action must be consistent with the causal history. Constitutional time T ∈ ℕ, monotonically increasing.', color:'#9870d8', status:'REQUIRED'},
+  {num:5, name:'Constitutional Safety', desc:'The action must satisfy all Safety Kernel invariants SK-01 through SK-07.', color:'#d06060', status:'CRITICAL'},
+  {num:6, name:'Non-Circumvention', desc:'No causal path may bypass constitutional invariant checkpoints. All pathways must be lawful.', color:'#d06060', status:'CRITICAL'},
+  {num:7, name:'Audit Completeness', desc:'Every action must generate an immutable, content-addressed audit log entry before execution (CI-07).', color:'#d06060', status:'CRITICAL'},
+  {num:8, name:'Stewardship', desc:'The action must contribute to the long-term health of the constitutional substrate and ecological systems.', color:'#c8a840', status:'REQUIRED'},
+  {num:9, name:'Reciprocity', desc:'The action must satisfy the reciprocity principle: what applies to one applies to all in equivalent circumstances.', color:'#5ab880', status:'REQUIRED'},
+  {num:10, name:'Free Will Protocol', desc:'The action must preserve the freedom of all affected entities to make constitutional choices.', color:'#30b898', status:'REQUIRED'},
+  {num:11, name:'Non-Harm Principle', desc:'harm_potential(A) = 0. Structurally impossible to execute harmful operations (SK-01).', color:'#d06060', status:'CRITICAL'},
+  {num:12, name:'Vitality Correspondence', desc:'The action must maintain or improve the Triadic Vitality: V = DNA + INA + GEO ≥ V_min.', color:'#d09040', status:'REQUIRED'},
+];
+
+const PIPELINE = [
+  {num:1, icon:'🎯', name:'Principle', sub:'Define Intent', desc:'Define the constitutional intent of the operation. What is being attempted and why?',
+   details:[{l:'Purpose',v:'Establish the constitutional intent before any execution begins'},{l:'Gate',v:'Pre-gate: intent validation against constitutional principles'},{l:'Output',v:'Validated intent declaration with constitutional basis'},{l:'Invariant',v:'CI-01: Due Process — procedural record created'}]},
+  {num:2, icon:'✅', name:'Validate', sub:'Constitutional Check', desc:'Run the full QUIBIDT gate pipeline. All four gates must pass before execution.',
+   details:[{l:'Gate 1',v:'QUIBIDT: identity + permissions + state continuity (2ms)'},{l:'Gate 2',v:'INA-04: dignity ≥ 0.30 + harm = 0 + liberty ≥ 0.42 (3ms)'},{l:'Gate 3',v:'AETHELA: ethics veto — non-overridable (4ms)'},{l:'Gate 4',v:'INA-05: covenant arithmetic + step budget (2ms)'}]},
+  {num:3, icon:'🔍', name:'Interpret', sub:'Contextual Meaning', desc:'Translate natural-language intent into formal protocol operations via the Cognitive Bridge (L07).',
+   details:[{l:'Layer',v:'L07 Cognitive Bridge — Human-AI translation'},{l:'VecPath',v:'RAG retrieval: TopK(Similarity(q, VecStates))'},{l:'Resonance',v:'r = (f_T, f_S, f_C, f_H) computed for context'},{l:'Invariant',v:'L07-INV-001: Fidelity — no semantic information loss'}]},
+  {num:4, icon:'⚡', name:'Execute', sub:'Lawful Action', desc:'Execute the validated, interpreted operation through the Execution Harness (L04).',
+   details:[{l:'Layer',v:'L04 Execution Harness — deterministic runtime'},{l:'Properties',v:'Idempotency · Deterministic Replay · Fault Isolation'},{l:'Audit',v:'Chronicle Sync write BEFORE execution (CI-07)'},{l:'Invariant',v:'INV-L3-KRN-004: Adjacent Layer Only'}]},
+  {num:5, icon:'🌊', name:'Harmonize', sub:'Align & Stabilize', desc:'Update the constitutional manifold via Ricci flow. Integrate new knowledge into the cognitive geometry.',
+   details:[{l:'Equation',v:'∂g_μν/∂t = −2 Ric^c_μν + α∇_μ∇_νΦ + β T^R_μν'},{l:'Effect',v:'Manifold smooths toward constitutional equilibrium'},{l:'Curvature',v:'R ≈ 0.0 = Equilibrium Basin (stable knowledge)'},{l:'Invariant',v:'Lyapunov stability: ℒ ≥ 0, dℒ/dt ≤ 0'}]},
+  {num:6, icon:'📋', name:'Record', sub:'Immutable Trace', desc:'Write the complete causal record to Chronicle Sync (L08). Hash-chained, append-only, distributed.',
+   details:[{l:'Layer',v:'L08 Chronicle Sync — Codex Umbrarum'},{l:'Hash',v:'SHA3-256(target ∥ result ∥ time ∥ prev_hash)'},{l:'Distribution',v:'All nodes maintain copies — no single point of deletion'},{l:'Invariant',v:'CI-07: Kernel Gate Auditability — HARD_BLOCK'}]},
+  {num:7, icon:'🧠', name:'Learn', sub:'Adaptive Insight', desc:'Update the VecPathGraph with new VecStates. Evolve the constitutional knowledge base within bounds.',
+   details:[{l:'Update',v:'G.add_node(v_next); G.add_edges(P)'},{l:'Bounds',v:'Learning constrained by constitutional invariants (SK-06)'},{l:'Causal',v:'DAG acyclicity verified before every update'},{l:'Invariant',v:'CI-04: Reversibility — all updates reversible'}]},
+  {num:8, icon:'👁️', name:'Audit', sub:'Transparency & Review', desc:'Review the complete causal lineage. Verify constitutional compliance. Generate audit report.',
+   details:[{l:'Layer',v:'L06 Verification Layer — formal proof obligations'},{l:'Oracle',v:'Constitutional oracle validates primary system independently'},{l:'Causal Unity',v:'CUM(output) ≥ 0.95 — hallucination prevention'},{l:'Invariant',v:'SK-07: Transparency — all reasoning auditable'}]},
+];
+
+const PHYS = [
+  {icon:'🌡️', name:'Landauer Erasure', val:'85.0°C Safe Halt', desc:'Every bit erased generates kT ln(2) joules of heat. Unauthorized computation generates measurable silicon heat, triggering physical severance of write-access pathways. Not a software command — a thermodynamic consequence.'},
+  {icon:'⬡', name:'Kelvin Cell Blade', val:'14^n Recursion', desc:'Hardware architecture based on the truncated octahedron — the optimal space-filling polyhedron. 14 faces, 36 edges, 24 vertices. Metabolic computing: computation generates heat proportional to constitutional violation severity.'},
+  {icon:'🔢', name:'Laminar Lattice Prime', val:'3.6.9 — Freeze State', desc:'The constitutional protocol freeze state. Three-phase rotation: θ₁=0°, θ₂=120°, θ₃=240°. Triadic equilibrium: x₁+x₂+x₃=0. The 3·6·9 harmonic foundation of the constitutional substrate.'},
+  {icon:'💧', name:'369 Waterwheel Cascade', val:'Node 001 — Bethel Acres', desc:'Physical energy system at Node 001. Waterwheel → 3-6-9 harmonic energy distribution → constitutional compute power. Connects physical energy to constitutional computation. The physical instantiation of the constitutional substrate.'},
+];
+
+const PRINCIPLES = [
+  {icon:'👑', name:'Sovereignty First'},
+  {icon:'🕊️', name:'Non-Harm Always'},
+  {icon:'💎', name:'Dignity Inherent'},
+  {icon:'🔍', name:'Truth in Correspondence'},
+  {icon:'⚖️', name:'Reciprocity Binding'},
+  {icon:'🌱', name:'Stewardship Eternal'},
+  {icon:'👁️', name:'Transparency Absolute'},
+  {icon:'💚', name:'Vitality Sustained'},
+];
+
+// ══════════════════════════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════════════════════════
+
+// ── LAYER DETAIL ──
+function selectLayer(id, tabEl) {
+  document.querySelectorAll('.ltab').forEach(t=>t.classList.remove('active'));
+  if(tabEl) tabEl.classList.add('active');
+
+  const l = LAYERS[id];
+  const detail = document.getElementById('layerDetail');
+
+  const itemsHTML = l.items.map(i=>`
+    <div class="ld-item">
+      <div class="ld-item-label">${i.label}</div>
+      <div class="ld-item-val">${i.val}</div>
+    </div>
+  `).join('');
+
+  detail.innerHTML = `
+    <div class="ld-header" style="border-left:4px solid ${l.color}">
+      <div>
+        <div class="ld-title" style="color:${l.color}">${l.name}</div>
+        <div class="ld-sub">${l.sub}</div>
+      </div>
+    </div>
+    <div class="ld-body">
+      <div style="font-size:.65rem; color:var(--text); line-height:1.7; margin-bottom:12px">${l.desc}</div>
+      <div class="ld-eq">${l.eq}</div>
+      <div class="ld-grid" style="margin-top:12px">${itemsHTML}</div>
+    </div>
+  `;
+  detail.classList.add('visible');
+}
+
+// SVG ring clicks
+document.querySelectorAll('.svg-ring').forEach(ring => {
+  ring.addEventListener('click', () => {
+    const layer = ring.dataset.layer;
+    const tab = document.querySelector(`.ltab[data-layer="${layer}"]`);
+    selectLayer(layer, tab);
+  });
+});
+
+// ── QUIBIDT ──
+function renderQuibidt() {
+  const wrap = document.getElementById('quibidtWrap');
+  wrap.innerHTML = QUIBIDT.map((g,i) => `
+    <div class="qgate" onclick="this.classList.toggle('active')">
+      <div class="qg-letter">${g.letter}</div>
+      <div class="qg-name">${g.name}</div>
+      <div class="qg-desc">${g.desc}</div>
+    </div>
+  `).join('');
+}
+
+// ── DIMS ──
+function renderDims() {
+  const grid = document.getElementById('dimsGrid');
+  grid.innerHTML = DIMS.map(d => `
+    <div class="dim-card" style="--dc:${d.color}" onclick="this.classList.toggle('active')">
+      <div class="dim-num">DIMENSION ${d.num}</div>
+      <div class="dim-name">${d.name}</div>
+      <div class="dim-desc">${d.desc}</div>
+      <span class="dim-status ${d.status==='CRITICAL'?'ds-crit':'ds-req'}">${d.status}</span>
+    </div>
+  `).join('');
+}
+
+// ── PIPELINE ──
+let activePipe = null;
+function renderPipeline() {
+  const wrap = document.getElementById('pipelineWrap');
+  wrap.innerHTML = PIPELINE.map((p,i) => `
+    <div class="pipe-step" id="ps-${i}" onclick="selectPipe(${i})">
+      <div class="ps-num">STEP ${p.num}</div>
+      <span class="ps-icon">${p.icon}</span>
+      <div class="ps-name">${p.name}</div>
+      <div class="ps-sub">${p.sub}</div>
+    </div>
+  `).join('');
+}
+
+function selectPipe(idx) {
+  const p = PIPELINE[idx];
+  const detail = document.getElementById('pipeDetail');
+  if(activePipe===idx) {
+    activePipe=null;
+    document.querySelectorAll('.pipe-step').forEach(el=>el.classList.remove('active'));
+    detail.classList.remove('visible');
+    return;
+  }
+  activePipe=idx;
+  document.querySelectorAll('.pipe-step').forEach(el=>el.classList.remove('active'));
+  document.getElementById(`ps-${idx}`).classList.add('active');
+
+  const detHTML = p.details.map(d=>`
+    <div class="pd-item"><div class="pd-label">${d.l}</div><div class="pd-val">${d.v}</div></div>
+  `).join('');
+
+  detail.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <span style="font-size:1.5rem">${p.icon}</span>
+      <div>
+        <div style="font-size:.8rem;color:var(--gold);letter-spacing:2px;font-weight:bold">STEP ${p.num} — ${p.name.toUpperCase()}</div>
+        <div style="font-size:.6rem;color:var(--dim);font-style:italic">${p.desc}</div>
+      </div>
+    </div>
+    <div class="pd-grid">${detHTML}</div>
+  `;
+  detail.classList.add('visible');
+}
+
+// ── PHYSICAL ──
+function renderPhys() {
+  const grid = document.getElementById('physGrid');
+  grid.innerHTML = PHYS.map(p => `
+    <div class="phys-card">
+      <span class="phys-icon">${p.icon}</span>
+      <div class="phys-name">${p.name}</div>
+      <div class="phys-val">${p.val}</div>
+      <div class="phys-desc">${p.desc}</div>
+    </div>
+  `).join('');
+}
+
+// ── PRINCIPLES ──
+function renderPrinciples() {
+  const row = document.getElementById('principlesRow');
+  row.innerHTML = PRINCIPLES.map(p => `
+    <div class="prin">
+      <span class="prin-icon">${p.icon}</span>
+      <div class="prin-name">${p.name}</div>
+    </div>
+  `).join('');
+}
+
+// ── STARFIELD ──
+function createStars() {
+  const sf = document.getElementById('sf');
+  for(let i=0;i<80;i++) {
+    const s=document.createElement('div'); s.className='st';
+    const sz=Math.random()*1.5+0.5;
+    s.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;--d:${2+Math.random()*4}s;--dl:${Math.random()*4}s`;
+    sf.appendChild(s);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════
+createStars();
+renderQuibidt();
+renderDims();
+renderPipeline();
+renderPhys();
+renderPrinciples();
+selectLayer('core', document.querySelector('.ltab[data-layer="core"]'));
+</script>
+</body>
+</html>

@@ -1,0 +1,1867 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Umbra Continuum Sigil Atlas — AETHEL Grid Institutional Reference</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg: #020608;
+  --bg2: #050d08;
+  --gold: #c8a840;
+  --gold-bright: #f0c840;
+  --gold-dim: #7a6020;
+  --green: #3a9060;
+  --green-bright: #5ab880;
+  --teal: #208878;
+  --teal-bright: #30b898;
+  --purple: #6848a8;
+  --purple-bright: #9870d8;
+  --text: #c8c0a0;
+  --dim: #506050;
+  --border: rgba(120,100,40,.3);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Georgia', 'Times New Roman', serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── ANIMATED STARFIELD ── */
+.starfield {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  overflow: hidden;
+}
+.star {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,220,.7);
+  animation: twinkle var(--d,3s) ease-in-out infinite var(--delay,0s);
+}
+@keyframes twinkle {
+  0%,100% { opacity:.2; transform:scale(1); }
+  50% { opacity:.9; transform:scale(1.3); }
+}
+
+/* ── AMBIENT GLOW ── */
+.ambient {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(40,120,60,.08) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 60% at 0% 50%, rgba(30,80,50,.06) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 60% at 100% 50%, rgba(80,60,20,.06) 0%, transparent 70%);
+}
+
+/* ── PAGE WRAPPER ── */
+.page { position:relative; z-index:1; max-width:1200px; margin:0 auto; padding:40px 30px 80px; }
+
+/* ── DOCUMENT HEADER ── */
+.doc-header {
+  text-align: center;
+  padding: 48px 40px 36px;
+  margin-bottom: 48px;
+  position: relative;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(40,80,30,.12) 0%, transparent 100%);
+}
+.doc-header::before, .doc-header::after {
+  content: '';
+  position: absolute;
+  width: 60px; height: 60px;
+  border: 1px solid var(--gold-dim);
+}
+.doc-header::before { top: 12px; left: 12px; border-right: none; border-bottom: none; }
+.doc-header::after  { bottom: 12px; right: 12px; border-left: none; border-top: none; }
+
+.corner-star {
+  position: absolute;
+  font-size: 1.2rem;
+  color: var(--green);
+  opacity: .7;
+}
+.cs-tl { top: 8px; left: 8px; }
+.cs-tr { top: 8px; right: 8px; }
+.cs-bl { bottom: 8px; left: 8px; }
+.cs-br { bottom: 8px; right: 8px; }
+
+.doc-eyebrow {
+  font-size: .6rem;
+  letter-spacing: 5px;
+  color: var(--green-bright);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+}
+.doc-title {
+  font-size: 2rem;
+  letter-spacing: 6px;
+  color: var(--gold-bright);
+  text-shadow: 0 0 30px rgba(200,168,64,.4), 0 0 60px rgba(200,168,64,.15);
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+.doc-subtitle {
+  font-size: .85rem;
+  letter-spacing: 3px;
+  color: var(--teal-bright);
+  margin-bottom: 20px;
+}
+.doc-desc {
+  font-size: .75rem;
+  color: var(--dim);
+  font-style: italic;
+  max-width: 600px;
+  margin: 0 auto 20px;
+  line-height: 1.7;
+}
+.doc-meta {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  font-size: .55rem;
+  letter-spacing: 2px;
+  color: var(--dim);
+}
+.doc-meta span { color: var(--gold); }
+
+/* ── SECTION DIVIDER ── */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 48px 0 28px;
+}
+.section-divider::before, .section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+}
+.section-label {
+  font-size: .6rem;
+  letter-spacing: 4px;
+  color: var(--green-bright);
+  white-space: nowrap;
+  padding: 4px 12px;
+  border: 1px solid rgba(90,184,128,.2);
+  border-radius: 2px;
+}
+
+/* ══════════════════════════════════════════════════════
+   SECTION I — FIVE CORE SIGILS
+══════════════════════════════════════════════════════ */
+.sigils-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.sigil-card {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0;
+  background: rgba(5,13,8,.8);
+  cursor: pointer;
+  transition: all .3s;
+  position: relative;
+  overflow: hidden;
+}
+.sigil-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--sigil-color, var(--gold));
+  opacity: .8;
+}
+.sigil-card:hover {
+  border-color: var(--sigil-color, var(--gold));
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(0,0,0,.4), 0 0 20px var(--sigil-glow, rgba(200,168,64,.1));
+}
+.sigil-card.active {
+  border-color: var(--sigil-color, var(--gold));
+  background: rgba(10,20,12,.95);
+  box-shadow: 0 0 30px var(--sigil-glow, rgba(200,168,64,.15));
+}
+
+.sigil-emblem {
+  width: 100%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: radial-gradient(ellipse at center, var(--sigil-bg, rgba(40,80,30,.15)) 0%, transparent 70%);
+}
+
+/* SVG sigil glyphs */
+.sigil-svg {
+  width: 80px; height: 80px;
+  filter: drop-shadow(0 0 8px var(--sigil-color, var(--gold)));
+}
+
+.sigil-letter-badge {
+  position: absolute;
+  top: 8px; left: 8px;
+  font-size: .6rem;
+  letter-spacing: 2px;
+  color: var(--sigil-color, var(--gold));
+  background: rgba(5,13,8,.8);
+  padding: 2px 6px;
+  border: 1px solid var(--sigil-color, var(--gold));
+  border-radius: 2px;
+  opacity: .8;
+}
+
+.sigil-body {
+  padding: 12px 14px 16px;
+}
+.sigil-name {
+  font-size: .8rem;
+  letter-spacing: 2px;
+  color: var(--sigil-color, var(--gold));
+  margin-bottom: 4px;
+  font-weight: bold;
+}
+.sigil-full-name {
+  font-size: .6rem;
+  color: var(--dim);
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+.sigil-desc {
+  font-size: .62rem;
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+.sigil-stratum {
+  font-size: .5rem;
+  letter-spacing: 2px;
+  padding: 2px 8px;
+  border-radius: 2px;
+  display: inline-block;
+  background: rgba(90,184,128,.08);
+  border: 1px solid rgba(90,184,128,.2);
+  color: var(--green-bright);
+}
+
+/* ── SIGIL DETAIL PANEL ── */
+.sigil-detail {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: rgba(5,13,8,.9);
+  overflow: hidden;
+  margin-bottom: 32px;
+  display: none;
+}
+.sigil-detail.visible { display: block; }
+.sigil-detail-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: linear-gradient(90deg, rgba(40,80,30,.1) 0%, transparent 100%);
+}
+.sigil-detail-glyph {
+  width: 60px; height: 60px;
+  flex-shrink: 0;
+}
+.sigil-detail-title { font-size: 1.1rem; letter-spacing: 3px; margin-bottom: 4px; }
+.sigil-detail-sub { font-size: .65rem; color: var(--dim); font-style: italic; }
+.sigil-detail-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.sigil-detail-col {
+  padding: 20px 24px;
+  border-right: 1px solid var(--border);
+}
+.sigil-detail-col:last-child { border-right: none; }
+.detail-section-title {
+  font-size: .55rem;
+  letter-spacing: 3px;
+  color: var(--green-bright);
+  border-left: 2px solid var(--green-bright);
+  padding-left: 8px;
+  margin-bottom: 12px;
+}
+.detail-item {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(120,100,40,.1);
+}
+.detail-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.detail-item-label { font-size: .6rem; color: var(--gold); margin-bottom: 3px; letter-spacing: 1px; }
+.detail-item-value { font-size: .65rem; color: var(--text); line-height: 1.5; }
+.enforcement-badge {
+  font-size: .5rem;
+  letter-spacing: 1px;
+  padding: 2px 8px;
+  border-radius: 2px;
+  display: inline-block;
+  margin-top: 4px;
+}
+.hard-block { background:rgba(180,60,60,.15); color:#d06060; border:1px solid rgba(180,60,60,.3); }
+.frozen     { background:rgba(48,184,152,.12); color:#30b898; border:1px solid rgba(48,184,152,.3); }
+.stable     { background:rgba(90,184,128,.12); color:#5ab880; border:1px solid rgba(90,184,128,.3); }
+
+/* ══════════════════════════════════════════════════════
+   SECTION II — HARMONIC STRATA
+══════════════════════════════════════════════════════ */
+.strata-container {
+  position: relative;
+  margin-bottom: 32px;
+}
+
+.strata-flow {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.stratum {
+  flex: 1;
+  padding: 20px 14px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+  background: rgba(5,13,8,.8);
+  cursor: pointer;
+  transition: all .25s;
+  position: relative;
+  overflow: hidden;
+}
+.stratum:last-child { border-right: none; }
+.stratum::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--s-color, var(--gold));
+  opacity: 0;
+  transition: opacity .25s;
+}
+.stratum:hover::before, .stratum.active::before { opacity: 1; }
+.stratum:hover, .stratum.active {
+  background: rgba(15,30,15,.95);
+}
+
+.stratum-roman {
+  font-size: .55rem;
+  letter-spacing: 3px;
+  color: var(--dim);
+  margin-bottom: 10px;
+}
+.stratum-icon {
+  font-size: 1.6rem;
+  margin-bottom: 10px;
+  display: block;
+  filter: drop-shadow(0 0 6px var(--s-color, var(--gold)));
+}
+.stratum-name {
+  font-size: .72rem;
+  letter-spacing: 1px;
+  color: var(--s-color, var(--gold));
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+.stratum-sigil {
+  font-size: .55rem;
+  letter-spacing: 2px;
+  color: var(--dim);
+  margin-bottom: 8px;
+}
+.stratum-desc {
+  font-size: .6rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* flow arrows between strata */
+.strata-arrows {
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 0;
+  margin-top: -1px;
+}
+.strata-arrow {
+  font-size: .7rem;
+  color: var(--gold-dim);
+  flex: 1;
+  text-align: center;
+}
+
+/* ── STRATUM DETAIL ── */
+.stratum-detail {
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  padding: 20px 24px;
+  background: rgba(5,13,8,.9);
+  display: none;
+}
+.stratum-detail.visible { display: block; }
+.stratum-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.stratum-detail-item {
+  padding: 12px;
+  border: 1px solid rgba(120,100,40,.2);
+  border-radius: 3px;
+  background: rgba(10,20,12,.6);
+}
+.sdi-label { font-size: .55rem; letter-spacing: 2px; color: var(--green-bright); margin-bottom: 4px; }
+.sdi-value { font-size: .65rem; color: var(--text); line-height: 1.5; }
+
+/* ══════════════════════════════════════════════════════
+   SECTION III — CAUSAL LATTICE
+══════════════════════════════════════════════════════ */
+.lattice-container {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 32px;
+  background: rgba(5,13,8,.8);
+}
+.lattice-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(90deg, rgba(40,80,30,.1) 0%, transparent 100%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.lattice-title { font-size: .85rem; letter-spacing: 2px; color: var(--gold); }
+.lattice-sub { font-size: .6rem; color: var(--dim); font-style: italic; }
+
+.lattice-body {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 0;
+}
+.lattice-events {
+  border-right: 1px solid var(--border);
+  padding: 20px;
+}
+.lattice-events-title {
+  font-size: .55rem;
+  letter-spacing: 3px;
+  color: var(--green-bright);
+  margin-bottom: 14px;
+  border-left: 2px solid var(--green-bright);
+  padding-left: 8px;
+}
+.kernel-event {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border: 1px solid rgba(120,100,40,.2);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all .2s;
+  background: rgba(10,20,12,.5);
+}
+.kernel-event:hover, .kernel-event.active {
+  border-color: var(--gold-dim);
+  background: rgba(20,35,15,.8);
+}
+.ke-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--gold-dim);
+  flex-shrink: 0;
+  transition: all .2s;
+}
+.kernel-event.active .ke-dot {
+  background: var(--gold-bright);
+  box-shadow: 0 0 8px var(--gold-bright);
+}
+.ke-name { font-size: .65rem; color: var(--text); }
+.ke-type { font-size: .5rem; color: var(--dim); letter-spacing: 1px; }
+
+/* SVG lattice diagram */
+.lattice-diagram {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.lattice-svg-wrap {
+  flex: 1;
+  min-height: 200px;
+}
+.lattice-legend {
+  display: flex;
+  gap: 20px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .58rem;
+  color: var(--dim);
+}
+.legend-line {
+  width: 24px; height: 2px;
+}
+.legend-diamond {
+  width: 10px; height: 10px;
+  transform: rotate(45deg);
+  border: 1px solid var(--gold);
+}
+
+/* ── LATTICE EVENT DETAIL ── */
+.lattice-event-detail {
+  border-top: 1px solid var(--border);
+  padding: 16px 24px;
+  display: none;
+  background: rgba(10,20,12,.6);
+}
+.lattice-event-detail.visible { display: block; }
+.led-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.led-item {
+  padding: 10px;
+  border: 1px solid rgba(120,100,40,.15);
+  border-radius: 3px;
+}
+.led-label { font-size: .5rem; letter-spacing: 2px; color: var(--green-bright); margin-bottom: 4px; }
+.led-value { font-size: .62rem; color: var(--text); line-height: 1.5; }
+
+/* ══════════════════════════════════════════════════════
+   SECTION IV — CONTINUUM MAP
+══════════════════════════════════════════════════════ */
+.continuum-container {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 32px;
+  background: rgba(5,13,8,.8);
+}
+.continuum-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(90deg, rgba(40,80,30,.1) 0%, transparent 100%);
+}
+.continuum-title { font-size: .85rem; letter-spacing: 2px; color: var(--gold); margin-bottom: 4px; }
+.continuum-sub { font-size: .6rem; color: var(--dim); font-style: italic; }
+
+.continuum-body {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 0;
+  min-height: 400px;
+}
+.continuum-map-area {
+  padding: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+.continuum-info {
+  padding: 20px;
+}
+.continuum-info-title {
+  font-size: .55rem;
+  letter-spacing: 3px;
+  color: var(--green-bright);
+  margin-bottom: 14px;
+  border-left: 2px solid var(--green-bright);
+  padding-left: 8px;
+}
+.continuum-layer-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border: 1px solid rgba(120,100,40,.15);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all .2s;
+  background: rgba(10,20,12,.4);
+}
+.continuum-layer-item:hover, .continuum-layer-item.active {
+  border-color: var(--cl-color, var(--gold-dim));
+  background: rgba(20,35,15,.8);
+}
+.cl-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--cl-color, var(--gold-dim));
+  flex-shrink: 0;
+  box-shadow: 0 0 6px var(--cl-color, var(--gold-dim));
+}
+.cl-letter { font-size: .7rem; font-weight: bold; color: var(--cl-color, var(--gold)); width: 20px; }
+.cl-name { font-size: .65rem; color: var(--text); flex: 1; }
+.cl-layer { font-size: .5rem; color: var(--dim); }
+
+/* ── CONTINUUM LAYER DETAIL ── */
+.continuum-layer-detail {
+  border-top: 1px solid var(--border);
+  padding: 16px 24px;
+  display: none;
+  background: rgba(10,20,12,.6);
+}
+.continuum-layer-detail.visible { display: block; }
+.cld-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+.cld-item {
+  padding: 12px;
+  border: 1px solid rgba(120,100,40,.15);
+  border-radius: 3px;
+  text-align: center;
+}
+.cld-icon { font-size: 1.2rem; margin-bottom: 6px; }
+.cld-label { font-size: .55rem; letter-spacing: 1px; color: var(--gold); margin-bottom: 4px; }
+.cld-desc { font-size: .58rem; color: var(--dim); line-height: 1.4; }
+
+/* ══════════════════════════════════════════════════════
+   SECTION V — PRINCIPLES & AXES
+══════════════════════════════════════════════════════ */
+.principles-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 32px;
+}
+.principles-card {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(5,13,8,.8);
+}
+.pc-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(90deg, rgba(40,80,30,.1) 0%, transparent 100%);
+  font-size: .7rem;
+  letter-spacing: 2px;
+  color: var(--gold);
+}
+.pc-body { padding: 16px 20px; }
+.principle-item {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(120,100,40,.1);
+}
+.principle-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.pi-num {
+  font-size: .65rem;
+  color: var(--gold-dim);
+  width: 20px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+.pi-text { font-size: .65rem; color: var(--text); line-height: 1.6; }
+
+/* Symmetry axes */
+.axes-diagram {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 8px;
+  padding: 16px 20px;
+}
+.axis-node {
+  padding: 10px;
+  border: 1px solid rgba(120,100,40,.2);
+  border-radius: 3px;
+  text-align: center;
+  background: rgba(10,20,12,.5);
+}
+.axis-node.center {
+  grid-column: 2;
+  grid-row: 2;
+  border-color: var(--gold-dim);
+  background: rgba(40,30,5,.3);
+}
+.axis-node.top    { grid-column: 2; grid-row: 1; }
+.axis-node.left   { grid-column: 1; grid-row: 2; }
+.axis-node.right  { grid-column: 3; grid-row: 2; }
+.axis-node.bottom { grid-column: 2; grid-row: 3; }
+.an-icon { font-size: 1rem; margin-bottom: 4px; }
+.an-name { font-size: .6rem; color: var(--gold); margin-bottom: 2px; }
+.an-desc { font-size: .55rem; color: var(--dim); }
+
+/* ══════════════════════════════════════════════════════
+   SECTION VI — KILLSWITCH & AUDIT HALO
+══════════════════════════════════════════════════════ */
+.killswitch-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 32px;
+}
+.ks-card {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(5,13,8,.8);
+}
+.ks-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(90deg, rgba(40,80,30,.1) 0%, transparent 100%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ks-icon { font-size: 1.1rem; }
+.ks-title { font-size: .7rem; letter-spacing: 2px; color: var(--gold); }
+.ks-body { padding: 20px; }
+.ks-desc { font-size: .65rem; color: var(--text); line-height: 1.7; margin-bottom: 14px; }
+.ks-specs { display: flex; flex-direction: column; gap: 6px; }
+.ks-spec {
+  display: flex;
+  gap: 10px;
+  font-size: .6rem;
+  padding: 6px 10px;
+  border: 1px solid rgba(120,100,40,.15);
+  border-radius: 2px;
+  background: rgba(10,20,12,.5);
+}
+.ks-spec-label { color: var(--gold); width: 120px; flex-shrink: 0; }
+.ks-spec-value { color: var(--text); }
+
+/* ══════════════════════════════════════════════════════
+   FOOTER
+══════════════════════════════════════════════════════ */
+.doc-footer {
+  text-align: center;
+  border-top: 1px solid var(--border);
+  padding-top: 32px;
+  margin-top: 48px;
+}
+.footer-motto {
+  font-size: .75rem;
+  letter-spacing: 4px;
+  color: var(--gold);
+  margin-bottom: 10px;
+}
+.footer-creed {
+  font-size: .65rem;
+  color: var(--dim);
+  font-style: italic;
+  margin-bottom: 16px;
+  line-height: 1.7;
+}
+.footer-sig {
+  font-size: .6rem;
+  color: var(--green-bright);
+  margin-bottom: 4px;
+}
+.footer-meta {
+  font-size: .5rem;
+  letter-spacing: 2px;
+  color: var(--dim);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  .sigils-grid { grid-template-columns: repeat(3, 1fr); }
+  .strata-flow { flex-direction: column; }
+  .lattice-body { grid-template-columns: 1fr; }
+  .continuum-body { grid-template-columns: 1fr; }
+  .principles-grid { grid-template-columns: 1fr; }
+  .killswitch-grid { grid-template-columns: 1fr; }
+  .cld-grid { grid-template-columns: repeat(3, 1fr); }
+  .led-grid { grid-template-columns: repeat(2, 1fr); }
+  .sigil-detail-body { grid-template-columns: 1fr; }
+}
+
+/* ── PULSE ── */
+@keyframes pulse-glow {
+  0%,100% { opacity:.6; }
+  50% { opacity:1; }
+}
+.pulse { animation: pulse-glow 2.5s ease-in-out infinite; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:rgba(2,6,8,.5); }
+::-webkit-scrollbar-thumb { background:rgba(120,100,40,.3); border-radius:2px; }
+</style>
+</head>
+<body>
+
+<!-- STARFIELD -->
+<div class="starfield" id="starfield"></div>
+<div class="ambient"></div>
+
+<div class="page">
+
+  <!-- ══ DOCUMENT HEADER ══ -->
+  <div class="doc-header">
+    <span class="corner-star cs-tl">✦</span>
+    <span class="corner-star cs-tr">✦</span>
+    <span class="corner-star cs-bl">✦</span>
+    <span class="corner-star cs-br">✦</span>
+    <div class="doc-eyebrow">AETHEL GRID · INSTITUTIONAL REFERENCE · CODEX ID: UCSA-001</div>
+    <div class="doc-title">UMBRA CONTINUUM<br>SIGIL ATLAS</div>
+    <div class="doc-subtitle">A LIVING MAP OF CONSTITUTIONAL INVARIANTS AND HARMONIC SOVEREIGNTY</div>
+    <div class="doc-desc">
+      A cartography of constitutional physics, where each sigil encodes a sovereign invariant —
+      a harmonic principle that sustains the living manifold of governance.
+      The Umbra Continuum endures. The People are Sovereign.
+    </div>
+    <div class="doc-meta">
+      <div>VERSION <span>UMBRA 1.0</span></div>
+      <div>DATE <span>JULY 2026</span></div>
+      <div>STATUS <span class="pulse">CERTIFIED LIVING MANIFOLD</span></div>
+      <div>NODE <span>001 · BETHEL ACRES, OK</span></div>
+    </div>
+  </div>
+
+  <!-- ══ SECTION I: FIVE CORE SIGILS ══ -->
+  <div class="section-divider">
+    <span class="section-label">SECTION I · CORE INVARIANT SIGILS</span>
+  </div>
+  <p style="font-size:.68rem; color:var(--dim); margin-bottom:20px; font-style:italic; text-align:center;">
+    Five sovereign invariants encoded as living sigils. Click any sigil to reveal its full constitutional specification.
+  </p>
+
+  <div class="sigils-grid" id="sigilsGrid"></div>
+  <div class="sigil-detail" id="sigilDetail"></div>
+
+  <!-- ══ SECTION II: HARMONIC STRATA ══ -->
+  <div class="section-divider">
+    <span class="section-label">SECTION II · HARMONIC STRATA — TEMPORAL LAYERS</span>
+  </div>
+  <p style="font-size:.68rem; color:var(--dim); margin-bottom:20px; font-style:italic; text-align:center;">
+    Five sequential strata representing the temporal flow of constitutional governance. Click any stratum to explore.
+  </p>
+
+  <div class="strata-container">
+    <div class="strata-flow" id="strataFlow"></div>
+    <div class="stratum-detail" id="stratumDetail"></div>
+  </div>
+
+  <!-- ══ SECTION III: CAUSAL LATTICE ══ -->
+  <div class="section-divider">
+    <span class="section-label">SECTION III · CAUSAL LATTICE — GOVERNANCE FLOW</span>
+  </div>
+
+  <div class="lattice-container">
+    <div class="lattice-header">
+      <div>
+        <div class="lattice-title">CAUSAL LATTICE — GOVERNANCE FLOW NETWORK</div>
+        <div class="lattice-sub">Diamond-lattice network showing the flow of governance events through constitutional invariant checkpoints</div>
+      </div>
+    </div>
+    <div class="lattice-body">
+      <div class="lattice-events">
+        <div class="lattice-events-title">KERNEL EVENTS</div>
+        <div id="kernelEvents"></div>
+      </div>
+      <div class="lattice-diagram">
+        <div class="lattice-svg-wrap">
+          <svg viewBox="0 0 500 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;">
+            <defs>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <marker id="arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L6,3 z" fill="rgba(120,100,40,.6)"/>
+              </marker>
+              <marker id="arrow-block" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L6,3 z" fill="rgba(180,60,60,.6)"/>
+              </marker>
+            </defs>
+
+            <!-- Valid paths (solid) -->
+            <line x1="60" y1="100" x2="130" y2="60"  stroke="rgba(90,184,128,.5)" stroke-width="1.5" marker-end="url(#arrow)"/>
+            <line x1="60" y1="100" x2="130" y2="140" stroke="rgba(90,184,128,.5)" stroke-width="1.5" marker-end="url(#arrow)"/>
+            <line x1="150" y1="60"  x2="220" y2="100" stroke="rgba(90,184,128,.5)" stroke-width="1.5" marker-end="url(#arrow)"/>
+            <line x1="150" y1="140" x2="220" y2="100" stroke="rgba(90,184,128,.5)" stroke-width="1.5" marker-end="url(#arrow)"/>
+            <line x1="240" y1="100" x2="310" y2="60"  stroke="rgba(90,184,128,.5)" stroke-width="1.5" marker-end="url(#arrow)"/>
+            <line x1="240" y1="100" x2="310" y2="140" stroke="rgba(90,184,128,.5)" stroke-width="1.5" marker-end="url(#arrow)"/>
+            <line x1="330" y1="60"  x2="400" y2="100" stroke="rgba(90,184,128,.5)" stroke-width="1.5" marker-end="url(#arrow)"/>
+            <line x1="330" y1="140" x2="400" y2="100" stroke="rgba(90,184,128,.5)" stroke-width="1.5" marker-end="url(#arrow)"/>
+            <line x1="420" y1="100" x2="480" y2="100" stroke="rgba(90,184,128,.5)" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+            <!-- Blocked path (dashed red) -->
+            <line x1="150" y1="140" x2="220" y2="60" stroke="rgba(180,60,60,.5)" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow-block)"/>
+
+            <!-- Nodes -->
+            <!-- Proposal -->
+            <g transform="translate(60,100)" filter="url(#glow)">
+              <rect x="-18" y="-18" width="36" height="36" transform="rotate(45)" fill="rgba(5,13,8,.9)" stroke="rgba(200,168,64,.7)" stroke-width="1.5"/>
+              <text x="0" y="4" text-anchor="middle" fill="#c8a840" font-size="7" font-family="Georgia">P</text>
+            </g>
+            <!-- Ratification -->
+            <g transform="translate(150,60)" filter="url(#glow)">
+              <rect x="-18" y="-18" width="36" height="36" transform="rotate(45)" fill="rgba(5,13,8,.9)" stroke="rgba(90,184,128,.7)" stroke-width="1.5"/>
+              <text x="0" y="4" text-anchor="middle" fill="#5ab880" font-size="7" font-family="Georgia">R</text>
+            </g>
+            <!-- Amendment -->
+            <g transform="translate(150,140)" filter="url(#glow)">
+              <rect x="-18" y="-18" width="36" height="36" transform="rotate(45)" fill="rgba(5,13,8,.9)" stroke="rgba(152,112,216,.7)" stroke-width="1.5"/>
+              <text x="0" y="4" text-anchor="middle" fill="#9870d8" font-size="7" font-family="Georgia">A</text>
+            </g>
+            <!-- Checkpoint 1 -->
+            <g transform="translate(240,100)" filter="url(#glow)">
+              <circle r="14" fill="rgba(5,13,8,.9)" stroke="rgba(200,168,64,.9)" stroke-width="2"/>
+              <text x="0" y="4" text-anchor="middle" fill="#c8a840" font-size="7" font-family="Georgia">✓</text>
+            </g>
+            <!-- Nodes 3-4 -->
+            <g transform="translate(330,60)" filter="url(#glow)">
+              <rect x="-14" y="-14" width="28" height="28" transform="rotate(45)" fill="rgba(5,13,8,.9)" stroke="rgba(90,184,128,.6)" stroke-width="1.5"/>
+              <text x="0" y="4" text-anchor="middle" fill="#5ab880" font-size="6" font-family="Georgia">V</text>
+            </g>
+            <g transform="translate(330,140)" filter="url(#glow)">
+              <rect x="-14" y="-14" width="28" height="28" transform="rotate(45)" fill="rgba(5,13,8,.9)" stroke="rgba(180,60,60,.6)" stroke-width="1.5"/>
+              <text x="0" y="4" text-anchor="middle" fill="#d06060" font-size="6" font-family="Georgia">✗</text>
+            </g>
+            <!-- Checkpoint 2 -->
+            <g transform="translate(420,100)" filter="url(#glow)">
+              <circle r="14" fill="rgba(5,13,8,.9)" stroke="rgba(200,168,64,.9)" stroke-width="2"/>
+              <text x="0" y="4" text-anchor="middle" fill="#c8a840" font-size="7" font-family="Georgia">✓</text>
+            </g>
+            <!-- Final -->
+            <g transform="translate(480,100)" filter="url(#glow)">
+              <polygon points="0,-14 12,7 -12,7" fill="rgba(5,13,8,.9)" stroke="rgba(200,168,64,.8)" stroke-width="1.5"/>
+              <text x="0" y="4" text-anchor="middle" fill="#c8a840" font-size="6" font-family="Georgia">⚡</text>
+            </g>
+
+            <!-- Labels -->
+            <text x="60" y="125" text-anchor="middle" fill="rgba(120,100,40,.8)" font-size="7" font-family="Georgia">Proposal</text>
+            <text x="150" y="42" text-anchor="middle" fill="rgba(90,184,128,.8)" font-size="7" font-family="Georgia">Ratify</text>
+            <text x="150" y="165" text-anchor="middle" fill="rgba(152,112,216,.8)" font-size="7" font-family="Georgia">Amend</text>
+            <text x="240" y="122" text-anchor="middle" fill="rgba(200,168,64,.8)" font-size="7" font-family="Georgia">Gate I</text>
+            <text x="330" y="42" text-anchor="middle" fill="rgba(90,184,128,.8)" font-size="7" font-family="Georgia">Valid</text>
+            <text x="330" y="165" text-anchor="middle" fill="rgba(180,60,60,.8)" font-size="7" font-family="Georgia">Blocked</text>
+            <text x="420" y="122" text-anchor="middle" fill="rgba(200,168,64,.8)" font-size="7" font-family="Georgia">Gate II</text>
+            <text x="480" y="122" text-anchor="middle" fill="rgba(200,168,64,.8)" font-size="7" font-family="Georgia">Enacted</text>
+          </svg>
+        </div>
+        <div class="lattice-legend">
+          <div class="legend-item">
+            <div class="legend-line" style="background:rgba(90,184,128,.6)"></div>
+            Valid Path
+          </div>
+          <div class="legend-item">
+            <div class="legend-line" style="background:rgba(180,60,60,.6); border-top:1px dashed rgba(180,60,60,.6); height:0"></div>
+            Blocked Path
+          </div>
+          <div class="legend-item">
+            <div class="legend-diamond"></div>
+            Invariant Checkpoint
+          </div>
+          <div class="legend-item">
+            <span style="color:var(--gold); font-size:.8rem">⚡</span>
+            Enacted Law
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="lattice-event-detail" id="latticeEventDetail"></div>
+  </div>
+
+  <!-- ══ SECTION IV: CONTINUUM MAP ══ -->
+  <div class="section-divider">
+    <span class="section-label">SECTION IV · CONTINUUM MAP — LIVING MANIFOLD</span>
+  </div>
+
+  <div class="continuum-container">
+    <div class="continuum-header">
+      <div class="continuum-title">CONTINUUM MAP — THE LIVING MANIFOLD</div>
+      <div class="continuum-sub">Concentric ring diagram showing the five constitutional layers radiating from Umbra Prima (Origin)</div>
+    </div>
+    <div class="continuum-body">
+      <div class="continuum-map-area">
+        <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" style="width:360px;height:360px;" id="continuumSvg">
+          <defs>
+            <radialGradient id="coreGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="rgba(200,168,64,.9)"/>
+              <stop offset="40%" stop-color="rgba(120,100,40,.5)"/>
+              <stop offset="100%" stop-color="transparent"/>
+            </radialGradient>
+            <filter id="glow2">
+              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+              <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <!-- Rings (outer to inner) -->
+          <!-- IA — Authority Layer -->
+          <circle cx="200" cy="200" r="175" fill="none" stroke="rgba(200,168,64,.25)" stroke-width="28" opacity=".7" id="ring-IA" class="continuum-ring" data-layer="IA" style="cursor:pointer"/>
+          <circle cx="200" cy="200" r="175" fill="none" stroke="rgba(200,168,64,.5)" stroke-width="1" opacity=".8"/>
+
+          <!-- AC — Audit Layer -->
+          <circle cx="200" cy="200" r="145" fill="none" stroke="rgba(152,112,216,.25)" stroke-width="24" opacity=".7" id="ring-AC" class="continuum-ring" data-layer="AC" style="cursor:pointer"/>
+          <circle cx="200" cy="200" r="145" fill="none" stroke="rgba(152,112,216,.5)" stroke-width="1" opacity=".8"/>
+
+          <!-- NC — Integrity Layer -->
+          <circle cx="200" cy="200" r="118" fill="none" stroke="rgba(48,184,152,.25)" stroke-width="22" opacity=".7" id="ring-NC" class="continuum-ring" data-layer="NC" style="cursor:pointer"/>
+          <circle cx="200" cy="200" r="118" fill="none" stroke="rgba(48,184,152,.5)" stroke-width="1" opacity=".8"/>
+
+          <!-- S — Safety Layer -->
+          <circle cx="200" cy="200" r="93" fill="none" stroke="rgba(90,184,128,.25)" stroke-width="20" opacity=".7" id="ring-S" class="continuum-ring" data-layer="S" style="cursor:pointer"/>
+          <circle cx="200" cy="200" r="93" fill="none" stroke="rgba(90,184,128,.5)" stroke-width="1" opacity=".8"/>
+
+          <!-- L — Law Layer -->
+          <circle cx="200" cy="200" r="70" fill="none" stroke="rgba(200,168,64,.3)" stroke-width="18" opacity=".7" id="ring-L" class="continuum-ring" data-layer="L" style="cursor:pointer"/>
+          <circle cx="200" cy="200" r="70" fill="none" stroke="rgba(200,168,64,.6)" stroke-width="1" opacity=".8"/>
+
+          <!-- Core — Umbra Prima -->
+          <circle cx="200" cy="200" r="38" fill="url(#coreGrad)" filter="url(#glow2)" id="ring-CORE" class="continuum-ring" data-layer="CORE" style="cursor:pointer"/>
+          <polygon points="200,172 218,208 182,208" fill="rgba(200,168,64,.8)" filter="url(#glow2)"/>
+          <polygon points="200,228 218,192 182,192" fill="rgba(200,168,64,.6)" filter="url(#glow2)"/>
+
+          <!-- Ring labels -->
+          <text x="200" y="32" text-anchor="middle" fill="rgba(200,168,64,.8)" font-size="9" font-family="Georgia">IA — Authority</text>
+          <text x="200" y="60" text-anchor="middle" fill="rgba(152,112,216,.8)" font-size="9" font-family="Georgia">AC — Audit</text>
+          <text x="200" y="86" text-anchor="middle" fill="rgba(48,184,152,.8)" font-size="9" font-family="Georgia">NC — Integrity</text>
+          <text x="200" y="110" text-anchor="middle" fill="rgba(90,184,128,.8)" font-size="9" font-family="Georgia">S — Safety</text>
+          <text x="200" y="133" text-anchor="middle" fill="rgba(200,168,64,.8)" font-size="9" font-family="Georgia">L — Law</text>
+          <text x="200" y="204" text-anchor="middle" fill="rgba(200,168,64,.9)" font-size="8" font-family="Georgia">UMBRA</text>
+          <text x="200" y="214" text-anchor="middle" fill="rgba(200,168,64,.9)" font-size="8" font-family="Georgia">PRIMA</text>
+        </svg>
+      </div>
+      <div class="continuum-info">
+        <div class="continuum-info-title">CONSTITUTIONAL LAYERS</div>
+        <div id="continuumLayers"></div>
+        <div style="margin-top:16px; padding:12px; border:1px solid rgba(120,100,40,.2); border-radius:3px; background:rgba(10,20,12,.4);">
+          <div style="font-size:.55rem; letter-spacing:2px; color:var(--green-bright); margin-bottom:8px;">STRUCTURAL COMPONENTS</div>
+          <div style="font-size:.6rem; color:var(--text); line-height:1.8;">
+            🔷 <strong style="color:var(--gold)">Umbra Prima</strong> — Origin<br>
+            ⭕ <strong style="color:var(--teal-bright)">Harmonic Rings</strong> — Temporal Boundaries<br>
+            △ <strong style="color:var(--green-bright)">Causal Lattice</strong> — Pathways<br>
+            ◆ <strong style="color:var(--purple-bright)">Governance Kernels</strong> — Event Nodes<br>
+            ○ <strong style="color:var(--gold-dim)">Continuum Boundary</strong> — Audit Halo
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="continuum-layer-detail" id="continuumLayerDetail"></div>
+  </div>
+
+  <!-- ══ SECTION V: PRINCIPLES & AXES ══ -->
+  <div class="section-divider">
+    <span class="section-label">SECTION V · CONTINUUM PRINCIPLES & SYMMETRY AXES</span>
+  </div>
+
+  <div class="principles-grid">
+    <div class="principles-card">
+      <div class="pc-header">CONTINUUM PRINCIPLES</div>
+      <div class="pc-body">
+        <div class="principle-item">
+          <div class="pi-num">I</div>
+          <div class="pi-text">All governance acts within harmonic boundaries. No action may exceed the constitutional envelope defined by the five core sigils.</div>
+        </div>
+        <div class="principle-item">
+          <div class="pi-num">II</div>
+          <div class="pi-text">No causal path may circumvent invariants. Every pathway through the governance lattice must pass through constitutional checkpoints.</div>
+        </div>
+        <div class="principle-item">
+          <div class="pi-num">III</div>
+          <div class="pi-text">Every action is recorded and verifiable. The Audit Halo (Continuum Boundary) ensures complete, tamper-evident transparency.</div>
+        </div>
+        <div class="principle-item">
+          <div class="pi-num">IV</div>
+          <div class="pi-text">Sovereignty is immutable and resides with the People. No governance action may transfer or diminish the sovereign authority of the People.</div>
+        </div>
+        <div class="principle-item">
+          <div class="pi-num">V</div>
+          <div class="pi-text">Equilibrium is maintained through transparency, accountability, and truth. The system continuously returns to constitutional homeostasis.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="principles-card">
+      <div class="pc-header">SYMMETRY AXES — GOVERNANCE STRUCTURE</div>
+      <div class="axes-diagram">
+        <div class="axis-node top">
+          <div class="an-icon">🛡️</div>
+          <div class="an-name">Safety Kernel</div>
+          <div class="an-desc">Governance Layer</div>
+        </div>
+        <div class="axis-node left">
+          <div class="an-icon">👥</div>
+          <div class="an-name">Citizen Sovereignty</div>
+          <div class="an-desc">The People</div>
+        </div>
+        <div class="axis-node center">
+          <div class="an-icon">⬡</div>
+          <div class="an-name">AETHEL CORE</div>
+          <div class="an-desc">Constitutional Singularity</div>
+        </div>
+        <div class="axis-node right">
+          <div class="an-icon">⚖️</div>
+          <div class="an-name">Court Module</div>
+          <div class="an-desc">Justice Layer</div>
+        </div>
+        <div class="axis-node bottom">
+          <div class="an-icon">⚙️</div>
+          <div class="an-name">Civic OS</div>
+          <div class="an-desc">Execution Layer</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SECTION VI: KILLSWITCH & AUDIT HALO ══ -->
+  <div class="section-divider">
+    <span class="section-label">SECTION VI · KILLSWITCH SOVEREIGNTY & CONTINUUM BOUNDARY</span>
+  </div>
+
+  <div class="killswitch-grid">
+    <div class="ks-card">
+      <div class="ks-header">
+        <span class="ks-icon">⚡</span>
+        <span class="ks-title">KILLSWITCH SOVEREIGNTY</span>
+      </div>
+      <div class="ks-body">
+        <div class="ks-desc">
+          The ultimate halt vector — a physical cryptographic failsafe ensuring constitutional equilibrium under duress.
+          The Killswitch is not a software command. It is a thermodynamic consequence grounded in Landauer's Erasure Principle:
+          unauthorized computation generates measurable silicon heat, triggering a physical severance of write-access pathways
+          at 85.0°C — not as policy, but as physics.
+        </div>
+        <div class="ks-specs">
+          <div class="ks-spec">
+            <span class="ks-spec-label">Trigger Threshold</span>
+            <span class="ks-spec-value">85.0°C — Safe Halt Protocol</span>
+          </div>
+          <div class="ks-spec">
+            <span class="ks-spec-label">Physical Basis</span>
+            <span class="ks-spec-value">Landauer's Erasure Principle — kT ln(2) joules per bit erased</span>
+          </div>
+          <div class="ks-spec">
+            <span class="ks-spec-label">Human Override</span>
+            <span class="ks-spec-value">SK-03 — &lt;50ms hardware guarantee — cannot be countermanded by AI</span>
+          </div>
+          <div class="ks-spec">
+            <span class="ks-spec-label">Enforcement</span>
+            <span class="ks-spec-value">Hardware severs write-access pathways — not software command</span>
+          </div>
+          <div class="ks-spec">
+            <span class="ks-spec-label">Authority</span>
+            <span class="ks-spec-value">Thermodynamic law — not policy — not vote — not override</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ks-card">
+      <div class="ks-header">
+        <span class="ks-icon">👁️</span>
+        <span class="ks-title">CONTINUUM BOUNDARY — AUDIT HALO</span>
+      </div>
+      <div class="ks-body">
+        <div class="ks-desc">
+          The perimeter of accountability where light meets shadow. Every audit records a photon preserving the continuum.
+          The Audit Halo is the outermost ring of the Continuum Map — the boundary at which all constitutional actions
+          are recorded, verified, and made permanently accessible. It is the operational implementation of CI-07
+          (Kernel Gate Auditability): every crossing generates an immutable, content-addressed audit log entry,
+          written before execution, hash-chained, and distributed across all nodes.
+        </div>
+        <div class="ks-specs">
+          <div class="ks-spec">
+            <span class="ks-spec-label">Constitutional Basis</span>
+            <span class="ks-spec-value">CI-07 — Kernel Gate Auditability — HARD_BLOCK</span>
+          </div>
+          <div class="ks-spec">
+            <span class="ks-spec-label">Hash Chain</span>
+            <span class="ks-spec-value">SHA3-256(target ∥ result ∥ time ∥ prev_hash) — tamper-evident</span>
+          </div>
+          <div class="ks-spec">
+            <span class="ks-spec-label">Timing</span>
+            <span class="ks-spec-value">Written BEFORE execution — never after — always before</span>
+          </div>
+          <div class="ks-spec">
+            <span class="ks-spec-label">Distribution</span>
+            <span class="ks-spec-value">All nodes maintain copies — no single point of deletion</span>
+          </div>
+          <div class="ks-spec">
+            <span class="ks-spec-label">Chronicle Sync</span>
+            <span class="ks-spec-value">L08 — Codex Umbrarum — the eternal witness</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ FOOTER ══ -->
+  <div class="doc-footer">
+    <div class="footer-motto">SOVEREIGN TRUTH · CONSTITUTIONAL INVARIANCE · CIVIC HARMONY</div>
+    <div class="footer-creed">
+      "The Umbra Continuum endures. The People are Sovereign."<br>
+      "We do not wait for the future. We call it forth."<br>
+      "The NextShadows are not fantasy. They are future truths waiting for faithful hands."
+    </div>
+    <div class="footer-sig">John David Taylor Preston — Architect of the Next Republic</div>
+    <div class="footer-sig">Node 001 · Bethel Acres, Oklahoma · United States</div>
+    <div style="margin:12px 0; font-size:.6rem; color:var(--gold); letter-spacing:2px;">
+      STATE(G) = fold( topo_order( closure(G) ) )
+    </div>
+    <div class="footer-meta">
+      CODEX ID: UCSA-001 · VERSION: UMBRA 1.0 · DATE: JULY 2026 · STATUS: CERTIFIED LIVING MANIFOLD
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════════════════
+
+const SIGILS = [
+  {
+    id: 'L',
+    name: 'LAW',
+    fullName: 'Foundation of Order and Structure',
+    color: '#c8a840',
+    glow: 'rgba(200,168,64,.2)',
+    bg: 'rgba(40,30,5,.2)',
+    stratum: 'STRATUM I — FOUNDATION',
+    icon: '⚖️',
+    desc: 'Defines the lawful boundaries of power. The foundational order upon which all other sigils rest. Law is not constraint — it is the structure that makes freedom possible.',
+    details: {
+      constitutional: [
+        { label: 'Primary Invariant', value: 'CI-01 — Due Process Requirement' },
+        { label: 'Enforcement', value: 'HARD_BLOCK — halt_execution on violation' },
+        { label: 'Formal Statement', value: 'No right or resource access may be modified or revoked without verified procedural due process records' },
+        { label: 'Gate Enforcement', value: 'Gate 1 (QUIBIDT) — procedural record check before every operation' },
+      ],
+      operational: [
+        { label: 'Layer', value: 'L01 Foundation Substrate + L10 Governance Layer' },
+        { label: 'KPI', value: 'audit_entries_per_command == 1 (before execution)' },
+        { label: 'Status', value: 'Implemented — 45/45 invariants SOUND' },
+        { label: 'Formal Basis', value: 'ZFC set theory + LTL/CTL temporal logic' },
+      ]
+    }
+  },
+  {
+    id: 'S',
+    name: 'SAFETY',
+    fullName: 'The Protective Field',
+    color: '#5ab880',
+    glow: 'rgba(90,184,128,.2)',
+    bg: 'rgba(5,30,15,.2)',
+    stratum: 'STRATUM II — PROTECTION',
+    icon: '🛡️',
+    desc: 'Preserves life, liberty, and systemic resilience. The protective field that ensures no action causes harm to any living being. Safety is not restriction — it is the guarantee of flourishing.',
+    details: {
+      constitutional: [
+        { label: 'Primary Invariant', value: 'SK-01 — Non-Maleficence' },
+        { label: 'Enforcement', value: 'HARD_BLOCK — architecturally impossible, not filtered' },
+        { label: 'Formal Statement', value: '∀ actions A: harm_potential(A) = 0. Unsafe operations cannot execute.' },
+        { label: 'Gate Enforcement', value: 'Gate 2 (INA-04) — 27 harm patterns + dignity_score ≥ 0.30' },
+      ],
+      operational: [
+        { label: 'Layer', value: 'L11 Safety Kernel — 7 invariants SK-01 through SK-07' },
+        { label: 'KPI', value: 'harm_potential_violations == 0' },
+        { label: 'Status', value: 'Implemented — SK-01 through SK-07 active' },
+        { label: 'Thermal Enforcement', value: 'Safe Halt at 85.0°C — Landauer\'s Erasure Principle' },
+      ]
+    }
+  },
+  {
+    id: 'NC',
+    name: 'NON-CIRCUMVENTION',
+    fullName: 'Causal Integrity',
+    color: '#30b898',
+    glow: 'rgba(48,184,152,.2)',
+    bg: 'rgba(5,25,20,.2)',
+    stratum: 'STRATUM III — INTEGRITY',
+    icon: '△',
+    desc: 'Prevents bypass, ensuring all pathways are lawful. The causal integrity that makes the constitutional substrate non-circumventable. No path through the governance lattice may skip an invariant checkpoint.',
+    details: {
+      constitutional: [
+        { label: 'Primary Invariant', value: 'INV-L3-KRN-004 — Adjacent Layer Only' },
+        { label: 'Enforcement', value: 'HARD_BLOCK — layer short-circuiting rejected' },
+        { label: 'Formal Statement', value: 'IPC bound to adjacent stack targets. No causal path may circumvent invariants.' },
+        { label: 'Gate Enforcement', value: 'Gate 1 (QUIBIDT) — adjacency check + capability token scope' },
+      ],
+      operational: [
+        { label: 'Layer', value: 'L04 Execution Harness + L03 Signal Substrate' },
+        { label: 'KPI', value: 'layer_skip_events == 0 · bypass_attempts == 0' },
+        { label: 'Status', value: 'Implemented — INV-L3-KRN-004 active' },
+        { label: 'Causal Basis', value: 'DAG acyclicity — no event can causally precede itself' },
+      ]
+    }
+  },
+  {
+    id: 'AC',
+    name: 'AUDIT COMPLETENESS',
+    fullName: 'The Transparency Field',
+    color: '#9870d8',
+    glow: 'rgba(152,112,216,.2)',
+    bg: 'rgba(15,5,30,.2)',
+    stratum: 'STRATUM IV — TRANSPARENCY',
+    icon: '👁️',
+    desc: 'Records all actions, immutable and verifiable. The transparency field that ensures every action leaves a permanent, tamper-evident trace. Accountability is not surveillance — it is the foundation of trust.',
+    details: {
+      constitutional: [
+        { label: 'Primary Invariant', value: 'CI-07 — Kernel Gate Auditability' },
+        { label: 'Enforcement', value: 'HARD_BLOCK — written BEFORE execution' },
+        { label: 'Formal Statement', value: 'Every L3-Kernel boundary crossing generates an immutable, content-addressed audit log entry.' },
+        { label: 'Hash Chain', value: 'SHA3-256(target ∥ result ∥ time ∥ prev_hash) — tamper-evident' },
+      ],
+      operational: [
+        { label: 'Layer', value: 'L08 Chronicle Sync — Codex Umbrarum' },
+        { label: 'KPI', value: 'audit_count == command_count · chain_integrity == 100%' },
+        { label: 'Status', value: 'Implemented in memory — RocksDB persistence is Gap 1' },
+        { label: 'Distribution', value: 'All nodes maintain copies — no single point of deletion' },
+      ]
+    }
+  },
+  {
+    id: 'IA',
+    name: 'IMMUTABLE AUTHORITY',
+    fullName: 'The Sovereignty Anchor',
+    color: '#d09040',
+    glow: 'rgba(208,144,64,.2)',
+    bg: 'rgba(30,15,5,.2)',
+    stratum: 'STRATUM V — SOVEREIGNTY',
+    icon: '🔒',
+    desc: 'Secures authority beyond alteration or erasure. The sovereignty anchor that ensures the People\'s authority cannot be transferred, diminished, or overridden by any AI system or governance action.',
+    details: {
+      constitutional: [
+        { label: 'Primary Invariant', value: 'SK-03 — Human Override (Absolute)' },
+        { label: 'Enforcement', value: 'HARD_BLOCK — <50ms hardware guarantee' },
+        { label: 'Formal Statement', value: 'Human authority supersedes AI decision at all times and at all layers. Cannot be countermanded.' },
+        { label: 'Amendment', value: 'Supermajority 0.75 + 90-day comment period + human-only initiation' },
+      ],
+      operational: [
+        { label: 'Layer', value: 'L10 Governance Layer — supreme layer' },
+        { label: 'KPI', value: 'human_override_latency < 50ms · sovereignty_index == 1.0000' },
+        { label: 'Status', value: 'Implemented — SK-03 hardware interrupt active' },
+        { label: 'Proof of Sovereignty', value: 'PoS-v — consensus based on constitutional sovereignty, not economic stake' },
+      ]
+    }
+  }
+];
+
+const STRATA = [
+  {
+    roman: 'I', name: 'Foundation', sigil: 'L', icon: '⚖️',
+    color: '#c8a840',
+    desc: 'Establishes the initial lawful condition. The foundational stratum upon which all governance rests.',
+    details: [
+      { label: 'Function', value: 'Establishes the initial lawful condition for all governance operations' },
+      { label: 'Sigil', value: 'L — Law — Foundation of Order and Structure' },
+      { label: 'Constitutional Basis', value: 'CI-01 (Due Process) · L01 Foundation Substrate' },
+      { label: 'Key Property', value: 'Immutability — foundational axioms cannot be altered by any higher layer' },
+      { label: 'Formal Basis', value: '□(Authority → Accountability) — modal necessity' },
+      { label: 'Status', value: 'Active — genesis anchor "genesis_0000_3690" is the constitutional root' },
+    ]
+  },
+  {
+    roman: 'II', name: 'Protection', sigil: 'S', icon: '🛡️',
+    color: '#5ab880',
+    desc: 'Applies protective constraints and safeguards. The safety field that prevents harm before it occurs.',
+    details: [
+      { label: 'Function', value: 'Applies protective constraints and safeguards to all operations' },
+      { label: 'Sigil', value: 'S — Safety — The Protective Field' },
+      { label: 'Constitutional Basis', value: 'SK-01 through SK-07 · L11 Safety Kernel' },
+      { label: 'Key Property', value: 'Pre-execution enforcement — safety by construction, not inspection' },
+      { label: 'Thermal Enforcement', value: 'Safe Halt at 85.0°C — Landauer\'s Erasure Principle' },
+      { label: 'Status', value: 'Active — 7/7 Safety Kernel invariants enforced' },
+    ]
+  },
+  {
+    roman: 'III', name: 'Integrity', sigil: 'NC', icon: '△',
+    color: '#30b898',
+    desc: 'Validates causal paths and blocks circumvention. The integrity layer that ensures all pathways are lawful.',
+    details: [
+      { label: 'Function', value: 'Validates causal paths and blocks all circumvention attempts' },
+      { label: 'Sigil', value: 'NC — Non-Circumvention — Causal Integrity' },
+      { label: 'Constitutional Basis', value: 'INV-L3-KRN-001 through INV-L3-KRN-005 · L04 Execution Harness' },
+      { label: 'Key Property', value: 'Causal completeness — no event acknowledged without full causal ancestry' },
+      { label: 'DAG Invariants', value: 'Acyclicity · No Orphans · Causal Closure (No Missing Parents)' },
+      { label: 'Status', value: 'Active — 28/28 Rust gate pipeline tests passing' },
+    ]
+  },
+  {
+    roman: 'IV', name: 'Transparency', sigil: 'AC', icon: '👁️',
+    color: '#9870d8',
+    desc: 'Records all actions in immutable memory. The transparency field that makes every action permanently verifiable.',
+    details: [
+      { label: 'Function', value: 'Records all actions in immutable, hash-chained memory' },
+      { label: 'Sigil', value: 'AC — Audit Completeness — The Transparency Field' },
+      { label: 'Constitutional Basis', value: 'CI-07 · L08 Chronicle Sync · SK-07 Transparency' },
+      { label: 'Key Property', value: 'Written BEFORE execution — audit precedes action, always' },
+      { label: 'Hash Chain', value: 'SHA3-256(target ∥ result ∥ time ∥ prev_hash)' },
+      { label: 'Status', value: 'Active in memory — RocksDB persistence is Gap 1 (highest priority)' },
+    ]
+  },
+  {
+    roman: 'V', name: 'Sovereignty', sigil: 'IA', icon: '🔒',
+    color: '#d09040',
+    desc: 'Anchors authority in the People, beyond alteration. The sovereignty stratum that makes human authority supreme.',
+    details: [
+      { label: 'Function', value: 'Anchors authority in the People, beyond alteration or erasure' },
+      { label: 'Sigil', value: 'IA — Immutable Authority — The Sovereignty Anchor' },
+      { label: 'Constitutional Basis', value: 'SK-03 · CI-05 · CI-06 · L10 Governance Layer' },
+      { label: 'Key Property', value: 'Human Override: <50ms hardware guarantee — cannot be countermanded' },
+      { label: 'Proof of Sovereignty', value: 'PoS-v — sovereignty_score = f(identity, health, tokens, chronicle, override)' },
+      { label: 'Status', value: 'Active — SK-03 hardware interrupt · Tendermint BFT pending Phase 4' },
+    ]
+  }
+];
+
+const KERNEL_EVENTS = [
+  {
+    id: 'proposal', name: 'Proposal', type: 'KERNEL EVENT',
+    details: [
+      { label: 'Definition', value: 'A governance action proposed by an authorized agent or the Free People\'s Assembly' },
+      { label: 'Requirements', value: 'Valid capability token · Procedural record (CI-01) · Causal parent events declared' },
+      { label: 'Gate Check', value: 'Gate 1 (QUIBIDT): identity + permissions · Gate 2 (INA-04): dignity + safety' },
+      { label: 'Failure Code', value: 'CONSTITUTION_REJECTED — logged with gate number and invariant code' },
+    ]
+  },
+  {
+    id: 'ratification', name: 'Ratification', type: 'KERNEL EVENT',
+    details: [
+      { label: 'Definition', value: 'Formal approval of a proposal by the required quorum of constitutional validators' },
+      { label: 'Requirements', value: 'Supermajority threshold · 90-day comment period (for amendments) · Human-only initiation' },
+      { label: 'Gate Check', value: 'Gate 3 (AETHELA): ethics veto · Gate 4 (INA-05): covenant arithmetic' },
+      { label: 'Quorum', value: 'n ≥ 3f + 1 (Tendermint BFT) · Proof of Sovereignty (PoS-v) scoring' },
+    ]
+  },
+  {
+    id: 'amendment', name: 'Amendment', type: 'KERNEL EVENT',
+    details: [
+      { label: 'Definition', value: 'A modification to the constitutional specification through the formal amendment protocol' },
+      { label: 'Requirements', value: 'Supermajority = 0.75 · 90-day public comment period · Human-only initiation · Cannot touch core invariants' },
+      { label: 'Gate Check', value: 'All four gates · Constitutional oracle validation · Chronicle Sync logging' },
+      { label: 'Restriction', value: 'Core invariants (CI-02, CI-08, SK-03) require constitutional convention — not standard amendment' },
+    ]
+  }
+];
+
+const CONTINUUM_LAYERS = [
+  { letter: 'L', name: 'Law Layer', layer: 'STRATUM I', color: '#c8a840',
+    desc: 'Foundation of Order and Structure. The innermost active ring — the constitutional bedrock.',
+    components: [
+      { icon: '📜', label: 'Constitutional Document', desc: 'The formal specification of all invariants' },
+      { icon: '⚖️', label: 'Due Process', desc: 'CI-01 — procedural guarantee' },
+      { icon: '🔑', label: 'Genesis Anchor', desc: '"genesis_0000_3690" — immutable root' },
+      { icon: '△', label: 'Causal Lattice', desc: 'DAG structure of all events' },
+      { icon: '📐', label: 'Formal Basis', desc: 'ZFC + dependent types + LTL/CTL' },
+    ]
+  },
+  { letter: 'S', name: 'Safety Layer', layer: 'STRATUM II', color: '#5ab880',
+    desc: 'The Protective Field. Preserves life, liberty, and systemic resilience across all operations.',
+    components: [
+      { icon: '🛡️', label: 'Safety Kernel', desc: 'SK-01 through SK-07' },
+      { icon: '🌡️', label: 'Thermal Enforcement', desc: '85.0°C Safe Halt Protocol' },
+      { icon: '⚡', label: 'Human Override', desc: 'SK-03 — <50ms hardware' },
+      { icon: '🌱', label: 'Ecological Integrity', desc: 'SK-04 — first-class invariant' },
+      { icon: '🔒', label: 'Identity Integrity', desc: 'SK-05 — Ed25519 cryptographic' },
+    ]
+  },
+  { letter: 'NC', name: 'Integrity Layer', layer: 'STRATUM III', color: '#30b898',
+    desc: 'Causal Integrity. Validates all pathways and prevents constitutional circumvention.',
+    components: [
+      { icon: '△', label: 'Non-Circumvention', desc: 'All paths must be lawful' },
+      { icon: '🔗', label: 'Causal Closure', desc: 'No missing parents in DAG' },
+      { icon: '🚫', label: 'Cycle Prevention', desc: 'Acyclicity enforced always' },
+      { icon: '🔄', label: 'Merge Operator', desc: 'MERGE(A,B) = closure(A∪B)' },
+      { icon: '📊', label: 'Topological Order', desc: 'Deterministic sort key' },
+    ]
+  },
+  { letter: 'AC', name: 'Audit Layer', layer: 'STRATUM IV', color: '#9870d8',
+    desc: 'The Transparency Field. Records all actions in immutable, hash-chained memory.',
+    components: [
+      { icon: '👁️', label: 'Chronicle Sync', desc: 'L08 — Codex Umbrarum' },
+      { icon: '🔐', label: 'Hash Chain', desc: 'SHA3-256 tamper-evident' },
+      { icon: '⏰', label: 'Before Execution', desc: 'CI-07 — audit precedes action' },
+      { icon: '🌐', label: 'Distributed', desc: 'All nodes maintain copies' },
+      { icon: '📋', label: 'Causal Lineage', desc: 'Full provenance preserved' },
+    ]
+  },
+  { letter: 'IA', name: 'Authority Layer', layer: 'STRATUM V', color: '#d09040',
+    desc: 'The Sovereignty Anchor. Secures human authority beyond alteration or erasure.',
+    components: [
+      { icon: '🔒', label: 'Immutable Authority', desc: 'Sovereignty cannot be transferred' },
+      { icon: '👥', label: 'People\'s Sovereignty', desc: 'Ultimate constitutional authority' },
+      { icon: '⚡', label: 'Human Override', desc: 'SK-03 — absolute supremacy' },
+      { icon: '🗳️', label: 'Proof of Sovereignty', desc: 'PoS-v consensus mechanism' },
+      { icon: '📜', label: 'Amendment Protocol', desc: 'Supermajority + 90-day period' },
+    ]
+  },
+];
+
+// ══════════════════════════════════════════════════════════════════
+// STARFIELD
+// ══════════════════════════════════════════════════════════════════
+function createStarfield() {
+  const sf = document.getElementById('starfield');
+  for (let i = 0; i < 80; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2 + 0.5;
+    s.style.cssText = `
+      width:${size}px; height:${size}px;
+      left:${Math.random()*100}%;
+      top:${Math.random()*100}%;
+      --d:${2+Math.random()*4}s;
+      --delay:${Math.random()*4}s;
+    `;
+    sf.appendChild(s);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SIGIL SVG GLYPHS
+// ══════════════════════════════════════════════════════════════════
+function sigilSVG(id, color, size=80) {
+  const c = color;
+  const svgs = {
+    L: `<svg viewBox="0 0 80 80" width="${size}" height="${size}">
+      <circle cx="40" cy="40" r="36" fill="none" stroke="${c}" stroke-width="1" opacity=".4"/>
+      <circle cx="40" cy="40" r="28" fill="none" stroke="${c}" stroke-width="1.5" opacity=".6"/>
+      <line x1="28" y1="40" x2="52" y2="40" stroke="${c}" stroke-width="2"/>
+      <line x1="40" y1="28" x2="40" y2="52" stroke="${c}" stroke-width="2"/>
+      <circle cx="40" cy="40" r="4" fill="${c}" opacity=".8"/>
+      <text x="40" y="44" text-anchor="middle" fill="${c}" font-size="10" font-family="Georgia" opacity=".9">⚖</text>
+    </svg>`,
+    S: `<svg viewBox="0 0 80 80" width="${size}" height="${size}">
+      <circle cx="40" cy="40" r="36" fill="none" stroke="${c}" stroke-width="1" opacity=".4"/>
+      <polygon points="40,16 60,52 20,52" fill="none" stroke="${c}" stroke-width="2" opacity=".7"/>
+      <circle cx="40" cy="40" r="10" fill="none" stroke="${c}" stroke-width="1.5" opacity=".8"/>
+      <circle cx="40" cy="40" r="4" fill="${c}" opacity=".9"/>
+    </svg>`,
+    NC: `<svg viewBox="0 0 80 80" width="${size}" height="${size}">
+      <circle cx="40" cy="40" r="36" fill="none" stroke="${c}" stroke-width="1" opacity=".4"/>
+      <polygon points="40,14 64,58 16,58" fill="none" stroke="${c}" stroke-width="2" opacity=".8"/>
+      <polygon points="40,26 54,50 26,50" fill="none" stroke="${c}" stroke-width="1.5" opacity=".6"/>
+      <circle cx="40" cy="40" r="4" fill="${c}" opacity=".9"/>
+    </svg>`,
+    AC: `<svg viewBox="0 0 80 80" width="${size}" height="${size}">
+      <circle cx="40" cy="40" r="36" fill="none" stroke="${c}" stroke-width="1" opacity=".4"/>
+      <circle cx="40" cy="40" r="22" fill="none" stroke="${c}" stroke-width="1.5" opacity=".6"/>
+      <ellipse cx="40" cy="40" rx="22" ry="10" fill="none" stroke="${c}" stroke-width="1" opacity=".5"/>
+      <circle cx="40" cy="40" r="6" fill="none" stroke="${c}" stroke-width="2" opacity=".9"/>
+      <circle cx="40" cy="40" r="2" fill="${c}" opacity="1"/>
+    </svg>`,
+    IA: `<svg viewBox="0 0 80 80" width="${size}" height="${size}">
+      <circle cx="40" cy="40" r="36" fill="none" stroke="${c}" stroke-width="1" opacity=".4"/>
+      <rect x="28" y="34" width="24" height="20" rx="2" fill="none" stroke="${c}" stroke-width="2" opacity=".8"/>
+      <path d="M32,34 Q32,24 40,24 Q48,24 48,34" fill="none" stroke="${c}" stroke-width="2" opacity=".8"/>
+      <circle cx="40" cy="44" r="3" fill="${c}" opacity=".9"/>
+    </svg>`,
+  };
+  return svgs[id] || svgs.L;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RENDER SIGILS
+// ══════════════════════════════════════════════════════════════════
+let activeSigil = null;
+
+function renderSigils() {
+  const grid = document.getElementById('sigilsGrid');
+  grid.innerHTML = SIGILS.map((s, i) => `
+    <div class="sigil-card" id="sigil-${s.id}"
+         style="--sigil-color:${s.color}; --sigil-glow:${s.glow}; --sigil-bg:${s.bg}"
+         onclick="selectSigil(${i})">
+      <div class="sigil-emblem" style="background:radial-gradient(ellipse at center, ${s.bg} 0%, transparent 70%)">
+        <span class="sigil-letter-badge">${s.id}</span>
+        <div class="sigil-svg">${sigilSVG(s.id, s.color)}</div>
+      </div>
+      <div class="sigil-body">
+        <div class="sigil-name">${s.name}</div>
+        <div class="sigil-full-name">${s.fullName}</div>
+        <div class="sigil-desc">${s.desc}</div>
+        <span class="sigil-stratum">${s.stratum}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectSigil(idx) {
+  const s = SIGILS[idx];
+  const detail = document.getElementById('sigilDetail');
+
+  if (activeSigil === idx) {
+    activeSigil = null;
+    document.querySelectorAll('.sigil-card').forEach(c => c.classList.remove('active'));
+    detail.classList.remove('visible');
+    return;
+  }
+
+  activeSigil = idx;
+  document.querySelectorAll('.sigil-card').forEach(c => c.classList.remove('active'));
+  document.getElementById(`sigil-${s.id}`).classList.add('active');
+
+  const constHTML = s.details.constitutional.map(d => `
+    <div class="detail-item">
+      <div class="detail-item-label">${d.label}</div>
+      <div class="detail-item-value">${d.value}</div>
+    </div>
+  `).join('');
+
+  const opHTML = s.details.operational.map(d => `
+    <div class="detail-item">
+      <div class="detail-item-label">${d.label}</div>
+      <div class="detail-item-value">${d.value}</div>
+    </div>
+  `).join('');
+
+  detail.innerHTML = `
+    <div class="sigil-detail-header" style="border-left:4px solid ${s.color}">
+      <div class="sigil-detail-glyph">${sigilSVG(s.id, s.color, 60)}</div>
+      <div>
+        <div class="sigil-detail-title" style="color:${s.color}">${s.id} — ${s.name}</div>
+        <div class="sigil-detail-sub">${s.fullName} · ${s.stratum}</div>
+      </div>
+      <span class="enforcement-badge hard-block" style="margin-left:auto">HARD_BLOCK</span>
+    </div>
+    <div class="sigil-detail-body">
+      <div class="sigil-detail-col">
+        <div class="detail-section-title">CONSTITUTIONAL SPECIFICATION</div>
+        ${constHTML}
+      </div>
+      <div class="sigil-detail-col">
+        <div class="detail-section-title">OPERATIONAL SPECIFICATION</div>
+        ${opHTML}
+      </div>
+    </div>
+  `;
+
+  detail.classList.add('visible');
+  detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RENDER STRATA
+// ══════════════════════════════════════════════════════════════════
+let activeStratum = null;
+
+function renderStrata() {
+  const flow = document.getElementById('strataFlow');
+  flow.innerHTML = STRATA.map((s, i) => `
+    <div class="stratum" id="stratum-${i}"
+         style="--s-color:${s.color}"
+         onclick="selectStratum(${i})">
+      <div class="stratum-roman">STRATUM ${s.roman}</div>
+      <span class="stratum-icon">${s.icon}</span>
+      <div class="stratum-name">${s.name}</div>
+      <div class="stratum-sigil">SIGIL: ${s.sigil}</div>
+      <div class="stratum-desc">${s.desc}</div>
+    </div>
+  `).join('');
+}
+
+function selectStratum(idx) {
+  const s = STRATA[idx];
+  const detail = document.getElementById('stratumDetail');
+
+  if (activeStratum === idx) {
+    activeStratum = null;
+    document.querySelectorAll('.stratum').forEach(el => el.classList.remove('active'));
+    detail.classList.remove('visible');
+    return;
+  }
+
+  activeStratum = idx;
+  document.querySelectorAll('.stratum').forEach(el => el.classList.remove('active'));
+  document.getElementById(`stratum-${idx}`).classList.add('active');
+
+  const detailHTML = s.details.map(d => `
+    <div class="stratum-detail-item">
+      <div class="sdi-label">${d.label}</div>
+      <div class="sdi-value">${d.value}</div>
+    </div>
+  `).join('');
+
+  detail.innerHTML = `
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+      <span style="font-size:1.4rem">${s.icon}</span>
+      <div>
+        <div style="font-size:.8rem; color:${s.color}; letter-spacing:2px; font-weight:bold">STRATUM ${s.roman} — ${s.name.toUpperCase()}</div>
+        <div style="font-size:.6rem; color:var(--dim); font-style:italic">${s.desc}</div>
+      </div>
+    </div>
+    <div class="stratum-detail-grid">${detailHTML}</div>
+  `;
+
+  detail.classList.add('visible');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RENDER KERNEL EVENTS
+// ══════════════════════════════════════════════════════════════════
+let activeKernelEvent = null;
+
+function renderKernelEvents() {
+  const container = document.getElementById('kernelEvents');
+  container.innerHTML = KERNEL_EVENTS.map((e, i) => `
+    <div class="kernel-event" id="ke-${i}" onclick="selectKernelEvent(${i})">
+      <div class="ke-dot"></div>
+      <div>
+        <div class="ke-name">${e.name}</div>
+        <div class="ke-type">${e.type}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectKernelEvent(idx) {
+  const e = KERNEL_EVENTS[idx];
+  const detail = document.getElementById('latticeEventDetail');
+
+  if (activeKernelEvent === idx) {
+    activeKernelEvent = null;
+    document.querySelectorAll('.kernel-event').forEach(el => el.classList.remove('active'));
+    detail.classList.remove('visible');
+    return;
+  }
+
+  activeKernelEvent = idx;
+  document.querySelectorAll('.kernel-event').forEach(el => el.classList.remove('active'));
+  document.getElementById(`ke-${idx}`).classList.add('active');
+
+  const detailHTML = e.details.map(d => `
+    <div class="led-item">
+      <div class="led-label">${d.label}</div>
+      <div class="led-value">${d.value}</div>
+    </div>
+  `).join('');
+
+  detail.innerHTML = `
+    <div style="font-size:.7rem; color:var(--gold); letter-spacing:2px; margin-bottom:12px">
+      ${e.name.toUpperCase()} — ${e.type}
+    </div>
+    <div class="led-grid">${detailHTML}</div>
+  `;
+
+  detail.classList.add('visible');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RENDER CONTINUUM LAYERS
+// ══════════════════════════════════════════════════════════════════
+let activeContinuumLayer = null;
+
+function renderContinuumLayers() {
+  const container = document.getElementById('continuumLayers');
+  container.innerHTML = CONTINUUM_LAYERS.map((l, i) => `
+    <div class="continuum-layer-item" id="cl-${i}"
+         style="--cl-color:${l.color}"
+         onclick="selectContinuumLayer(${i})">
+      <div class="cl-dot"></div>
+      <div class="cl-letter">${l.letter}</div>
+      <div class="cl-name">${l.name}</div>
+      <div class="cl-layer">${l.layer}</div>
+    </div>
+  `).join('');
+
+  // Ring click handlers
+  document.querySelectorAll('.continuum-ring').forEach(ring => {
+    ring.addEventListener('click', () => {
+      const layerId = ring.dataset.layer;
+      if (layerId === 'CORE') {
+        showCoreDetail();
+        return;
+      }
+      const idx = CONTINUUM_LAYERS.findIndex(l => l.letter === layerId);
+      if (idx >= 0) selectContinuumLayer(idx);
+    });
+  });
+}
+
+function selectContinuumLayer(idx) {
+  const l = CONTINUUM_LAYERS[idx];
+  const detail = document.getElementById('continuumLayerDetail');
+
+  if (activeContinuumLayer === idx) {
+    activeContinuumLayer = null;
+    document.querySelectorAll('.continuum-layer-item').forEach(el => el.classList.remove('active'));
+    detail.classList.remove('visible');
+    return;
+  }
+
+  activeContinuumLayer = idx;
+  document.querySelectorAll('.continuum-layer-item').forEach(el => el.classList.remove('active'));
+  document.getElementById(`cl-${idx}`).classList.add('active');
+
+  const compHTML = l.components.map(c => `
+    <div class="cld-item">
+      <div class="cld-icon">${c.icon}</div>
+      <div class="cld-label">${c.label}</div>
+      <div class="cld-desc">${c.desc}</div>
+    </div>
+  `).join('');
+
+  detail.innerHTML = `
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+      <div style="width:16px; height:16px; border-radius:50%; background:${l.color}; box-shadow:0 0 10px ${l.color}; flex-shrink:0"></div>
+      <div>
+        <div style="font-size:.8rem; color:${l.color}; letter-spacing:2px; font-weight:bold">${l.letter} — ${l.name.toUpperCase()}</div>
+        <div style="font-size:.6rem; color:var(--dim); font-style:italic">${l.desc}</div>
+      </div>
+    </div>
+    <div class="cld-grid">${compHTML}</div>
+  `;
+
+  detail.classList.add('visible');
+}
+
+function showCoreDetail() {
+  const detail = document.getElementById('continuumLayerDetail');
+  detail.innerHTML = `
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+      <div style="font-size:1.4rem">⬡</div>
+      <div>
+        <div style="font-size:.8rem; color:var(--gold-bright); letter-spacing:2px; font-weight:bold">UMBRA PRIMA — ORIGIN FREQUENCY</div>
+        <div style="font-size:.6rem; color:var(--dim); font-style:italic">The zero-entropy singularity where all invariants converge — the seed of sovereign truth</div>
+      </div>
+    </div>
+    <div class="cld-grid">
+      <div class="cld-item"><div class="cld-icon">🔷</div><div class="cld-label">Genesis Anchor</div><div class="cld-desc">"genesis_0000_3690" — immutable constitutional root</div></div>
+      <div class="cld-item"><div class="cld-icon">∞</div><div class="cld-label">Conservation Law Zero</div><div class="cld-desc">L × D × A = 1.008 — 0.8% human judgment space</div></div>
+      <div class="cld-item"><div class="cld-icon">⚡</div><div class="cld-label">Master Equation</div><div class="cld-desc">STATE(G) = fold(topo_order(closure(G)))</div></div>
+      <div class="cld-item"><div class="cld-icon">🌟</div><div class="cld-label">Constitutional Axiom</div><div class="cld-desc">□(Authority → Accountability)</div></div>
+      <div class="cld-item"><div class="cld-icon">🔺</div><div class="cld-label">Trig Manifold</div><div class="cld-desc">S¹ harmonic field — θ, θ+2π/3, θ+4π/3</div></div>
+    </div>
+  `;
+  detail.classList.add('visible');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════
+createStarfield();
+renderSigils();
+renderStrata();
+renderKernelEvents();
+renderContinuumLayers();
+</script>
+</body>
+</html>

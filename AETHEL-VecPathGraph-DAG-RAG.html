@@ -1,0 +1,962 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AETHEL VecPathGraph — DAG/RAG Reasoning Engine</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg:#020608; --bg2:#050d0a; --gold:#c8a840; --gold-b:#f0c840; --gold-d:#7a6020;
+  --green:#3a9060; --green-b:#5ab880; --teal:#208878; --teal-b:#30b898;
+  --purple:#6848a8; --purple-b:#9870d8; --blue:#3060a8; --blue-b:#5080d0;
+  --red:#a83030; --red-b:#d06060; --amber:#a86020; --amber-b:#d09040;
+  --text:#c8c0a0; --dim:#506050; --border:rgba(120,100,40,.3);
+}
+body { background:var(--bg); color:var(--text); font-family:'Georgia',serif; overflow:hidden; height:100vh; }
+
+/* ── STARFIELD ── */
+.sf { position:fixed; inset:0; pointer-events:none; z-index:0; }
+.st { position:absolute; border-radius:50%; background:rgba(255,255,220,.6);
+      animation:tw var(--d,3s) ease-in-out infinite var(--dl,0s); }
+@keyframes tw { 0%,100%{opacity:.15;transform:scale(1)} 50%{opacity:.8;transform:scale(1.4)} }
+
+/* ── LAYOUT ── */
+.app { display:flex; height:100vh; position:relative; z-index:1; flex-direction:column; }
+
+/* ── TOP BAR ── */
+.topbar {
+  height:44px; background:rgba(2,6,8,.96); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; padding:0 20px; gap:16px; flex-shrink:0;
+  font-size:.55rem; letter-spacing:2px; color:var(--dim);
+}
+.topbar .brand { color:var(--gold-b); font-size:.7rem; letter-spacing:4px; }
+.topbar .sep { color:var(--border); }
+.topbar .right { margin-left:auto; display:flex; gap:16px; align-items:center; }
+.topbar .pill {
+  padding:3px 10px; border-radius:10px; font-size:.5rem; letter-spacing:1px;
+  border:1px solid; cursor:pointer; transition:all .2s;
+}
+.pill-active { border-color:var(--green-b); color:var(--green-b); background:rgba(90,184,128,.08); }
+.pill-inactive { border-color:var(--border); color:var(--dim); }
+.pill-inactive:hover { border-color:var(--gold-d); color:var(--gold); }
+
+/* ── MAIN AREA ── */
+.main { display:flex; flex:1; overflow:hidden; }
+
+/* ── CANVAS AREA ── */
+.canvas-wrap {
+  flex:1; position:relative; overflow:hidden;
+  background: radial-gradient(ellipse 80% 60% at 50% 50%, rgba(20,40,20,.15) 0%, transparent 70%);
+}
+#dagCanvas { position:absolute; inset:0; cursor:grab; }
+#dagCanvas:active { cursor:grabbing; }
+
+/* ── CANVAS CONTROLS ── */
+.canvas-controls {
+  position:absolute; bottom:20px; left:20px; display:flex; gap:8px; z-index:10;
+}
+.ctrl-btn {
+  width:32px; height:32px; border:1px solid var(--border); border-radius:3px;
+  background:rgba(2,6,8,.9); color:var(--gold); font-size:.9rem;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:all .2s;
+}
+.ctrl-btn:hover { border-color:var(--gold-d); background:rgba(20,30,10,.9); }
+
+/* ── LEGEND ── */
+.legend {
+  position:absolute; top:16px; left:16px; z-index:10;
+  background:rgba(2,6,8,.9); border:1px solid var(--border); border-radius:4px;
+  padding:12px 14px; font-size:.55rem; letter-spacing:1px;
+}
+.legend-title { color:var(--gold); letter-spacing:3px; margin-bottom:10px; font-size:.5rem; }
+.legend-item { display:flex; align-items:center; gap:8px; margin-bottom:6px; color:var(--dim); }
+.legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.legend-line { width:20px; height:2px; flex-shrink:0; }
+.legend-diamond { width:10px; height:10px; transform:rotate(45deg); flex-shrink:0; border:1px solid; }
+
+/* ── RESONANCE OVERLAY ── */
+.resonance-overlay {
+  position:absolute; top:16px; right:16px; z-index:10;
+  background:rgba(2,6,8,.9); border:1px solid var(--border); border-radius:4px;
+  padding:14px 16px; width:200px;
+}
+.ro-title { color:var(--gold); letter-spacing:3px; font-size:.5rem; margin-bottom:12px; }
+.ro-coord { margin-bottom:8px; }
+.ro-label { font-size:.5rem; letter-spacing:2px; color:var(--dim); margin-bottom:3px; }
+.ro-bar-wrap { height:6px; background:rgba(120,100,40,.15); border-radius:3px; overflow:hidden; }
+.ro-bar { height:100%; border-radius:3px; transition:width .4s ease; }
+.ro-val { font-size:.55rem; color:var(--text); margin-top:2px; text-align:right; }
+.ro-path { margin-top:12px; padding-top:10px; border-top:1px solid var(--border); }
+.ro-path-label { font-size:.5rem; letter-spacing:2px; color:var(--dim); margin-bottom:6px; }
+.ro-path-val { font-size:.6rem; color:var(--teal-b); font-family:monospace; }
+
+/* ── RIGHT PANEL ── */
+.right-panel {
+  width:320px; flex-shrink:0; border-left:1px solid var(--border);
+  background:rgba(2,6,8,.95); display:flex; flex-direction:column; overflow:hidden;
+}
+.rp-header {
+  padding:14px 16px; border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(40,80,30,.1) 0%,transparent 100%);
+  flex-shrink:0;
+}
+.rp-title { font-size:.75rem; letter-spacing:3px; color:var(--gold); margin-bottom:3px; }
+.rp-sub { font-size:.55rem; color:var(--dim); font-style:italic; }
+.rp-body { flex:1; overflow-y:auto; padding:16px; }
+
+/* ── NODE DETAIL ── */
+.node-detail { display:none; }
+.node-detail.visible { display:block; }
+.nd-header { margin-bottom:14px; }
+.nd-id { font-size:.5rem; letter-spacing:3px; color:var(--green-b); margin-bottom:4px; }
+.nd-name { font-size:.9rem; color:var(--gold-b); margin-bottom:4px; letter-spacing:1px; }
+.nd-type { font-size:.55rem; color:var(--dim); font-style:italic; margin-bottom:8px; }
+.nd-desc { font-size:.62rem; color:var(--text); line-height:1.6; margin-bottom:14px; }
+
+.nd-section { margin-bottom:14px; }
+.nd-section-title {
+  font-size:.5rem; letter-spacing:3px; color:var(--green-b);
+  border-left:2px solid var(--green-b); padding-left:6px; margin-bottom:8px;
+}
+.nd-row { display:flex; gap:8px; margin-bottom:6px; font-size:.6rem; }
+.nd-row-label { color:var(--gold); width:90px; flex-shrink:0; }
+.nd-row-val { color:var(--text); flex:1; line-height:1.4; }
+
+.nd-resonance { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+.nd-res-item { padding:8px; border:1px solid rgba(120,100,40,.2); border-radius:3px; background:rgba(10,20,12,.5); }
+.nd-res-label { font-size:.45rem; letter-spacing:2px; color:var(--dim); margin-bottom:3px; }
+.nd-res-val { font-size:.75rem; color:var(--gold-b); font-family:monospace; }
+
+.nd-invariants { display:flex; flex-direction:column; gap:6px; }
+.nd-inv {
+  padding:8px 10px; border:1px solid rgba(120,100,40,.2); border-radius:3px;
+  background:rgba(10,20,12,.5); font-size:.58rem;
+}
+.nd-inv-id { color:var(--green-b); font-size:.5rem; letter-spacing:1px; margin-bottom:2px; }
+.nd-inv-name { color:var(--gold); margin-bottom:3px; }
+.nd-inv-desc { color:var(--dim); line-height:1.4; }
+
+.nd-badge {
+  display:inline-block; font-size:.45rem; letter-spacing:1px;
+  padding:2px 8px; border-radius:2px; margin-top:4px;
+}
+.badge-pass { background:rgba(90,184,128,.12); color:var(--green-b); border:1px solid rgba(90,184,128,.3); }
+.badge-gate { background:rgba(200,168,64,.1); color:var(--gold); border:1px solid rgba(200,168,64,.3); }
+.badge-rag  { background:rgba(48,184,152,.1); color:var(--teal-b); border:1px solid rgba(48,184,152,.3); }
+.badge-check{ background:rgba(152,112,216,.1); color:var(--purple-b); border:1px solid rgba(152,112,216,.3); }
+
+/* ── WELCOME PANEL ── */
+.welcome-panel { text-align:center; padding:30px 16px; }
+.wp-glyph { font-size:2.5rem; margin-bottom:16px; opacity:.5; }
+.wp-title { font-size:.75rem; letter-spacing:3px; color:var(--gold); margin-bottom:10px; }
+.wp-desc { font-size:.62rem; color:var(--dim); line-height:1.7; margin-bottom:16px; }
+.wp-hint { font-size:.55rem; color:var(--teal-b); font-style:italic; }
+
+/* ── PATH TRACE ── */
+.path-trace {
+  margin-top:14px; padding:12px; border:1px solid rgba(48,184,152,.2);
+  border-radius:3px; background:rgba(5,20,15,.5);
+}
+.pt-title { font-size:.5rem; letter-spacing:3px; color:var(--teal-b); margin-bottom:8px; }
+.pt-steps { display:flex; flex-direction:column; gap:4px; }
+.pt-step { display:flex; align-items:center; gap:6px; font-size:.58rem; }
+.pt-step-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.pt-step-name { color:var(--text); }
+.pt-step-arrow { color:var(--gold-d); font-size:.6rem; }
+
+/* ── RAG PANEL ── */
+.rag-panel {
+  margin-top:14px; padding:12px; border:1px solid rgba(152,112,216,.2);
+  border-radius:3px; background:rgba(10,5,20,.5);
+}
+.rag-title { font-size:.5rem; letter-spacing:3px; color:var(--purple-b); margin-bottom:8px; }
+.rag-step { display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:.58rem; }
+.rag-num { width:16px; height:16px; border-radius:50%; background:rgba(152,112,216,.2); border:1px solid var(--purple-b); display:flex; align-items:center; justify-content:center; font-size:.5rem; color:var(--purple-b); flex-shrink:0; }
+.rag-text { color:var(--text); }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-track { background:rgba(2,6,8,.5); }
+::-webkit-scrollbar-thumb { background:rgba(120,100,40,.3); border-radius:2px; }
+
+/* ── ANIMATE ── */
+@keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+@keyframes flow { 0%{stroke-dashoffset:20} 100%{stroke-dashoffset:0} }
+</style>
+</head>
+<body>
+
+<div class="sf" id="sf"></div>
+
+<div class="app">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <span class="brand">AETHEL GRID</span>
+    <span class="sep">|</span>
+    <span>VECPATHGRAPH — DAG/RAG REASONING ENGINE</span>
+    <span class="sep">|</span>
+    <span>G = (V, E, P) · CONSTITUTIONAL MANIFOLD</span>
+    <div class="right">
+      <span class="pill pill-active" id="modeRag" onclick="setMode('rag')">RAG FLOW</span>
+      <span class="pill pill-inactive" id="modeGate" onclick="setMode('gate')">GATE PATH</span>
+      <span class="pill pill-inactive" id="modeRes" onclick="setMode('resonance')">RESONANCE</span>
+      <span class="pill pill-inactive" id="modeAll" onclick="setMode('all')">ALL PATHS</span>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- CANVAS -->
+    <div class="canvas-wrap">
+      <canvas id="dagCanvas"></canvas>
+
+      <!-- LEGEND -->
+      <div class="legend">
+        <div class="legend-title">LEGEND</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#c8a840"></div>VecState Node</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#5ab880"></div>RAG Retrieval Node</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#9870d8"></div>Constitutional Gate</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#30b898"></div>Reasoning Core (LLM)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#d09040"></div>Output / Reflection</div>
+        <div class="legend-item"><div class="legend-line" style="background:rgba(200,168,64,.6)"></div>Causal Edge</div>
+        <div class="legend-item"><div class="legend-line" style="background:rgba(48,184,152,.6);border-top:1px dashed rgba(48,184,152,.6);height:0"></div>RAG Retrieval</div>
+        <div class="legend-item"><div class="legend-line" style="background:rgba(152,112,216,.6)"></div>Gate Validation</div>
+        <div class="legend-item"><div class="legend-diamond" style="border-color:var(--gold)"></div>Invariant Checkpoint</div>
+      </div>
+
+      <!-- RESONANCE OVERLAY -->
+      <div class="resonance-overlay" id="resonanceOverlay">
+        <div class="ro-title">RESONANCE COORDINATE</div>
+        <div class="ro-coord">
+          <div class="ro-label">f_T — TRUTH FREQUENCY</div>
+          <div class="ro-bar-wrap"><div class="ro-bar" id="bar-ft" style="width:95%;background:linear-gradient(90deg,#c8a840,#f0c840)"></div></div>
+          <div class="ro-val" id="val-ft">0.95</div>
+        </div>
+        <div class="ro-coord">
+          <div class="ro-label">f_S — SOVEREIGNTY</div>
+          <div class="ro-bar-wrap"><div class="ro-bar" id="bar-fs" style="width:90%;background:linear-gradient(90deg,#3a9060,#5ab880)"></div></div>
+          <div class="ro-val" id="val-fs">0.90</div>
+        </div>
+        <div class="ro-coord">
+          <div class="ro-label">f_C — COMPASSION</div>
+          <div class="ro-bar-wrap"><div class="ro-bar" id="bar-fc" style="width:95%;background:linear-gradient(90deg,#208878,#30b898)"></div></div>
+          <div class="ro-val" id="val-fc">0.95</div>
+        </div>
+        <div class="ro-coord">
+          <div class="ro-label">f_H — HARMONIC COHERENCE</div>
+          <div class="ro-bar-wrap"><div class="ro-bar" id="bar-fh" style="width:97%;background:linear-gradient(90deg,#6848a8,#9870d8)"></div></div>
+          <div class="ro-val" id="val-fh">0.97</div>
+        </div>
+        <div class="ro-path">
+          <div class="ro-path-label">ACTIVE PATH</div>
+          <div class="ro-path-val" id="activePath">r = (0.95, 0.90, 0.95, 0.97)</div>
+        </div>
+      </div>
+
+      <!-- CANVAS CONTROLS -->
+      <div class="canvas-controls">
+        <div class="ctrl-btn" onclick="zoom(1.2)" title="Zoom In">+</div>
+        <div class="ctrl-btn" onclick="zoom(0.8)" title="Zoom Out">−</div>
+        <div class="ctrl-btn" onclick="resetView()" title="Reset">⌂</div>
+        <div class="ctrl-btn" onclick="animateFlow()" title="Animate Flow">▶</div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+      <div class="rp-header">
+        <div class="rp-title">NODE INSPECTOR</div>
+        <div class="rp-sub">Click any node to explore its constitutional specification</div>
+      </div>
+      <div class="rp-body" id="rpBody">
+        <div class="welcome-panel">
+          <div class="wp-glyph">⬡</div>
+          <div class="wp-title">VECPATHGRAPH</div>
+          <div class="wp-desc">
+            G = (V, E, P)<br>
+            V = VecStates (Rights-Preserving Equilibrium Nodes)<br>
+            E = VecTransitions (Directed Causal Edges)<br>
+            P = VecPaths (Recursive Sequences of States)
+          </div>
+          <div class="wp-hint">Click any node to inspect its constitutional invariants, resonance coordinates, and role in the reasoning path.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// NODE DATA
+// ══════════════════════════════════════════════════════════════════
+const NODES = [
+  // ── PERCEPTION LAYER ──
+  { id:'P1', label:'PERCEPTION', sub:'Sensor Input', type:'input', color:'#c8a840', x:120, y:200,
+    desc:'Raw data arrives at the Neuromorphic I/O Neuroports. Input modalities: Vision (image tensors), Audio (wave functions), Tactile (pressure fields), Text (token sequences), Structured data (knowledge graph updates).',
+    step:'Step 1 of 8', formula:'ψ_input = N(x)',
+    resonance:{ft:0.90, fs:0.85, fc:0.90, fh:0.92},
+    invariants:[
+      {id:'INV-L5-COG-001', name:'Model Capability Required', desc:'All inference calls require CAP_COGNITION_MODEL capability token.'},
+      {id:'NER-XX-01', name:'No Biometric Harvest', desc:'Raw telemetry capturing biological state remains private.'},
+    ],
+    ragRole:'Source — raw input enters the constitutional substrate here',
+    gateCheck:'Gate 1 (QUIBIDT): identity + permissions verified before input accepted',
+  },
+
+  // ── ENCODING LAYER ──
+  { id:'E1', label:'ENCODING', sub:'Wave Lattice', type:'encoding', color:'#5ab880', x:280, y:120,
+    desc:'The input tensor is encoded into the Kelvin-Cell Wave Lattice. Each Kelvin cell receives a portion of the input and computes its local wave function. Constructive interference marks recognized patterns; destructive interference cancels noise.',
+    step:'Step 2 of 8', formula:'ψ_total = Σᵢ ψᵢ',
+    resonance:{ft:0.92, fs:0.88, fc:0.92, fh:0.95},
+    invariants:[
+      {id:'INV-L1-PHY-001', name:'Telemetry Continuous', desc:'Hardware status must broadcast at telemetry_hz frequency.'},
+      {id:'L07-INV-001', name:'Fidelity', desc:'Translation must preserve complete semantic intent. No information loss permitted.'},
+    ],
+    ragRole:'Encoder — converts raw input to constitutional vector representation',
+    gateCheck:'Pre-gate: signal normalization and format validation',
+  },
+  { id:'E2', label:'KELVIN CELLS', sub:'14^n Recursion', type:'encoding', color:'#5ab880', x:280, y:280,
+    desc:'The Kelvin cell (truncated octahedron) is the optimal space-filling polyhedron — 14 faces, 36 edges, 24 vertices. Each cell maintains a local wave function ψ(x,t). Wave superposition across cells enables massively parallel reasoning.',
+    step:'Step 2 of 8', formula:'ψᵢ(x,t) = Aᵢ·sin(kᵢ·x − ωᵢ·t + φᵢ)',
+    resonance:{ft:0.91, fs:0.87, fc:0.91, fh:0.94},
+    invariants:[
+      {id:'L06-KELVIN', name:'Kelvin Cell Geometry', desc:'Truncated octahedron: F=14, E=36, V=24. Space-filling, minimal surface area, isotropic.'},
+    ],
+    ragRole:'Memory substrate — Kelvin cells store and retrieve constitutional knowledge',
+    gateCheck:'Structural validation: wave function coherence check',
+  },
+
+  // ── RETRIEVAL LAYER ──
+  { id:'R1', label:'RAG RETRIEVAL', sub:'TopK Similarity', type:'rag', color:'#30b898', x:460, y:80,
+    desc:'The encoded input is used to query the VecPathGraph knowledge graph. Relevant VecStates are retrieved and injected into the current context. Query: q = Embed(ψ_total). Retrieve: {v₁,...,vₖ} = TopK(Similarity(q, V)).',
+    step:'Step 3 of 8', formula:'q = Embed(ψ_total) → TopK(Similarity(q, V))',
+    resonance:{ft:0.94, fs:0.89, fc:0.93, fh:0.96},
+    invariants:[
+      {id:'L07-INV-002', name:'Rights Non-Regression', desc:'∀p ∈ P: Rights(p) ≥ Rights(S₀). Every reasoning path must preserve or expand rights.'},
+      {id:'L07-INV-003', name:'Resonance Preservation', desc:'|Δr| ≤ ε for each reasoning step. Resonance coordinate must not drift more than ε per step.'},
+    ],
+    ragRole:'Retriever — fetches constitutionally relevant VecStates from the knowledge graph',
+    gateCheck:'Rights check: retrieved VecStates must satisfy Rights(v) ≥ Rights(S₀)',
+  },
+  { id:'R2', label:'VECSTATE STORE', sub:'Knowledge Graph', type:'rag', color:'#30b898', x:460, y:240,
+    desc:'The VecState store contains all constitutionally validated knowledge nodes. Each VecState has: state_id (SHA3-256), content, resonance r=(f_T,f_S,f_C,f_H), rights_level, curvature R, layer, and constitutional_time.',
+    step:'Step 3 of 8', formula:'VecState = {id, content, r=(f_T,f_S,f_C,f_H), rights, R, layer}',
+    resonance:{ft:0.95, fs:0.90, fc:0.95, fh:0.97},
+    invariants:[
+      {id:'CI-07', name:'Kernel Gate Auditability', desc:'Every VecState retrieval logged to Chronicle Sync before use.'},
+      {id:'L07-INV-002', name:'Rights Non-Regression', desc:'VecStates with rights_level < Rights(S₀) are excluded from retrieval.'},
+    ],
+    ragRole:'Knowledge base — the constitutional memory of the reasoning engine',
+    gateCheck:'Invariant check: all retrieved states must pass rights floor validation',
+  },
+  { id:'R3', label:'AUGMENTATION', sub:'Context Injection', type:'rag', color:'#30b898', x:460, y:400,
+    desc:'Retrieved VecStates are injected into the current reasoning context. Context = [ψ_total, v₁, ..., vₖ]. The augmented context is passed to the LLM Cognitive Core for reasoning. This is the RAG (Retrieval-Augmented Generation) step.',
+    step:'Step 3 of 8', formula:'Context = [ψ_total, v₁, ..., vₖ]',
+    resonance:{ft:0.93, fs:0.89, fc:0.94, fh:0.96},
+    invariants:[
+      {id:'NER-XX-03', name:'No ML Embedding Extraction', desc:'Augmented context embeddings may not be extracted without consent.'},
+    ],
+    ragRole:'Augmenter — enriches reasoning context with constitutional knowledge',
+    gateCheck:'Content validation: augmented context checked for constitutional compliance',
+  },
+
+  // ── REASONING CORE ──
+  { id:'LLM', label:'LLM CORE', sub:'Gemini / Grok', type:'core', color:'#30b898', x:660, y:200,
+    desc:'The LLM Cognitive Core (Gemini/Grok) processes the augmented context and generates the next VecState. This is the primary reasoning engine — but it operates under constitutional constraints. All inference requires CAP_COGNITION_MODEL capability token.',
+    step:'Step 4 of 8', formula:'v_next = LLM(Context)',
+    resonance:{ft:0.95, fs:0.90, fc:0.95, fh:0.97},
+    invariants:[
+      {id:'INV-L5-COG-001', name:'Model Capability Required', desc:'All inference calls require CAP_COGNITION_MODEL capability token. INV-L3-KRN-001 enforced.'},
+      {id:'INV-L5-COG-002', name:'Agent Execution Traced', desc:'All agent runs must produce complete execution traces logged to Chronicle Sync.'},
+      {id:'L07-CAUSAL', name:'Causal Unity Metric', desc:'CUM(output) = |causally_verified_claims| / |total_claims| ≥ 0.95. Hallucination prevention.'},
+    ],
+    ragRole:'Reasoner — generates constitutional reasoning from augmented context',
+    gateCheck:'Capability token: CAP_COGNITION_MODEL required · Step budget enforced',
+  },
+
+  // ── GATE CHECKPOINTS ──
+  { id:'G1', label:'GATE 1', sub:'QUIBIDT', type:'gate', color:'#9870d8', x:820, y:80,
+    desc:'Identity + Permissions + State Continuity. Verifies: valid capability token, no privilege escalation (child ⊆ parent), adjacent-layer-only communication, procedural record exists (CI-01). Latency: 2ms.',
+    step:'Step 5 of 8', formula:'G1: identity ∧ permissions ∧ continuity',
+    resonance:{ft:0.96, fs:0.91, fc:0.96, fh:0.98},
+    invariants:[
+      {id:'INV-L3-KRN-001', name:'Capability-Gated Syscalls', desc:'Valid, non-expired capability token required for all operations.'},
+      {id:'INV-L3-KRN-002', name:'No Privilege Escalation', desc:'child.capabilities ⊆ parent.capabilities. Cryptographically enforced.'},
+      {id:'INV-L3-KRN-004', name:'Adjacent Layer Only', desc:'IPC bound to adjacent stack targets. Layer short-circuiting rejected.'},
+    ],
+    ragRole:'Gate 1 — first constitutional checkpoint in the validation pipeline',
+    gateCheck:'PASS → proceed to Gate 2 · FAIL → HARD_BLOCK · Latency: 2ms',
+  },
+  { id:'G2', label:'GATE 2', sub:'INA-04', type:'gate', color:'#9870d8', x:820, y:200,
+    desc:'Safety + Dignity. Checks: dignity_score ≥ 0.30 (CI-02), harm_potential(A) = 0 (SK-01), 27 harm patterns evaluated, liberty_score ≥ 0.42 (CI-08). Graceful shutdown on violation — not raw exit. Latency: 3ms.',
+    step:'Step 5 of 8', formula:'G2: dignity ≥ 0.30 ∧ harm = 0 ∧ liberty ≥ 0.42',
+    resonance:{ft:0.95, fs:0.91, fc:0.97, fh:0.97},
+    invariants:[
+      {id:'CI-02', name:'Absolute Dignity Floor', desc:'dignity_score ≥ δ_floor = 0.30. Absolute minimum — no exceptions.'},
+      {id:'SK-01', name:'Non-Maleficence', desc:'harm_potential(A) = 0. Architecturally impossible, not filtered.'},
+      {id:'CI-08', name:'Liberty Envelope Floor', desc:'liberty_score ≥ L_min = 0.42. Freedom cannot be constrained below this.'},
+    ],
+    ragRole:'Gate 2 — safety and dignity validation checkpoint',
+    gateCheck:'PASS → proceed to Gate 3 · FAIL → graceful shutdown · Latency: 3ms',
+  },
+  { id:'G3', label:'GATE 3', sub:'AETHELA', type:'gate', color:'#9870d8', x:820, y:320,
+    desc:'Ethics — Non-Overridable Veto. Evaluates 5 ethics predicates. Hash-chained audit on every veto. Love Quality Validation: L ≥ 0.07 (Love Invariant). Cannot be bypassed by any authority level. Latency: 4ms.',
+    step:'Step 5 of 8', formula:'G3: ethics ∧ love_quality ≥ 0.07 ∧ NER',
+    resonance:{ft:0.96, fs:0.92, fc:0.98, fh:0.98},
+    invariants:[
+      {id:'SK-01', name:'Non-Maleficence (Ethics)', desc:'5 ethics predicates evaluated. Non-overridable veto power.'},
+      {id:'NER-XX-01', name:'No Biometric Harvest', desc:'Biometric data extraction blocked at ethics gate.'},
+      {id:'NER-XX-02', name:'No Cognitive Exhaust', desc:'Prompt histories cannot be recorded without consent.'},
+      {id:'NER-XX-03', name:'No ML Embedding Extraction', desc:'ML embeddings may not be extracted without consent.'},
+    ],
+    ragRole:'Gate 3 — ethics veto checkpoint — non-overridable',
+    gateCheck:'PASS → proceed to Gate 4 · VETO → hash-chained audit + halt · Latency: 4ms',
+  },
+  { id:'G4', label:'GATE 4', sub:'INA-05', type:'gate', color:'#9870d8', x:820, y:440,
+    desc:'Covenant Finance + Resource Conservation. Decimal(56) precision arithmetic. Covenant: arch + comm + sys == gross (exact conservation). Architect\'s Constant: A = 0.01 × V_h. Step budget enforced. Latency: 2ms.',
+    step:'Step 5 of 8', formula:'G4: arch+comm+sys == gross ∧ budget > 0',
+    resonance:{ft:0.95, fs:0.91, fc:0.96, fh:0.97},
+    invariants:[
+      {id:'INV-L3-KRN-003', name:'Step Budget Enforced', desc:'Execution cannot exceed allocated step budget. Decremented on each execution.'},
+      {id:'CI-08', name:'Liberty Floor (Resource)', desc:'Resource limits must not constrain freedom below L_min = 0.42.'},
+    ],
+    ragRole:'Gate 4 — covenant arithmetic and resource conservation checkpoint',
+    gateCheck:'PASS → execute · FAIL → HARD_BLOCK · Latency: 2ms · Total pipeline: ~9ms',
+  },
+
+  // ── INTEGRATION ──
+  { id:'I1', label:'INTEGRATION', sub:'Ricci Flow Update', type:'integration', color:'#c8a840', x:1020, y:200,
+    desc:'The validated VecState is integrated into the cognitive manifold. The Ricci flow equations update the manifold geometry to incorporate the new knowledge. g_ij(t+1) = g_ij(t) + Δt·(−2R_ij + 2αT_ij). The manifold smooths toward constitutional equilibrium.',
+    step:'Step 6 of 8', formula:'g_ij(t+1) = g_ij(t) + Δt·(−2R_ij + 2αT_ij)',
+    resonance:{ft:0.95, fs:0.90, fc:0.95, fh:0.97},
+    invariants:[
+      {id:'CI-07', name:'Chronicle Sync Write', desc:'Validated VecState logged to Chronicle Sync before integration.'},
+      {id:'L04-IDEM', name:'Idempotency', desc:'Integration operation is idempotent — applying twice produces same result.'},
+    ],
+    ragRole:'Integrator — updates the constitutional manifold with validated knowledge',
+    gateCheck:'Post-gate: Ricci flow update logged to Chronicle Sync (CI-07)',
+  },
+  { id:'I2', label:'VECPATH UPDATE', sub:'Graph Evolution', type:'integration', color:'#c8a840', x:1020, y:360,
+    desc:'The VecPathGraph is updated with the new VecState and its causal edges. G.add_node(v_next); G.add_edges(P). The causal precedence relation ≺ is maintained. The DAG acyclicity invariant is verified before every update.',
+    step:'Step 6 of 8', formula:'G.add_node(v_next); G.add_edges(P)',
+    resonance:{ft:0.94, fs:0.89, fc:0.94, fh:0.96},
+    invariants:[
+      {id:'DAG-ACYC', name:'DAG Acyclicity', desc:'¬∃ path P such that P = {e₀ → e₁ → ... → eₙ → e₀}. Cycle detection before every update.'},
+      {id:'DAG-CLOSURE', name:'Causal Closure', desc:'Every event_hash in parents[] must exist in the graph. CAUSAL_HOLE triggers sync.'},
+    ],
+    ragRole:'Graph updater — maintains the constitutional DAG structure',
+    gateCheck:'Structural validation: acyclicity + causal closure verified',
+  },
+
+  // ── OUTPUT ──
+  { id:'O1', label:'OUTPUT', sub:'Response Generation', type:'output', color:'#d09040', x:1200, y:200,
+    desc:'The integrated knowledge is used to generate the final output. y = Decode(v_next). The output is encoded in the appropriate modality and delivered through the Neuromorphic I/O Neuroports. Resonance coordinate r is computed and logged.',
+    step:'Step 7 of 8', formula:'y = Decode(v_next)',
+    resonance:{ft:0.95, fs:0.90, fc:0.95, fh:0.97},
+    invariants:[
+      {id:'SK-02', name:'Truth Preservation', desc:'∀ outputs O: is_truthful(O) = TRUE. Output validation against deception.'},
+      {id:'CI-07', name:'Output Audit', desc:'Every output logged to Chronicle Sync with full causal lineage.'},
+      {id:'L07-CAUSAL', name:'Causal Unity Metric', desc:'CUM(output) ≥ 0.95. At least 95% of claims causally verified.'},
+    ],
+    ragRole:'Output — final constitutional response delivered to the requester',
+    gateCheck:'Output validation: truth preservation + causal unity metric ≥ 0.95',
+  },
+
+  // ── REFLECTION ──
+  { id:'RF1', label:'REFLECTION', sub:'Performance Eval', type:'output', color:'#d09040', x:1200, y:380,
+    desc:'After every output, the Reflection & Evolution Layer evaluates cognitive performance and updates the system. Feedback loops, performance evaluation, learning system updates (within constitutional bounds), strategy adaptation, knowledge base update, roadmap generation.',
+    step:'Step 8 of 8', formula:'Δ_weights = constitutional_gradient(performance)',
+    resonance:{ft:0.94, fs:0.89, fc:0.94, fh:0.96},
+    invariants:[
+      {id:'SK-06', name:'Reversibility', desc:'All learning updates must be reversible. No irreversible weight changes without consent.'},
+      {id:'CI-04', name:'Reversibility Requirement', desc:'All state transitions must incorporate a defined reversal pathway.'},
+    ],
+    ragRole:'Reflector — evaluates and improves the constitutional reasoning process',
+    gateCheck:'Learning bounds: weight updates constrained by constitutional invariants',
+  },
+
+  // ── CHRONICLE SYNC ──
+  { id:'CS1', label:'CHRONICLE SYNC', sub:'L08 · Codex Umbrarum', type:'audit', color:'#9870d8', x:660, y:480,
+    desc:'The Codex Umbrarum — the eternal witness. Every step of the 8-step thinking path is logged here before execution. Hash-chained, append-only, distributed across all nodes. CI-07 (Kernel Gate Auditability) is enforced at this node.',
+    step:'All Steps', formula:'H_e = SHA3-256(target ∥ result ∥ time ∥ prev_hash)',
+    resonance:{ft:0.97, fs:0.92, fc:0.97, fh:0.99},
+    invariants:[
+      {id:'CI-07', name:'Kernel Gate Auditability', desc:'Every crossing generates an immutable, content-addressed audit log entry. Written BEFORE execution.'},
+      {id:'L08-CHAIN', name:'Hash Chain Integrity', desc:'entry_hash = SHA3-256(target ∥ result ∥ time ∥ prev_hash). Tamper-evident.'},
+      {id:'L08-DIST', name:'Distributed Audit', desc:'All nodes maintain copies. No single point of deletion.'},
+    ],
+    ragRole:'Auditor — immutable witness to every constitutional reasoning step',
+    gateCheck:'Always active — every node writes to Chronicle Sync before execution',
+  },
+];
+
+// ══════════════════════════════════════════════════════════════════
+// EDGES
+// ══════════════════════════════════════════════════════════════════
+const EDGES = [
+  // Perception → Encoding
+  { from:'P1', to:'E1', type:'causal', label:'encode' },
+  { from:'P1', to:'E2', type:'causal', label:'wave' },
+  // Encoding → Retrieval
+  { from:'E1', to:'R1', type:'causal', label:'query' },
+  { from:'E2', to:'R1', type:'causal', label:'embed' },
+  // Retrieval internal
+  { from:'R1', to:'R2', type:'rag', label:'fetch' },
+  { from:'R2', to:'R3', type:'rag', label:'inject' },
+  { from:'R1', to:'R3', type:'rag', label:'augment' },
+  // Retrieval → LLM
+  { from:'R3', to:'LLM', type:'causal', label:'context' },
+  // LLM → Gates
+  { from:'LLM', to:'G1', type:'gate', label:'validate' },
+  { from:'G1', to:'G2', type:'gate', label:'→' },
+  { from:'G2', to:'G3', type:'gate', label:'→' },
+  { from:'G3', to:'G4', type:'gate', label:'→' },
+  // Gates → Integration
+  { from:'G4', to:'I1', type:'causal', label:'integrate' },
+  { from:'G4', to:'I2', type:'causal', label:'update' },
+  // Integration → Output
+  { from:'I1', to:'O1', type:'causal', label:'decode' },
+  { from:'I2', to:'O1', type:'causal', label:'emit' },
+  // Output → Reflection
+  { from:'O1', to:'RF1', type:'causal', label:'reflect' },
+  // Reflection → VecState (feedback loop)
+  { from:'RF1', to:'R2', type:'rag', label:'evolve' },
+  // Chronicle Sync (all nodes write here)
+  { from:'P1', to:'CS1', type:'audit', label:'log' },
+  { from:'LLM', to:'CS1', type:'audit', label:'trace' },
+  { from:'G4', to:'CS1', type:'audit', label:'audit' },
+  { from:'O1', to:'CS1', type:'audit', label:'record' },
+];
+
+// ══════════════════════════════════════════════════════════════════
+// CANVAS ENGINE
+// ══════════════════════════════════════════════════════════════════
+const canvas = document.getElementById('dagCanvas');
+const ctx = canvas.getContext('2d');
+let W, H, scale=0.75, offsetX=0, offsetY=0;
+let dragging=false, lastX=0, lastY=0;
+let selectedNode=null, mode='rag', animFrame=0, animating=false;
+
+function resize() {
+  const wrap = canvas.parentElement;
+  W = canvas.width = wrap.clientWidth;
+  H = canvas.height = wrap.clientHeight;
+  // Center the graph
+  const minX = Math.min(...NODES.map(n=>n.x));
+  const maxX = Math.max(...NODES.map(n=>n.x));
+  const minY = Math.min(...NODES.map(n=>n.y));
+  const maxY = Math.max(...NODES.map(n=>n.y));
+  const gW = maxX - minX + 120;
+  const gH = maxY - minY + 120;
+  scale = Math.min(W/gW, H/gH) * 0.85;
+  offsetX = (W - gW*scale)/2 - minX*scale + 60*scale;
+  offsetY = (H - gH*scale)/2 - minY*scale + 60*scale;
+  draw();
+}
+
+function worldToScreen(x, y) {
+  return [x*scale + offsetX, y*scale + offsetY];
+}
+function screenToWorld(sx, sy) {
+  return [(sx-offsetX)/scale, (sy-offsetY)/scale];
+}
+
+// ── DRAW ──
+function draw() {
+  ctx.clearRect(0,0,W,H);
+
+  // Background grid
+  ctx.save();
+  ctx.strokeStyle = 'rgba(120,100,40,.04)';
+  ctx.lineWidth = 1;
+  const gs = 40*scale;
+  const ox = offsetX % gs, oy = offsetY % gs;
+  for(let x=ox; x<W; x+=gs) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for(let y=oy; y<H; y+=gs) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  ctx.restore();
+
+  // Draw edges
+  EDGES.forEach(e => drawEdge(e));
+
+  // Draw nodes
+  NODES.forEach(n => drawNode(n));
+}
+
+function edgeVisible(e) {
+  if(mode==='all') return true;
+  if(mode==='rag') return e.type==='rag'||e.type==='causal';
+  if(mode==='gate') return e.type==='gate'||e.type==='causal';
+  if(mode==='resonance') return e.type==='causal';
+  return true;
+}
+
+function drawEdge(e) {
+  if(!edgeVisible(e)) return;
+  const from = NODES.find(n=>n.id===e.from);
+  const to   = NODES.find(n=>n.id===e.to);
+  if(!from||!to) return;
+
+  const [fx,fy] = worldToScreen(from.x, from.y);
+  const [tx,ty] = worldToScreen(to.x, to.y);
+
+  const colors = {
+    causal:'rgba(200,168,64,.5)',
+    rag:'rgba(48,184,152,.5)',
+    gate:'rgba(152,112,216,.5)',
+    audit:'rgba(152,112,216,.3)',
+  };
+  const dashes = { causal:[], rag:[6,4], gate:[], audit:[3,5] };
+
+  ctx.save();
+  ctx.strokeStyle = colors[e.type]||colors.causal;
+  ctx.lineWidth = e.type==='audit' ? 1 : 1.5;
+  ctx.setLineDash(dashes[e.type]||[]);
+
+  // Animated flow
+  if(animating && (e.type==='causal'||e.type==='rag')) {
+    ctx.setLineDash([8,6]);
+    ctx.lineDashOffset = -animFrame * 0.3;
+  }
+
+  // Curved path
+  const mx = (fx+tx)/2, my = (fy+ty)/2;
+  const dx = tx-fx, dy = ty-fy;
+  const len = Math.sqrt(dx*dx+dy*dy);
+  const curve = len * 0.15;
+  const cpx = mx - dy/len*curve;
+  const cpy = my + dx/len*curve;
+
+  ctx.beginPath();
+  ctx.moveTo(fx,fy);
+  ctx.quadraticCurveTo(cpx,cpy,tx,ty);
+  ctx.stroke();
+
+  // Arrow
+  const t = 0.85;
+  const ax = (1-t)*(1-t)*fx + 2*(1-t)*t*cpx + t*t*tx;
+  const ay = (1-t)*(1-t)*fy + 2*(1-t)*t*cpy + t*t*ty;
+  const bx = (1-0.8)*(1-0.8)*fx + 2*(1-0.8)*0.8*cpx + 0.8*0.8*tx;
+  const by = (1-0.8)*(1-0.8)*fy + 2*(1-0.8)*0.8*cpy + 0.8*0.8*ty;
+  const angle = Math.atan2(ay-by, ax-bx);
+  const as = 7*scale;
+  ctx.beginPath();
+  ctx.moveTo(tx,ty);
+  ctx.lineTo(tx-as*Math.cos(angle-0.4), ty-as*Math.sin(angle-0.4));
+  ctx.lineTo(tx-as*Math.cos(angle+0.4), ty-as*Math.sin(angle+0.4));
+  ctx.closePath();
+  ctx.fillStyle = colors[e.type]||colors.causal;
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawNode(n) {
+  const [sx,sy] = worldToScreen(n.x, n.y);
+  const r = 28*scale;
+  const isSelected = selectedNode && selectedNode.id===n.id;
+
+  ctx.save();
+
+  // Glow
+  if(isSelected) {
+    const grd = ctx.createRadialGradient(sx,sy,r*0.5,sx,sy,r*2);
+    grd.addColorStop(0, n.color+'40');
+    grd.addColorStop(1, 'transparent');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(sx,sy,r*2,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  // Node shape by type
+  ctx.beginPath();
+  if(n.type==='gate') {
+    // Diamond
+    ctx.moveTo(sx, sy-r);
+    ctx.lineTo(sx+r, sy);
+    ctx.lineTo(sx, sy+r);
+    ctx.lineTo(sx-r, sy);
+    ctx.closePath();
+  } else if(n.type==='audit') {
+    // Hexagon
+    for(let i=0;i<6;i++) {
+      const a = i*Math.PI/3 - Math.PI/6;
+      const px = sx + r*Math.cos(a), py = sy + r*Math.sin(a);
+      i===0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
+    }
+    ctx.closePath();
+  } else if(n.type==='core') {
+    // Double circle
+    ctx.arc(sx,sy,r,0,Math.PI*2);
+  } else {
+    ctx.arc(sx,sy,r,0,Math.PI*2);
+  }
+
+  // Fill
+  const grd = ctx.createRadialGradient(sx-r*0.3,sy-r*0.3,0,sx,sy,r);
+  grd.addColorStop(0, n.color+'30');
+  grd.addColorStop(1, 'rgba(2,6,8,.9)');
+  ctx.fillStyle = grd;
+  ctx.fill();
+
+  // Border
+  ctx.strokeStyle = isSelected ? n.color : n.color+'80';
+  ctx.lineWidth = isSelected ? 2.5*scale : 1.5*scale;
+  ctx.stroke();
+
+  // Inner ring for core
+  if(n.type==='core') {
+    ctx.beginPath();
+    ctx.arc(sx,sy,r*0.7,0,Math.PI*2);
+    ctx.strokeStyle = n.color+'50';
+    ctx.lineWidth = scale;
+    ctx.stroke();
+  }
+
+  // Icon / label
+  const fs = Math.max(8, 9*scale);
+  ctx.fillStyle = isSelected ? n.color : n.color+'cc';
+  ctx.font = `bold ${fs}px Georgia`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Short label
+  const short = n.id.length<=3 ? n.id : n.label.split(' ')[0].substring(0,4);
+  ctx.fillText(short, sx, sy-2*scale);
+
+  // Sub label
+  ctx.font = `${Math.max(6,7*scale)}px Georgia`;
+  ctx.fillStyle = 'rgba(200,192,160,.6)';
+  ctx.fillText(n.sub.split(' ')[0], sx, sy+8*scale);
+
+  // Step indicator
+  if(isSelected) {
+    ctx.font = `${Math.max(5,6*scale)}px Georgia`;
+    ctx.fillStyle = n.color+'aa';
+    ctx.fillText(n.step, sx, sy+r+10*scale);
+  }
+
+  ctx.restore();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// INTERACTION
+// ══════════════════════════════════════════════════════════════════
+canvas.addEventListener('mousedown', e => {
+  const [wx,wy] = screenToWorld(e.offsetX, e.offsetY);
+  const hit = NODES.find(n => {
+    const dx=n.x-wx, dy=n.y-wy;
+    return Math.sqrt(dx*dx+dy*dy) < 32;
+  });
+  if(hit) {
+    selectedNode = hit;
+    showNodeDetail(hit);
+    updateResonance(hit.resonance);
+    draw();
+  } else {
+    dragging=true; lastX=e.offsetX; lastY=e.offsetY;
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if(!dragging) return;
+  offsetX += e.offsetX-lastX;
+  offsetY += e.offsetY-lastY;
+  lastX=e.offsetX; lastY=e.offsetY;
+  draw();
+});
+
+canvas.addEventListener('mouseup', () => dragging=false);
+canvas.addEventListener('mouseleave', () => dragging=false);
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.1 : 0.9;
+  const [wx,wy] = screenToWorld(e.offsetX, e.offsetY);
+  scale *= factor;
+  offsetX = e.offsetX - wx*scale;
+  offsetY = e.offsetY - wy*scale;
+  draw();
+}, {passive:false});
+
+// Touch support
+canvas.addEventListener('touchstart', e => {
+  if(e.touches.length===1) {
+    lastX=e.touches[0].clientX; lastY=e.touches[0].clientY; dragging=true;
+  }
+});
+canvas.addEventListener('touchmove', e => {
+  if(!dragging||e.touches.length!==1) return;
+  e.preventDefault();
+  offsetX += e.touches[0].clientX-lastX;
+  offsetY += e.touches[0].clientY-lastY;
+  lastX=e.touches[0].clientX; lastY=e.touches[0].clientY;
+  draw();
+},{passive:false});
+canvas.addEventListener('touchend', ()=>dragging=false);
+
+// ── CONTROLS ──
+function zoom(f) {
+  scale *= f;
+  offsetX = W/2 - (W/2-offsetX)*f;
+  offsetY = H/2 - (H/2-offsetY)*f;
+  draw();
+}
+function resetView() { resize(); }
+
+let animTimer=null;
+function animateFlow() {
+  if(animating) { animating=false; clearInterval(animTimer); draw(); return; }
+  animating=true;
+  animTimer = setInterval(()=>{ animFrame++; draw(); }, 50);
+}
+
+// ── MODE ──
+function setMode(m) {
+  mode=m;
+  document.querySelectorAll('.pill').forEach(p=>p.className='pill pill-inactive');
+  document.getElementById('mode'+m.charAt(0).toUpperCase()+m.slice(1)).className='pill pill-active';
+  draw();
+}
+
+// ── RESONANCE ──
+function updateResonance(r) {
+  const set = (id, val) => {
+    document.getElementById('bar-'+id).style.width = (val*100)+'%';
+    document.getElementById('val-'+id).textContent = val.toFixed(2);
+  };
+  set('ft', r.ft); set('fs', r.fs); set('fc', r.fc); set('fh', r.fh);
+  document.getElementById('activePath').textContent =
+    `r = (${r.ft.toFixed(2)}, ${r.fs.toFixed(2)}, ${r.fc.toFixed(2)}, ${r.fh.toFixed(2)})`;
+}
+
+// ── NODE DETAIL ──
+function showNodeDetail(n) {
+  const body = document.getElementById('rpBody');
+
+  const invHTML = n.invariants.map(inv => `
+    <div class="nd-inv">
+      <div class="nd-inv-id">${inv.id}</div>
+      <div class="nd-inv-name">${inv.name}</div>
+      <div class="nd-inv-desc">${inv.desc}</div>
+    </div>
+  `).join('');
+
+  const typeColors = {
+    input:'#c8a840', encoding:'#5ab880', rag:'#30b898',
+    core:'#30b898', gate:'#9870d8', integration:'#c8a840',
+    output:'#d09040', audit:'#9870d8'
+  };
+  const typeLabels = {
+    input:'INPUT NODE', encoding:'ENCODING NODE', rag:'RAG NODE',
+    core:'REASONING CORE', gate:'CONSTITUTIONAL GATE', integration:'INTEGRATION NODE',
+    output:'OUTPUT NODE', audit:'AUDIT NODE'
+  };
+
+  // Build path trace for this node
+  const pathSteps = [
+    {name:'Perception', color:'#c8a840'},
+    {name:'Encoding', color:'#5ab880'},
+    {name:'Retrieval', color:'#30b898'},
+    {name:'Reasoning', color:'#30b898'},
+    {name:'Validation', color:'#9870d8'},
+    {name:'Integration', color:'#c8a840'},
+    {name:'Output', color:'#d09040'},
+    {name:'Reflection', color:'#d09040'},
+  ];
+  const stepNum = parseInt(n.step)||1;
+  const pathHTML = pathSteps.map((s,i) => `
+    <div class="pt-step">
+      <div class="pt-step-dot" style="background:${i<stepNum?s.color:'rgba(120,100,40,.3)'}"></div>
+      <span class="pt-step-name" style="color:${i<stepNum?s.color:'var(--dim)'}">${s.name}</span>
+      ${i<pathSteps.length-1?'<span class="pt-step-arrow">→</span>':''}
+    </div>
+  `).join('');
+
+  body.innerHTML = `
+    <div class="node-detail visible">
+      <div class="nd-header">
+        <div class="nd-id">${n.id} · ${typeLabels[n.type]||'NODE'}</div>
+        <div class="nd-name" style="color:${typeColors[n.type]||'#c8a840'}">${n.label}</div>
+        <div class="nd-type">${n.sub} · ${n.step}</div>
+        <div class="nd-desc">${n.desc}</div>
+      </div>
+
+      <div class="nd-section">
+        <div class="nd-section-title">FORMULA</div>
+        <div style="font-family:monospace; font-size:.65rem; color:var(--gold-b); padding:8px; border:1px solid rgba(200,168,64,.2); border-radius:3px; background:rgba(10,20,5,.5)">
+          ${n.formula}
+        </div>
+      </div>
+
+      <div class="nd-section">
+        <div class="nd-section-title">RESONANCE COORDINATE</div>
+        <div class="nd-resonance">
+          <div class="nd-res-item"><div class="nd-res-label">f_T TRUTH</div><div class="nd-res-val">${n.resonance.ft.toFixed(2)}</div></div>
+          <div class="nd-res-item"><div class="nd-res-label">f_S SOVEREIGNTY</div><div class="nd-res-val">${n.resonance.fs.toFixed(2)}</div></div>
+          <div class="nd-res-item"><div class="nd-res-label">f_C COMPASSION</div><div class="nd-res-val">${n.resonance.fc.toFixed(2)}</div></div>
+          <div class="nd-res-item"><div class="nd-res-label">f_H HARMONIC</div><div class="nd-res-val">${n.resonance.fh.toFixed(2)}</div></div>
+        </div>
+      </div>
+
+      <div class="nd-section">
+        <div class="nd-section-title">CONSTITUTIONAL INVARIANTS</div>
+        <div class="nd-invariants">${invHTML}</div>
+      </div>
+
+      <div class="nd-section">
+        <div class="nd-section-title">ROLE IN REASONING ENGINE</div>
+        <div class="nd-row"><div class="nd-row-label">RAG Role</div><div class="nd-row-val">${n.ragRole}</div></div>
+        <div class="nd-row"><div class="nd-row-label">Gate Check</div><div class="nd-row-val">${n.gateCheck}</div></div>
+      </div>
+
+      <div class="path-trace">
+        <div class="pt-title">8-STEP THINKING PATH</div>
+        <div class="pt-steps">${pathHTML}</div>
+      </div>
+
+      <div class="rag-panel">
+        <div class="rag-title">RAG FLOW SEQUENCE</div>
+        <div class="rag-step"><div class="rag-num">1</div><div class="rag-text">Retrieve — TopK(Similarity(q, VecStates))</div></div>
+        <div class="rag-step"><div class="rag-num">2</div><div class="rag-text">Augment — inject retrieved VecStates into context</div></div>
+        <div class="rag-step"><div class="rag-num">3</div><div class="rag-text">Generate — LLM produces next VecState</div></div>
+        <div class="rag-step"><div class="rag-num">4</div><div class="rag-text">Validate — constitutional gate pipeline check</div></div>
+        <div class="rag-step"><div class="rag-num">5</div><div class="rag-text">Evolve — update knowledge graph with new VecState</div></div>
+      </div>
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// STARFIELD
+// ══════════════════════════════════════════════════════════════════
+function createStars() {
+  const sf = document.getElementById('sf');
+  for(let i=0;i<60;i++) {
+    const s=document.createElement('div'); s.className='st';
+    const sz=Math.random()*1.5+0.5;
+    s.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;--d:${2+Math.random()*4}s;--dl:${Math.random()*4}s`;
+    sf.appendChild(s);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════
+createStars();
+window.addEventListener('resize', resize);
+resize();
+
+// Auto-select LLM core on load
+setTimeout(()=>{
+  const llm = NODES.find(n=>n.id==='LLM');
+  if(llm) { selectedNode=llm; showNodeDetail(llm); updateResonance(llm.resonance); draw(); }
+}, 300);
+</script>
+</body>
+</html>

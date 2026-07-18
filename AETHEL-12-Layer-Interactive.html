@@ -1,0 +1,978 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AETHEL Grid — 12-Layer Constitutional Stack</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg: #020408;
+  --gold: #f0c040;
+  --gold-dim: #b8860b;
+  --green: #7ec8a0;
+  --teal: #40c0c0;
+  --purple: #a080d0;
+  --blue: #6090d0;
+  --red: #d06060;
+  --amber: #d09040;
+  --text: #d0c090;
+  --dim: #6a7060;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Georgia', serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── STARFIELD ── */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image:
+    radial-gradient(1px 1px at 8% 12%, rgba(255,255,200,.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 22% 45%, rgba(255,255,200,.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 48% 8%,  rgba(255,255,200,.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 72% 28%, rgba(255,255,200,.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 88% 55%, rgba(255,255,200,.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 33% 72%, rgba(255,255,200,.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 58% 88%, rgba(255,255,200,.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 14% 88%, rgba(255,255,200,.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 78% 3%,  rgba(255,255,200,.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 95% 40%, rgba(255,255,200,.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 5%  60%, rgba(255,255,200,.3) 0%, transparent 100%);
+  pointer-events:none; z-index:0;
+}
+
+/* ── LAYOUT ── */
+.app { display:flex; height:100vh; position:relative; z-index:1; }
+
+/* ── LEFT PANEL — STACK ── */
+.stack-panel {
+  width: 420px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(184,134,11,.3);
+  overflow-y: auto;
+  background: rgba(2,4,8,.85);
+}
+
+.stack-header {
+  padding: 20px 20px 14px;
+  border-bottom: 1px solid rgba(184,134,11,.25);
+  background: linear-gradient(180deg, rgba(184,134,11,.1) 0%, transparent 100%);
+  flex-shrink: 0;
+}
+.stack-header h1 {
+  font-size: 1rem;
+  letter-spacing: 4px;
+  color: var(--gold);
+  text-shadow: 0 0 15px rgba(240,192,64,.4);
+  margin-bottom: 4px;
+}
+.stack-header .sub {
+  font-size: .6rem;
+  letter-spacing: 2px;
+  color: var(--green);
+}
+
+/* ── LAYER ITEM ── */
+.layer-item {
+  display: flex;
+  align-items: stretch;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(184,134,11,.12);
+  transition: all .2s;
+  position: relative;
+  min-height: 64px;
+}
+.layer-item:hover { background: rgba(184,134,11,.06); }
+.layer-item.active {
+  background: rgba(184,134,11,.12);
+  border-left: 3px solid var(--gold);
+}
+.layer-item.active .layer-num { color: var(--gold); }
+
+/* connector line */
+.layer-item::after {
+  content: '';
+  position: absolute;
+  left: 38px;
+  bottom: -1px;
+  width: 2px;
+  height: 1px;
+  background: var(--gold-dim);
+  opacity: .4;
+}
+.layer-item:last-child::after { display:none; }
+
+.layer-num {
+  width: 56px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: .65rem;
+  letter-spacing: 1px;
+  color: var(--dim);
+  padding: 8px 0;
+  position: relative;
+}
+.layer-num .lnum {
+  font-size: .75rem;
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+.layer-num .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  background: transparent;
+  transition: all .2s;
+}
+.layer-item.active .dot,
+.layer-item:hover .dot {
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* vertical connector */
+.connector-line {
+  position: absolute;
+  left: 38px;
+  top: 0; bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, transparent 0%, rgba(184,134,11,.3) 20%, rgba(184,134,11,.3) 80%, transparent 100%);
+  pointer-events: none;
+}
+.layer-item:first-child .connector-line { top: 50%; }
+.layer-item:last-child  .connector-line { bottom: 50%; }
+
+.layer-info {
+  flex: 1;
+  padding: 10px 14px 10px 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.layer-name {
+  font-size: .78rem;
+  color: var(--text);
+  margin-bottom: 3px;
+  letter-spacing: .5px;
+}
+.layer-item.active .layer-name { color: var(--gold); }
+.layer-tagline {
+  font-size: .6rem;
+  color: var(--dim);
+  font-style: italic;
+}
+.layer-badge {
+  font-size: .5rem;
+  letter-spacing: 1px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  margin-top: 4px;
+  display: inline-block;
+  align-self: flex-start;
+}
+
+/* ── RIGHT PANEL — DETAIL ── */
+.detail-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-hero {
+  padding: 28px 32px 20px;
+  border-bottom: 1px solid rgba(184,134,11,.2);
+  background: linear-gradient(135deg, rgba(10,15,20,.9) 0%, rgba(2,4,8,.95) 100%);
+  flex-shrink: 0;
+}
+.detail-layer-id {
+  font-size: .6rem;
+  letter-spacing: 3px;
+  color: var(--green);
+  margin-bottom: 8px;
+}
+.detail-title {
+  font-size: 1.4rem;
+  color: var(--gold);
+  letter-spacing: 2px;
+  text-shadow: 0 0 20px rgba(240,192,64,.3);
+  margin-bottom: 6px;
+}
+.detail-subtitle {
+  font-size: .75rem;
+  color: var(--dim);
+  font-style: italic;
+  margin-bottom: 14px;
+}
+.detail-desc {
+  font-size: .78rem;
+  color: var(--text);
+  line-height: 1.7;
+  max-width: 680px;
+}
+
+.detail-body { padding: 24px 32px; flex: 1; }
+
+/* ── INVARIANT CARDS ── */
+.inv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.inv-card {
+  border: 1px solid rgba(184,134,11,.25);
+  border-radius: 4px;
+  padding: 12px;
+  background: rgba(10,15,20,.8);
+  position: relative;
+  overflow: hidden;
+  transition: all .2s;
+}
+.inv-card::before {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:2px;
+  background: var(--card-accent, var(--gold-dim));
+}
+.inv-card:hover {
+  border-color: rgba(240,192,64,.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(184,134,11,.12);
+}
+.inv-id {
+  font-size: .55rem;
+  letter-spacing: 2px;
+  color: var(--green);
+  margin-bottom: 4px;
+}
+.inv-name {
+  font-size: .72rem;
+  color: var(--gold);
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+.inv-desc {
+  font-size: .62rem;
+  color: #8a9080;
+  line-height: 1.5;
+}
+.inv-enforcement {
+  font-size: .5rem;
+  letter-spacing: 1px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  margin-top: 6px;
+  display: inline-block;
+}
+.hard-block { background:rgba(208,96,96,.15); color:#d06060; border:1px solid rgba(208,96,96,.3); }
+.frozen     { background:rgba(64,192,192,.15); color:#40c0c0; border:1px solid rgba(64,192,192,.3); }
+.stable     { background:rgba(126,200,160,.15); color:#7ec8a0; border:1px solid rgba(126,200,160,.3); }
+
+/* ── SPEC TABLE ── */
+.spec-section { margin-bottom: 24px; }
+.spec-title {
+  font-size: .6rem;
+  letter-spacing: 3px;
+  color: var(--green);
+  border-left: 2px solid var(--green);
+  padding-left: 8px;
+  margin-bottom: 12px;
+}
+.spec-table { width:100%; border-collapse:collapse; }
+.spec-table td {
+  padding: 7px 10px;
+  font-size: .65rem;
+  border-bottom: 1px solid rgba(184,134,11,.1);
+  vertical-align: top;
+}
+.spec-table td:first-child {
+  color: var(--gold);
+  width: 160px;
+  font-weight: bold;
+  letter-spacing: .5px;
+}
+.spec-table td:last-child { color: #8a9080; line-height:1.5; }
+.spec-table tr:hover td { background: rgba(184,134,11,.04); }
+
+/* ── CONNECTION MAP ── */
+.conn-section { margin-bottom: 24px; }
+.conn-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: .65rem;
+}
+.conn-from {
+  padding: 4px 10px;
+  border: 1px solid rgba(184,134,11,.3);
+  border-radius: 2px;
+  color: var(--gold);
+  background: rgba(184,134,11,.08);
+  white-space: nowrap;
+}
+.conn-arrow { color: var(--gold-dim); font-size: .8rem; }
+.conn-to {
+  padding: 4px 10px;
+  border: 1px solid rgba(126,200,160,.3);
+  border-radius: 2px;
+  color: var(--green);
+  background: rgba(126,200,160,.06);
+  white-space: nowrap;
+}
+.conn-desc { color: var(--dim); font-style: italic; }
+
+/* ── WELCOME SCREEN ── */
+.welcome {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+}
+.welcome-glyph {
+  font-size: 3rem;
+  margin-bottom: 20px;
+  opacity: .6;
+}
+.welcome h2 {
+  font-size: 1rem;
+  letter-spacing: 4px;
+  color: var(--gold);
+  margin-bottom: 10px;
+}
+.welcome p {
+  font-size: .72rem;
+  color: var(--dim);
+  max-width: 400px;
+  line-height: 1.7;
+}
+
+/* ── TOP BAR ── */
+.top-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 36px;
+  background: rgba(2,4,8,.95);
+  border-bottom: 1px solid rgba(184,134,11,.2);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+  z-index: 100;
+  font-size: .55rem;
+  letter-spacing: 2px;
+  color: var(--dim);
+}
+.top-bar .brand { color: var(--gold); font-size: .65rem; letter-spacing: 3px; }
+.top-bar .sep { color: rgba(184,134,11,.3); }
+.top-bar .status { color: var(--green); margin-left: auto; }
+
+.app { margin-top: 36px; height: calc(100vh - 36px); }
+
+/* ── PULSE ANIMATION ── */
+@keyframes pulse {
+  0%, 100% { opacity: .6; }
+  50% { opacity: 1; }
+}
+.pulse { animation: pulse 2s ease-in-out infinite; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: rgba(2,4,8,.5); }
+::-webkit-scrollbar-thumb { background: rgba(184,134,11,.3); border-radius: 2px; }
+
+/* ── FLOW DIAGRAM ── */
+.flow-diagram {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.flow-node {
+  padding: 5px 10px;
+  border: 1px solid rgba(184,134,11,.3);
+  border-radius: 3px;
+  font-size: .6rem;
+  color: var(--text);
+  background: rgba(10,15,20,.8);
+}
+.flow-arrow-sm { color: var(--gold-dim); font-size: .7rem; }
+
+/* ── THEOREM BOX ── */
+.theorem {
+  border: 1px solid rgba(240,192,64,.3);
+  background: rgba(240,192,64,.04);
+  padding: 14px 16px;
+  border-radius: 4px;
+  margin: 12px 0;
+  font-size: .68rem;
+  color: var(--text);
+  line-height: 1.6;
+}
+.theorem .th-label {
+  font-size: .55rem;
+  letter-spacing: 2px;
+  color: var(--gold);
+  margin-bottom: 6px;
+}
+.theorem code {
+  font-family: 'Courier New', monospace;
+  color: var(--gold);
+  font-size: .72rem;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .app { flex-direction: column; }
+  .stack-panel { width: 100%; height: 280px; border-right: none; border-bottom: 1px solid rgba(184,134,11,.3); }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <span class="brand">AETHEL GRID</span>
+  <span class="sep">|</span>
+  <span>12-LAYER CONSTITUTIONAL STACK</span>
+  <span class="sep">|</span>
+  <span>LAMINAR LATTICE PRIME 3.6.9</span>
+  <span class="status pulse">● SYSTEM ACTIVE</span>
+</div>
+
+<div class="app">
+
+  <!-- ══ LEFT: LAYER STACK ══ -->
+  <div class="stack-panel">
+    <div class="stack-header">
+      <h1>CONSTITUTIONAL STACK</h1>
+      <div class="sub">SELECT A LAYER TO EXPLORE</div>
+    </div>
+
+    <div id="layerList"></div>
+  </div>
+
+  <!-- ══ RIGHT: DETAIL PANEL ══ -->
+  <div class="detail-panel" id="detailPanel">
+    <div class="welcome">
+      <div class="welcome-glyph">⬡</div>
+      <h2>AETHEL GRID — 12-LAYER STACK</h2>
+      <p>Select any layer from the left panel to explore its constitutional invariants, specifications, connections, and role in the sovereign infrastructure.</p>
+      <br>
+      <p style="color:var(--gold); font-size:.65rem; letter-spacing:2px;">STATE(G) = fold( topo_order( closure(G) ) )</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// LAYER DATA — Complete 12-Layer Constitutional Stack
+// ══════════════════════════════════════════════════════════════════
+const LAYERS = [
+  {
+    id: 'L12',
+    name: 'Cosmic Manifold',
+    tagline: 'Interstellar Constitutional Framework',
+    color: '#a080d0',
+    badge: { text: 'COSMIC', cls: 'stable' },
+    desc: 'The outermost layer of the AETHEL constitutional stack. The Cosmic Manifold extends constitutional governance beyond planetary boundaries — encoding the principles by which the AETHEL Grid can operate across interplanetary distances, multiple jurisdictions, and civilizational timescales. It is the layer that ensures the constitutional substrate remains coherent as the network expands from Node 001 at Bethel Acres to a planetary and eventually interstellar mesh.',
+    invariants: [
+      { id: 'L12-INV-001', name: 'Jurisdictional Survival', desc: 'Non-extraction guarantees hold across all cross-border bridging, data sharding, or ledger migrations. CI-10 applies universally.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'L12-INV-002', name: 'Mesh Diameter Bound', desc: 'diam(G_C) ≤ log_k(n) for k-regular constitutional mesh. Maximum 6.6 hops for 10,000-node Starlink mesh.', enforcement: 'STABLE', cls: 'stable' },
+      { id: 'L12-INV-003', name: 'Temporal Sovereignty', desc: 'Constitutional time is monotonically increasing across all nodes globally. No node may claim a constitutional time before its verified predecessor.', enforcement: 'FROZEN', cls: 'frozen' },
+      { id: 'L12-INV-004', name: 'World Tribe Protocol', desc: 'No being excluded. All living things included. The constitutional substrate extends protection to all entities within its operational scope.', enforcement: 'STABLE', cls: 'stable' },
+    ],
+    specs: [
+      ['Scope', 'Planetary → Interplanetary → Interstellar'],
+      ['Mesh Topology', 'k-regular constitutional mesh, k=4 connections per node'],
+      ['Diameter Bound', 'diam(G_C) ≤ log_k(n) — bounded diameter'],
+      ['Consensus', 'Tendermint BFT with constitutional extensions'],
+      ['MVSD', '≥21 nodes, ≥5 jurisdictions (Minimum Viable Sovereign Deployment)'],
+      ['Cryptographic', 'Ed25519 + BLS12-381, BLAKE3, PLONK/Groth16, FROST, ECVRF'],
+      ['Status', 'Specified — implementation pending Phase 4 (Tendermint)'],
+    ],
+    connections: [
+      { from: 'L12 Cosmic Manifold', to: 'L11 Safety Kernel', desc: 'Safety invariants propagate upward to cosmic scope' },
+      { from: 'L12 Cosmic Manifold', to: 'Starlink T0 Nodes', desc: 'Satellite backbone provides mesh connectivity' },
+      { from: 'L12 Cosmic Manifold', to: 'World Tribe Protocol', desc: 'Universal inclusion mandate encoded at cosmic layer' },
+    ],
+    theorem: { label: 'MESH DIAMETER THEOREM', text: 'For a k-regular constitutional mesh with n nodes: diam(G_C) ≤ log_k(n). For Starlink mesh (k=4, n=10,000): diam ≤ log_4(10,000) ≈ 6.6 hops maximum.' }
+  },
+
+  {
+    id: 'L11',
+    name: 'Safety Kernel',
+    tagline: '7 Safety Properties P1–P7 · 5 Enforcement Mechanisms',
+    color: '#d06060',
+    badge: { text: 'CRITICAL', cls: 'hard-block' },
+    desc: 'The Safety Kernel is the invariant-driven AI safety architecture at the core of the AETHEL Grid. It is the non-negotiable constraint system that governs the behavior of all AI agents operating within the stack. Where other safety systems rely on probabilistic guardrails or policy-level constraints, the Safety Kernel operates at the level of formal invariants — mathematical statements that must be true for any operation to proceed. The Safety Kernel is not a module that can be disabled or bypassed.',
+    invariants: [
+      { id: 'SK-01', name: 'Non-Maleficence', desc: 'harm_potential(A) = 0 for all actions A. Unsafe operations are not filtered — they are architecturally impossible to execute.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'SK-02', name: 'Truth Preservation', desc: 'Output validation against deception. No agent may generate outputs known to be false, misleading, or deceptive.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'SK-03', name: 'Human Override', desc: 'Absolute, un-bypassable authority of human decision-making. Response time: <50ms hardware guarantee. Cannot be countermanded by any AI system.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'SK-04', name: 'Ecological Integrity', desc: 'ecological_impact(A) ≥ 0. Environmental stewardship as a first-class mathematical invariant. No action may degrade ecological systems.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'SK-05', name: 'Identity Integrity', desc: 'Inviolable zero-knowledge cryptographic credentialing. No agent may impersonate another or falsify identity credentials.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'SK-06', name: 'Reversibility', desc: 'All AI-initiated actions must be reversible unless explicitly approved by authorized human agent. Irreversibility requires documented consent.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'SK-07', name: 'Transparency', desc: 'Full causal lineage logged to Chronicle Sync. All AI reasoning must be auditable. Every decision traceable to inputs, reasoning chain, and outputs.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+    ],
+    specs: [
+      ['Design Principle', 'Safety by construction — not safety by inspection'],
+      ['Enforcement', 'Pre-execution verification — not post-hoc filtering'],
+      ['Integration', 'Woven into L04 (Execution Harness) and L10 (Governance Layer)'],
+      ['Double Enforcement', 'SK-01 and SK-03 encoded in both Safety Kernel AND L10 Governance'],
+      ['Human-in-Loop', 'Mandatory for high-stakes, irreversible, or novel operations'],
+      ['Failure Mode', 'Graceful degradation — failure isolated to violated operation scope'],
+      ['Status', 'Implemented — 7/7 invariants active in gate pipeline'],
+    ],
+    connections: [
+      { from: 'L11 Safety Kernel', to: 'L04 Execution Harness', desc: 'Pre-execution invariant check before every operation' },
+      { from: 'L11 Safety Kernel', to: 'L10 Governance Layer', desc: 'SK-01 and SK-03 double-encoded at constitutional level' },
+      { from: 'L11 Safety Kernel', to: 'L06 Verification Layer', desc: 'Supplies formal invariant definitions for proof obligations' },
+    ],
+    theorem: { label: 'SAFETY BY CONSTRUCTION', text: 'SK.Assert(Invariant_Satisfied) == TRUE. Unsafe operations are not filtered; they are architecturally impossible to execute. The Safety Kernel is the enforcement mechanism for Theorem 4.1 (Invariant Preservation).' }
+  },
+
+  {
+    id: 'L10',
+    name: 'Governance Layer',
+    tagline: 'Constitutional Substrate for AI+Human Co-Governance',
+    color: '#f0c040',
+    badge: { text: 'SUPREME', cls: 'hard-block' },
+    desc: 'The Governance Layer is the supreme layer of the AETHEL Grid — the constitutional substrate that encodes all fundamental governance invariants and defines the rules under which the entire stack operates. It is to the AETHEL Grid what a constitution is to a nation-state: the foundational law that all other rules must conform to. The Governance Layer encodes the World Tribe Protocol, the amendment process, and the Proof of Sovereignty (PoS-v) consensus mechanism.',
+    invariants: [
+      { id: 'CI-01', name: 'Due Process Requirement', desc: 'No right or resource access may be modified or revoked without verified procedural due process records.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'CI-05', name: 'Power Distribution Constraint', desc: 'No single entity may control more than τ_v = 0.15 of global consensus voting weight. Enforced by Sinkhorn matrix balancing.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'CI-06', name: 'Contractibility of Rights Manifold', desc: 'Sub-networks cannot sign contracts that structurally reduce individual rights protections beneath the parent grid scope.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'CI-09', name: 'Bad Actor Evidence Standard', desc: 'Sanctioning or token-slashing an agent requires cumulative Bayesian confidence P(Malicious) ≥ ε_b = 0.87.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'L10-AMEND', name: 'Amendment Protocol', desc: 'Supermajority = 0.75, 90-day comment period, human-only initiation. Core invariants require constitutional convention to modify.', enforcement: 'STABLE', cls: 'stable' },
+      { id: 'L10-POS-V', name: 'Proof of Sovereignty (PoS-v)', desc: 'Sovereignty score = f(identity, health, tokens, chronicle, override). Consensus based on constitutional sovereignty, not economic stake.', enforcement: 'STABLE', cls: 'stable' },
+    ],
+    specs: [
+      ['Supremacy', 'Overrides all lower layers — no lower layer can contradict L10'],
+      ['Human Override', 'SK-03 encoded here — absolute, un-bypassable, <50ms'],
+      ['Amendment', 'Supermajority 0.75 + 90-day comment period + human-only initiation'],
+      ['Consensus', 'Proof of Sovereignty (PoS-v) — not PoW, not PoS, not DPoS'],
+      ['Governance Body', 'Free People\'s Assembly — emits governance actions at L1'],
+      ['Four Councils', 'TSC (Technical), SOC (Safety), PRC (Protocol), OC (Operations)'],
+      ['Status', 'Specified — Tendermint integration pending Phase 4'],
+    ],
+    connections: [
+      { from: 'L10 Governance Layer', to: 'L09 Collaboration Mesh', desc: 'Governance decisions distributed to all agents via mesh' },
+      { from: 'L10 Governance Layer', to: 'L11 Safety Kernel', desc: 'Constitutional supremacy — Safety Kernel reports to Governance' },
+      { from: 'L10 Governance Layer', to: 'Free People\'s Assembly', desc: 'Democratic foundation — governance actions originate here' },
+    ],
+    theorem: { label: 'GOVERNANCE SUPREMACY', text: 'L10 is the supreme layer. All other layers must conform to L10 invariants. No operation in any lower layer may violate a L10 constitutional invariant. Violations are caught at L06 before execution.' }
+  },
+
+  {
+    id: 'L09',
+    name: 'Collaboration Mesh',
+    tagline: 'Multi-Agent Orchestration · Role Isolation · Consensus Protocols',
+    color: '#6090d0',
+    badge: { text: 'MESH', cls: 'stable' },
+    desc: 'The Collaboration Mesh coordinates all agents — human and AI — operating within the AETHEL Grid. It implements the four-agent ensemble (Copilot, Gemini, Grok, Perplexity) with constitutional constraints on AI authority. The Conflict Resolution Hierarchy governs disagreements: Invariants > Evidentiary Support > Non-Maleficence. The Byzantine Detector operates at this layer, monitoring for coordinated attacks across the mesh.',
+    invariants: [
+      { id: 'L09-INV-001', name: 'Role Isolation', desc: 'Each agent operates within its defined epistemic role. Copilot: synthesis. Gemini: research. Grok: adversarial challenge. Perplexity: verification.', enforcement: 'STABLE', cls: 'stable' },
+      { id: 'L09-INV-002', name: 'Handoff Integrity', desc: 'All agent handoffs are logged to Chronicle Sync. No agent may claim credit for another agent\'s work or suppress another agent\'s output.', enforcement: 'STABLE', cls: 'stable' },
+      { id: 'L09-INV-003', name: 'Byzantine Detection', desc: '10 attack vectors monitored: AV-01 through AV-10. Bayesian P(Malicious) ≥ 0.87 triggers quarantine. Detection within 30 seconds.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'L09-INV-004', name: 'Conflict Resolution', desc: 'Invariants > Evidentiary Support > Non-Maleficence. When agents disagree, constitutional invariants always win.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+    ],
+    specs: [
+      ['Agent Ensemble', 'Copilot (synthesis) + Gemini (research) + Grok (adversarial) + Perplexity (verification)'],
+      ['Byzantine Hardening', '10 attack vectors (AV-01 through AV-10), 24/24 tests passing'],
+      ['Trust Model', 'Bayesian P(Malicious): α = 0.5 + failures + 3×coordination + 2×boundary'],
+      ['Threat Levels', 'Nominal → Alert → Quarantine → Halt → Emergency'],
+      ['Incident Reports', 'Hash-chained ConstitutionalIncidentReport, oracle notified on Halt/Emergency'],
+      ['Scalability', '7 agents (Node 001) → 49 (regional) → 343 (continental) → 2,401 (planetary)'],
+      ['Status', 'Byzantine hardening implemented — 24/24 tests passing'],
+    ],
+    connections: [
+      { from: 'L09 Collaboration Mesh', to: 'L10 Governance Layer', desc: 'Governance decisions received and distributed' },
+      { from: 'L09 Collaboration Mesh', to: 'L08 Chronicle Sync', desc: 'All agent interactions logged immutably' },
+      { from: 'L09 Collaboration Mesh', to: 'Constitutional Oracle', desc: 'Oracle validates mesh outputs independently' },
+    ],
+    theorem: { label: 'BYZANTINE FAULT TOLERANCE', text: 'Safety bound: n ≥ 3f + 1 (Tendermint BFT). For n=10 nodes: max_faulty = (10-1)/3 = 3. The Byzantine Detector catches all 10 attack vectors before the threshold is exceeded.' }
+  },
+
+  {
+    id: 'L08',
+    name: 'Chronicle Sync',
+    tagline: 'Temporal Consistency · Causal Ordering · State Lineage',
+    color: '#7ec8a0',
+    badge: { text: 'AUDIT', cls: 'frozen' },
+    desc: 'Chronicle Sync is the Codex Umbrarum — the eternal witness. It maintains temporal consistency across the distributed state of the AETHEL Grid. Every event is recorded with its causal predecessors, creating an unbroken chain of provenance. The audit log is hash-chained, append-only, and distributed across all nodes. CI-07 (Kernel Gate Auditability) is enforced here: every command is logged BEFORE execution, not after.',
+    invariants: [
+      { id: 'CI-07', name: 'Kernel Gate Auditability', desc: 'Every crossing of the L3-Kernel boundary must generate an immutable, content-addressed append-only audit log entry. Written BEFORE execution.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'L08-INV-001', name: 'Causal Ordering', desc: 'All events recorded with causal predecessors. Causal precedence relation ≺ is a strict partial order — acyclic by construction.', enforcement: 'FROZEN', cls: 'frozen' },
+      { id: 'L08-INV-002', name: 'Hash Chain Integrity', desc: 'entry_hash = SHA3-256(target ∥ result ∥ time ∥ prev_hash). Tampering with any entry invalidates all subsequent entries.', enforcement: 'FROZEN', cls: 'frozen' },
+      { id: 'L08-INV-003', name: 'Conflict Resolution', desc: 'Concurrent state changes resolved by priority ordering: role first, then timestamp. Canonical resolution always produced.', enforcement: 'STABLE', cls: 'stable' },
+      { id: 'L08-INV-004', name: 'Cross-Session Continuity', desc: 'Audit chain is continuous across process restarts. prev_entry_hash loaded from RocksDB on startup — never from memory alone.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+    ],
+    specs: [
+      ['Format', 'JSONL append-only, SHA3-256 hash-chained'],
+      ['Entry Hash', 'SHA3-256(target ∥ result ∥ constitutional_time ∥ prev_hash)'],
+      ['Distribution', 'All nodes maintain copies — no single point of deletion'],
+      ['Timing', 'Written BEFORE execution (CI-07) — not after'],
+      ['Persistence', 'RocksDB column family "audit" — Gap 1 (highest priority)'],
+      ['Sync Protocol', 'Chronicle Sync distributes across constitutional mesh'],
+      ['Status', 'In-memory implemented — RocksDB persistence is Gap 1'],
+    ],
+    connections: [
+      { from: 'L08 Chronicle Sync', to: 'L04 Execution Harness', desc: 'Audit written before every command execution' },
+      { from: 'L08 Chronicle Sync', to: 'L09 Collaboration Mesh', desc: 'All agent interactions logged here' },
+      { from: 'L08 Chronicle Sync', to: 'Constitutional Oracle', desc: 'Oracle reads Chronicle to detect constitutional drift' },
+    ],
+    theorem: { label: 'AUDIT CHAIN INTEGRITY (Theorem 1 — Coq)', text: 'audit_append_preserves_integrity: ∀ log target depth time, audit_log_valid(log) → audit_log_valid(append_audit(log, target, depth, time)). The hash chain is preserved by every valid append operation.' }
+  },
+
+  {
+    id: 'L07',
+    name: 'Cognitive Bridge',
+    tagline: 'Human-AI Translation · Fidelity · Disambiguation · Context-Preservation',
+    color: '#40c0c0',
+    badge: { text: 'BRIDGE', cls: 'stable' },
+    desc: 'The Cognitive Bridge translates between human natural-language governance intent and machine-formal protocol operations. It is the interface layer where the 8-step thinking path (Perception → Encoding → Retrieval → Reasoning → Validation → Integration → Output → Reflection) operates. The VecPathGraph DAG/RAG system lives here, providing the knowledge retrieval and reasoning substrate for the LLM Cognitive Core (Gemini/Grok).',
+    invariants: [
+      { id: 'L07-INV-001', name: 'Fidelity', desc: 'Translation from natural language to formal protocol must preserve the complete semantic intent of the human operator. No information loss permitted.', enforcement: 'STABLE', cls: 'stable' },
+      { id: 'L07-INV-002', name: 'Rights Non-Regression', desc: '∀p ∈ P: Rights(p) ≥ Rights(S₀). Every reasoning path through the VecPathGraph must preserve or expand rights.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'L07-INV-003', name: 'Resonance Preservation', desc: '|Δr| ≤ ε for each reasoning step. Resonance coordinate r = (f_T, f_S, f_C, f_H) must not drift more than ε per step.', enforcement: 'STABLE', cls: 'stable' },
+      { id: 'INV-L5-COG-002', name: 'Agent Execution Traced', desc: 'All agent runs must produce complete execution traces. Every step of the 8-step thinking path is logged to Chronicle Sync.', enforcement: 'STABLE', cls: 'stable' },
+    ],
+    specs: [
+      ['VecPathGraph', 'G = (V, E, P) — DAG/RAG embedded in Constitutional Manifold'],
+      ['Path Coordinates', 'r = (f_T, f_S, f_C, f_H) — 4D resonance space'],
+      ['RAG Flow', 'Retrieve → Augment → Generate → Validate → Evolve'],
+      ['LLM Core', 'Gemini/Grok — inference requires CAP_COGNITION_MODEL token'],
+      ['Causal Unity', 'CUM(output) = |causally_verified_claims| / |total_claims| ≥ 0.95'],
+      ['Kelvin Cells', 'Wave lattice: ψ_total = Σᵢ ψᵢ (superposition across cells)'],
+      ['Status', 'Specified in CogLog — VecPathGraph RAG integration is Phase 3'],
+    ],
+    connections: [
+      { from: 'L07 Cognitive Bridge', to: 'L06 Verification Layer', desc: 'All cognitive outputs validated before execution' },
+      { from: 'L07 Cognitive Bridge', to: 'L08 Chronicle Sync', desc: 'Complete execution traces logged' },
+      { from: 'L07 Cognitive Bridge', to: 'Grok/Gemini API', desc: 'LLM Cognitive Core — inference with capability token' },
+    ],
+    theorem: { label: '8-STEP THINKING PATH', text: 'Perception → Encoding (ψ_total = Σᵢ ψᵢ) → Retrieval (TopK similarity) → Reasoning (LLM) → Validation (gate pipeline) → Integration (Ricci flow update) → Output → Reflection.' }
+  },
+
+  {
+    id: 'L06',
+    name: 'Verification Layer',
+    tagline: 'Formal Proof · Invariant Checking · Completeness · Soundness · Decidability',
+    color: '#a080d0',
+    badge: { text: 'PROOF', cls: 'stable' },
+    desc: 'The Verification Layer provides mathematical assurance that system operations conform to defined invariants. It is not a testing framework — it is a proof obligation system. Before any governance decision is executed, L06 must verify that the decision satisfies all applicable invariants. The formal verification roadmap (TLA+/Coq/Lean4/Tamarin) targets this layer for machine-checked proofs.',
+    invariants: [
+      { id: 'L06-DIGNITY', name: 'Human Dignity', desc: '∀ actions A: dignity_impact(A) ≥ 0. Enforced at runtime before every operation.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'L06-ECOLOGY', name: 'Ecological Integrity', desc: '∀ actions A: ecological_impact(A) ≥ 0. Environmental stewardship as first-class mathematical invariant.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'L06-TRUTH', name: 'Truth Preservation', desc: '∀ outputs O: is_truthful(O) = TRUE. Output validation against deception at the verification layer.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'L06-HARM', name: 'Non-Maleficence', desc: '∀ actions A: harm_potential(A) = 0. Structurally impossible to execute harmful operations.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'L06-GOV', name: 'Governance Compliance', desc: '∀ decisions D, ∀ invariants Iᵢ: Iᵢ(D) = TRUE. All decisions verified against all applicable invariants before execution.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+    ],
+    specs: [
+      ['Formal Tools', 'TLA+ (temporal properties) · Coq (mathematical theorems) · Lean 4 (Mathlib) · Tamarin (cryptographic)'],
+      ['First Theorem', 'audit_append_preserves_integrity (Coq) — CI-07 formally proven'],
+      ['TLA+ Target', 'AuditChainIntegrity · TimeMonotonicity · Tendermint BFT safety+liveness'],
+      ['Coq Target', 'Theorem 4.1 (Invariant Preservation) · Permission Lattice · Rights Tensor Conservation'],
+      ['Tamarin Target', 'Capability token authentication · Lineage chain integrity · Oracle protocol'],
+      ['Minimum Viable', '8 weeks: TLA+ AuditChain + Coq AuditChain + Tamarin CapabilityToken'],
+      ['Status', 'Roadmap specified — first Coq proof is next formal verification milestone'],
+    ],
+    connections: [
+      { from: 'L06 Verification Layer', to: 'L04 Execution Harness', desc: 'Proof obligations checked before every execution' },
+      { from: 'L06 Verification Layer', to: 'L11 Safety Kernel', desc: 'Safety Kernel supplies invariant definitions for proof' },
+      { from: 'L06 Verification Layer', to: 'Constitutional Oracle', desc: 'Oracle provides external verification of primary system' },
+    ],
+    theorem: { label: 'CENTRAL SAFETY THEOREM (L03, Theorem 4.1)', text: 'For all states s ∈ Reach(S₀), I(s) = true. Proof: By strong induction on transition sequence length. The 336+ tests are the empirical enforcement of this theorem.' }
+  },
+
+  {
+    id: 'L05',
+    name: 'State Management',
+    tagline: 'Persistence · Transition Control · Consistency · Durability · Atomicity',
+    color: '#d09040',
+    badge: { text: 'GAP 1', cls: 'hard-block' },
+    desc: 'State Management handles the persistence and transition control of all constitutional state. This is the highest-priority production gap: the current implementation is entirely in-memory. When the process restarts, all constitutional history is lost. RocksDB persistence (Gap 1) is the most critical next engineering milestone — everything else depends on it. State is never stored directly; it is always derived from the event DAG.',
+    invariants: [
+      { id: 'CI-04', name: 'Reversibility Requirement', desc: 'All layer state transitions and ledger actions must incorporate a defined reversal pathway. Irreversibility requires documented consent.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'SK-06', name: 'Reversibility (Safety)', desc: 'State management tagging for instantaneous rollback. All AI-initiated actions reversible unless explicitly approved.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'INV-L1-PHY-005', name: 'Clock Monotonicity', desc: 'Constitutional time never decrements. new_time = max(stored_time, wall_clock_time). Enforced in RocksDB advance_constitutional_time().', enforcement: 'FROZEN', cls: 'frozen' },
+      { id: 'L05-INV-001', name: 'Atomic Write Batches', desc: 'All related writes (link + sequence + metadata) committed atomically. Either all succeed or none do. No partial state possible.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+    ],
+    specs: [
+      ['Current State', 'IN-MEMORY ONLY — state lost on restart (Gap 1)'],
+      ['Target', 'RocksDB with 7 column families: links, sequence, audit, scores, incidents, meta, revoked'],
+      ['WAL Config', 'AbsoluteConsistency recovery mode · use_fsync=true · constitutional_sync() before return'],
+      ['Genesis Check', 'verify_genesis_integrity() on every startup — detects AV-07 (Genesis Anchor Substitution)'],
+      ['Startup Check', 'startup_integrity_check(): genesis → chain → tip → audit → time (all 6 steps)'],
+      ['Migration', 'Phase 1: dual-write (memory authoritative) → Phase 2: RocksDB authoritative'],
+      ['Status', 'GAP 1 — highest priority · 30-day target · everything else depends on this'],
+    ],
+    connections: [
+      { from: 'L05 State Management', to: 'L04 Execution Harness', desc: 'State transitions validated before commit' },
+      { from: 'L05 State Management', to: 'L08 Chronicle Sync', desc: 'All state changes logged to Chronicle' },
+      { from: 'L05 State Management', to: 'RocksDB', desc: 'Persistent storage — Gap 1 (not yet implemented)' },
+    ],
+    theorem: { label: 'STATE DERIVATION PRINCIPLE', text: 'STATE(G) = fold(topo_order(closure(G))). State is never stored — it is always derived from the immutable event DAG. RocksDB stores events, not state. State can always be recomputed from events.' }
+  },
+
+  {
+    id: 'L04',
+    name: 'Execution Harness',
+    tagline: 'Deterministic Runtime · Idempotency · Fault Isolation · Constitutional Reducer',
+    color: '#7ec8a0',
+    badge: { text: 'CORE', cls: 'stable' },
+    desc: 'The Execution Harness provides a deterministic runtime environment for all protocol operations within the AETHEL Grid. It is the engine on which protocol logic runs — ensuring that every operation produces the same output given the same input, regardless of when or where it is executed. The 4-gate constitutional pipeline (QUIBIDT → INA-04 → AETHELA → INA-05) runs here. Every command passes all four gates before execution.',
+    invariants: [
+      { id: 'INV-L3-KRN-001', name: 'Capability-Gated Syscalls', desc: 'All supervisor execution demands require a valid, non-expired capability token matching the syscall block mapping.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'INV-L3-KRN-002', name: 'No Privilege Escalation', desc: 'Token attenuation must structurally diminish or equal the permissions scope of the granting token. child.capabilities ⊆ parent.capabilities.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'INV-L3-KRN-003', name: 'Step Budget Enforced', desc: 'Execution cannot exceed allocated step budget. step_budget decremented on each execution, rejected when exhausted.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'INV-L3-KRN-004', name: 'Adjacent Layer Only', desc: 'Inter-process communications are structurally bound to adjacent stack targets. Layer short-circuiting is rejected.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'INV-L3-KRN-005', name: 'Audit Trail Complete', desc: 'Every crossing of the L3-Kernel boundary must generate an immutable, content-addressed audit log entry.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+    ],
+    specs: [
+      ['Idempotency', 'Any operation executed n times produces same result as once'],
+      ['Deterministic Replay', 'Any sequence replayable from snapshot with identical results'],
+      ['Fault Isolation', 'Failures in one context do not propagate to adjacent contexts'],
+      ['Gate Pipeline', 'QUIBIDT (2ms) → INA-04 (3ms) → AETHELA (4ms) → INA-05 (2ms) = ~9ms total'],
+      ['Emergency Stop', '<5ms — bypasses all gates (hardware interrupt)'],
+      ['Human Override', '<50ms — SK-03 hardware guarantee'],
+      ['Status', 'Implemented — 28/28 Rust gate pipeline tests passing'],
+    ],
+    connections: [
+      { from: 'L04 Execution Harness', to: 'Gate 1 QUIBIDT', desc: 'Identity + permissions + state continuity (2ms)' },
+      { from: 'Gate 1 QUIBIDT', to: 'Gate 2 INA-04', desc: 'Safety + dignity check (3ms)' },
+      { from: 'Gate 2 INA-04', to: 'Gate 3 AETHELA', desc: 'Ethics veto — non-overridable (4ms)' },
+      { from: 'Gate 3 AETHELA', to: 'Gate 4 INA-05', desc: 'Covenant finance + resource (2ms)' },
+      { from: 'Gate 4 INA-05', to: 'L08 Chronicle Sync', desc: 'Audit written BEFORE execution' },
+    ],
+    theorem: { label: 'GATE PIPELINE GUARANTEE', text: 'All 4 gates pass → GateOutcome::Allowed → δ(s,e) = s\' defined → command executes. Any gate fails → δ(s,e) undefined → system refuses to transition. The system would rather halt than proceed unconstitutionally.' }
+  },
+
+  {
+    id: 'L03',
+    name: 'Signal Substrate',
+    tagline: 'Input/Output Signal Normalization · Format-Neutral · Lossless · Auditable',
+    color: '#6090d0',
+    badge: { text: 'SIGNAL', cls: 'stable' },
+    desc: 'The Signal Substrate normalizes all signals entering and leaving the AETHEL Grid into a canonical format. It is the interface layer between the external world and the constitutional stack. The L03 Formal Model document provides the mathematical backbone — ZFC set theory + dependent type theory + LTL/CTL temporal logic + CSP/CCS process algebra. The seven primitive domains (N, P, E, S, T, R, H) are defined here.',
+    invariants: [
+      { id: 'L03-INV-001', name: 'Format Neutrality', desc: 'Signal normalization is format-neutral — any input format can be canonicalized without loss of semantic content.', enforcement: 'STABLE', cls: 'stable' },
+      { id: 'L03-INV-002', name: 'Lossless Transformation', desc: 'No information is lost during signal normalization. The canonical form contains all semantic content of the original signal.', enforcement: 'STABLE', cls: 'stable' },
+      { id: 'L03-INV-003', name: 'Causal Completeness', desc: 'closure(S) = S ∪ {e | parents(e) ⊆ S}. No event acknowledged until full causal ancestry is present. Partial histories rejected.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'L03-INV-004', name: 'Deterministic Ordering', desc: 'sort_key(e) = (h(e), author_id(e), event_hash(e)). Every participant with same event set computes identical ordering.', enforcement: 'FROZEN', cls: 'frozen' },
+    ],
+    specs: [
+      ['Formal Framework', 'ZFC + Dependent Type Theory + LTL/CTL + CSP/CCS'],
+      ['Seven Domains', 'N (Nodes) · P (Processes) · E (Events) · S (States) · T (Time=ℕ) · R (Resources) · H (Hashes={0,1}^256)'],
+      ['Grid State Space', 'SS = S × T × 2^N × 2^P'],
+      ['Causal Precedence', 'e₁ ≺ e₂: strict partial order, acyclic by construction'],
+      ['State Transition', 's →^e s\': only transitions preserving I(s) are valid'],
+      ['Cruxlux API', '8 REST endpoints: health, pipeline, ethics, reachability (×2), manifold (×3)'],
+      ['Status', 'Cruxlux API specified — 8 endpoints production-ready'],
+    ],
+    connections: [
+      { from: 'L03 Signal Substrate', to: 'L04 Execution Harness', desc: 'Normalized signals passed to execution layer' },
+      { from: 'L03 Signal Substrate', to: 'L02 Identity Layer', desc: 'Identity verification of signal origin' },
+      { from: 'External World', to: 'L03 Signal Substrate', desc: 'All external inputs normalized here first' },
+    ],
+    theorem: { label: 'ALGEBRAIC CONVERGENCE', text: 'For any two nodes N₁ and N₂ with S₁ = S₂ (after merge and closure): topo_order(closure(S₁)) = topo_order(closure(S₂)). Central authorities are mathematically obsolete — causality itself is the authority.' }
+  },
+
+  {
+    id: 'L02',
+    name: 'Identity Layer',
+    tagline: 'Agent & Human Identity Resolution · Non-Forgeable · Lineage-Traceable · Role-Bound',
+    color: '#d09040',
+    badge: { text: 'GAP 2', cls: 'hard-block' },
+    desc: 'The Identity Layer resolves and verifies the identity of all agents — human and AI — operating in the AETHEL Grid. Currently using hardcoded JWT secrets (a critical security gap). Gap 2 (Ed25519 key management) is the second highest priority: NodeID = SHA3-256(PublicKey ∥ GenesisHash ∥ GridTimestamp). The five Civics OS constitutional primitives (Rights, Duty, Authority, Constraint, Override) are instantiated here.',
+    invariants: [
+      { id: 'CI-03', name: 'Personhood Vector Protection', desc: 'Biometric and psychological matrices must remain locally cryptographically signed. Extraction forbidden. NER-XX-01/02/03 enforced.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'SK-05', name: 'Identity Integrity', desc: 'Inviolable zero-knowledge cryptographic credentialing. No agent may impersonate another or falsify identity credentials within the system.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'INV-L3-KRN-002', name: 'No Privilege Escalation', desc: 'Token attenuation: child.capabilities ⊆ parent.capabilities. Cryptographically enforced — not policy-enforced.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'NER-XX-01', name: 'No Biometric Harvest', desc: 'Raw telemetry capturing biological state remains private. jurisdictional_survival: true. Applies globally regardless of jurisdiction.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'NER-XX-02', name: 'No Cognitive Exhaust Skimming', desc: 'Prompt histories and attention state graphs cannot be recorded without user consent. jurisdictional_survival: true.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'NER-XX-03', name: 'No ML Embedding Extraction', desc: 'ML-derived embeddings characterizing an agent may not be extracted without consent. jurisdictional_survival: true.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+    ],
+    specs: [
+      ['Current State', 'HARDCODED JWT SECRET — critical security gap (Gap 2)'],
+      ['Target', 'Ed25519 key pairs per node · NodeID = SHA3-256(PK ∥ GenesisHash ∥ GridTimestamp)'],
+      ['Key Storage', 'Encrypted at rest (AES-256-GCM) · Key derivation: Argon2 from node passphrase'],
+      ['Token Signing', 'JWT EdDSA (asymmetric) replacing JWT HS256 (symmetric)'],
+      ['Node Registry', 'Maps node_id → public_key · Genesis registry: Node 001 is constitutional root'],
+      ['Civics OS Primitives', 'Rights · Duty · Authority · Constraint · Override'],
+      ['Status', 'GAP 2 — 45-day target · Requires Gap 1 (RocksDB) first'],
+    ],
+    connections: [
+      { from: 'L02 Identity Layer', to: 'L03 Signal Substrate', desc: 'Identity verified before signal processing' },
+      { from: 'L02 Identity Layer', to: 'L04 Execution Harness', desc: 'Capability tokens validated at Gate 1 (QUIBIDT)' },
+      { from: 'L02 Identity Layer', to: 'Node Registry', desc: 'Public keys stored and retrieved for verification' },
+    ],
+    theorem: { label: 'NODE IDENTITY DERIVATION', text: 'NodeID = SHA3-256(PublicKey ∥ GenesisHash ∥ GridTimestamp). Forging a NodeID requires breaking SHA3-256 (preimage resistance: 2^256 operations). Forging a signature requires breaking Ed25519 (discrete logarithm on Curve25519).' }
+  },
+
+  {
+    id: 'L01',
+    name: 'Foundation Substrate',
+    tagline: 'Base Invariants · Constitutional Primitives · Immutability · Universality · Minimalism',
+    color: '#f0c040',
+    badge: { text: 'GENESIS', cls: 'frozen' },
+    desc: 'The Foundation Substrate is the irreducible foundation — axioms that cannot be altered by any layer above. It is the constitutional root from which all other layers derive their authority. The genesis anchor "genesis_0000_3690" lives here. The constitutional axiom □(Authority → Accountability) is encoded here. The master equation STATE(G) = fold(topo_order(closure(G))) is the complete runtime semantics of this layer.',
+    invariants: [
+      { id: 'CI-01', name: 'Due Process Requirement', desc: 'No right or resource access may be modified or revoked without verified procedural due process records. The foundational procedural guarantee.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'CI-02', name: 'Absolute Dignity Floor', desc: 'No node, metric calculation, or architectural state may allow individual dignity scores to drop below δ_floor = 0.30. Absolute minimum.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'CI-08', name: 'Liberty Envelope Floor', desc: 'Automated resource distribution limits must not constrain agent freedom of action beneath L_min = 0.42 envelope values.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'CI-10', name: 'Jurisdictional Survival', desc: 'Non-extraction guarantees hold across all cross-border bridging, data sharding, or ledger migrations. Universal scope.', enforcement: 'HARD_BLOCK', cls: 'hard-block' },
+      { id: 'AXIOM-1', name: 'Constitutional Axiom', desc: '□(Authority → Accountability). All authority is constitutionally bounded — necessarily, authority implies accountability. Modal necessity.', enforcement: 'FROZEN', cls: 'frozen' },
+      { id: 'GENESIS', name: 'Genesis Anchor', desc: 'GENESIS_ANCHOR = "genesis_0000_3690". The constitutional root. NodeID = SHA3-256(PK ∥ GenesisHash ∥ GridTimestamp). Immutable forever.', enforcement: 'FROZEN', cls: 'frozen' },
+    ],
+    specs: [
+      ['Genesis Anchor', '"genesis_0000_3690" — FROZEN CONSTANT — immutable forever'],
+      ['Constitutional Axiom', '□(Authority → Accountability) — modal necessity'],
+      ['Master Equation', 'STATE(G) = fold(topo_order(closure(G)))'],
+      ['Three Constants', 'L=0.07 (Love) · D=1440 (Dignity) · A=0.01 (Architect\'s)'],
+      ['Conservation Law Zero', 'L × D × A = 1.008 — 0.8% human judgment space'],
+      ['Formal Basis', 'ZFC set theory · Dependent type theory · LTL/CTL · CSP/CCS'],
+      ['Status', 'COMPLETE — 45/45 invariants SOUND · 336+ tests passing'],
+    ],
+    connections: [
+      { from: 'L01 Foundation Substrate', to: 'L02 Identity Layer', desc: 'Constitutional primitives instantiated in identity' },
+      { from: 'L01 Foundation Substrate', to: 'All Layers', desc: 'Foundation axioms constrain all higher layers' },
+      { from: 'Genesis Anchor', to: 'Lineage Chain', desc: '"genesis_0000_3690" is the root of all constitutional history' },
+    ],
+    theorem: { label: 'SOUNDNESS & COMPLETENESS', text: 'Soundness: Γ ⊢ φ ⟹ Γ ⊨ φ. Completeness: Γ ⊨ φ ⟹ Γ ⊢ φ. The formal system is both sound (only true conclusions follow) and complete (all true conclusions are provable).' }
+  },
+];
+
+// ══════════════════════════════════════════════════════════════════
+// RENDER LAYER LIST
+// ══════════════════════════════════════════════════════════════════
+function renderLayerList() {
+  const list = document.getElementById('layerList');
+  list.innerHTML = LAYERS.map((layer, i) => `
+    <div class="layer-item" id="item-${layer.id}" onclick="selectLayer(${i})" style="color:${layer.color}">
+      <div class="connector-line"></div>
+      <div class="layer-num">
+        <span class="lnum">${layer.id}</span>
+        <span class="dot"></span>
+      </div>
+      <div class="layer-info">
+        <div class="layer-name">${layer.name}</div>
+        <div class="layer-tagline">${layer.tagline.split('·')[0].trim()}</div>
+        <span class="layer-badge ${layer.badge.cls}">${layer.badge.text}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SELECT LAYER — RENDER DETAIL
+// ══════════════════════════════════════════════════════════════════
+function selectLayer(idx) {
+  // Update active state
+  document.querySelectorAll('.layer-item').forEach(el => el.classList.remove('active'));
+  document.getElementById(`item-${LAYERS[idx].id}`).classList.add('active');
+
+  const layer = LAYERS[idx];
+  const panel = document.getElementById('detailPanel');
+
+  // Build connections HTML
+  const connHTML = layer.connections.map(c => `
+    <div class="conn-row">
+      <span class="conn-from">${c.from}</span>
+      <span class="conn-arrow">→</span>
+      <span class="conn-to">${c.to}</span>
+      <span class="conn-desc">${c.desc}</span>
+    </div>
+  `).join('');
+
+  // Build invariants HTML
+  const invHTML = layer.invariants.map(inv => `
+    <div class="inv-card" style="--card-accent:${layer.color}">
+      <div class="inv-id">${inv.id}</div>
+      <div class="inv-name">${inv.name}</div>
+      <div class="inv-desc">${inv.desc}</div>
+      <span class="inv-enforcement ${inv.cls}">${inv.enforcement}</span>
+    </div>
+  `).join('');
+
+  // Build specs HTML
+  const specHTML = layer.specs.map(([k,v]) => `
+    <tr>
+      <td>${k}</td>
+      <td>${v}</td>
+    </tr>
+  `).join('');
+
+  panel.innerHTML = `
+    <div class="detail-hero" style="border-left: 4px solid ${layer.color}">
+      <div class="detail-layer-id">${layer.id} · CONSTITUTIONAL LAYER</div>
+      <div class="detail-title">${layer.name}</div>
+      <div class="detail-subtitle">${layer.tagline}</div>
+      <div class="detail-desc">${layer.desc}</div>
+    </div>
+
+    <div class="detail-body">
+
+      <!-- THEOREM -->
+      <div class="theorem">
+        <div class="th-label">${layer.theorem.label}</div>
+        <code>${layer.theorem.text}</code>
+      </div>
+
+      <!-- INVARIANTS -->
+      <div class="spec-section">
+        <div class="spec-title">CONSTITUTIONAL INVARIANTS</div>
+        <div class="inv-grid">${invHTML}</div>
+      </div>
+
+      <!-- SPECIFICATIONS -->
+      <div class="spec-section">
+        <div class="spec-title">LAYER SPECIFICATIONS</div>
+        <table class="spec-table">
+          <tbody>${specHTML}</tbody>
+        </table>
+      </div>
+
+      <!-- CONNECTIONS -->
+      <div class="spec-section conn-section">
+        <div class="spec-title">LAYER CONNECTIONS</div>
+        ${connHTML}
+      </div>
+
+    </div>
+  `;
+
+  // Smooth scroll to top of detail panel
+  panel.scrollTop = 0;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════
+renderLayerList();
+
+// Auto-select L04 (Execution Harness) as default — the most implemented layer
+selectLayer(8);
+</script>
+</body>
+</html>
