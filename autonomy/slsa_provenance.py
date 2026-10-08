@@ -105,8 +105,9 @@ def build_provenance(
     }
 
     return {
-        "_type": PREDICATE_TYPE,
+        "_type": "https://in-toto.io/Statement/v1",
         "subject": subject_rows,
+        "predicateType": PREDICATE_TYPE,
         "predicate": predicate,
     }
 
