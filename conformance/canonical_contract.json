@@ -1,0 +1,26 @@
+{
+  "schema": "caios-conformance/v1",
+  "spec_id": "SPEC-004",
+  "authority": "repository-owned-authoritative-source-required",
+  "canonical_encoding": null,
+  "audit_preimage_semantics": null,
+  "canonical_validator": {
+    "path": null,
+    "command": [],
+    "sha256": null
+  },
+  "required_vectors": [
+    {"id": "TV-001", "path": null, "sha256": null},
+    {"id": "TV-002", "path": null, "sha256": null},
+    {"id": "TV-003", "path": null, "sha256": null},
+    {"id": "TV-004", "path": null, "sha256": null},
+    {"id": "TV-005", "path": null, "sha256": null},
+    {"id": "TV-006", "path": null, "sha256": null},
+    {"id": "TV-007", "path": null, "sha256": null}
+  ],
+  "promotion_policy": {
+    "all_required_vectors_must_be_present": true,
+    "validator_must_be_hash_anchored": true,
+    "bootstrap_must_never_promote_to_canonical": true
+  }
+}
