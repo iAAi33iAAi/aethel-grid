@@ -25,6 +25,7 @@ class EndpointSpec:
     source_ref: str
     api_key: str | None = None
     max_proposals: int = 8
+    send_source_context: bool = False
 
 
 class MultiAgentProposalProvider:
@@ -43,11 +44,19 @@ class MultiAgentProposalProvider:
         if factory is None:
             from autonomy.caios_runtime import OpenAICompatibleProposalProvider
             factory = OpenAICompatibleProposalProvider
-        provider = factory(
-            endpoint=spec.endpoint,
-            model=spec.model,
-            api_key=spec.api_key,
-        )
+        try:
+            provider = factory(
+                endpoint=spec.endpoint,
+                model=spec.model,
+                api_key=spec.api_key,
+                send_source_context=spec.send_source_context,
+            )
+        except TypeError:
+            provider = factory(
+                endpoint=spec.endpoint,
+                model=spec.model,
+                api_key=spec.api_key,
+            )
         rows = provider.propose(snapshot)
         normalized = []
         for row in rows[: spec.max_proposals]:
