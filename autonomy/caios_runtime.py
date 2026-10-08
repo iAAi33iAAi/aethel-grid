@@ -44,6 +44,7 @@ from telemetry.caios_events import new_event
 from telemetry.event_log import TelemetryLog
 from autonomy.context_window import ContextWindow
 from autonomy.agent_reputation import AgentReputationStore
+from autonomy.circuit_breaker import CircuitBreaker
 from autonomy.evidence_ledger import EvidenceLedger
 from autonomy.sandbox_simulator import DisposableWorktree
 from autonomy.proof_work_contract import ProofCarryingWorkContract
@@ -727,6 +728,9 @@ class AutonomousRuntime:
         )
         self.evidence_ledger = EvidenceLedger(
             self.repo_root / "ops" / "caios" / "evidence-ledger.jsonl"
+        )
+        self.circuit = CircuitBreaker(
+            self.repo_root / "ops" / "caios" / "circuit-breaker.json"
         )
 
     def _gap_vector(self, evidence: list[Evidence], snapshot: dict[str, Any]) -> dict[str, float]:
