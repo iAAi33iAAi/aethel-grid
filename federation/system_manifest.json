@@ -157,6 +157,19 @@
       ],
       "verification": [],
       "integration_mode": "observe-only"
+    },
+    {
+      "id": "ALEXARAC",
+      "path": "federated/ALEXARAC",
+      "role": "sovereign-platform-hub",
+      "weight": 0.8,
+      "depends_on": [
+        "aethel-grid",
+        "alpha-intelligence-hub",
+        "World-Tribe-Protocol"
+      ],
+      "verification": [],
+      "integration_mode": "observe-only"
     }
   ]
 }
