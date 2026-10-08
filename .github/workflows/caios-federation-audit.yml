@@ -1,0 +1,75 @@
+name: CAIOS Federated System Audit
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  federation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: aethel-grid
+
+      - uses: actions/checkout@v4
+        with:
+          repository: iAAi33iAAi/safety-kernel
+          ref: main
+          path: aethel-grid/federated/safety-kernel
+
+      - uses: actions/checkout@v4
+        with:
+          repository: iAAi33iAAi/project-mono
+          ref: main
+          path: aethel-grid/federated/project-mono
+
+      - uses: actions/checkout@v4
+        with:
+          repository: iAAi33iAAi/openclaw-governance
+          ref: main
+          path: aethel-grid/federated/openclaw-governance
+
+      - uses: actions/checkout@v4
+        with:
+          repository: iAAi33iAAi/undermoon
+          ref: main
+          path: aethel-grid/federated/undermoon
+
+      - uses: actions/checkout@v4
+        with:
+          repository: iAAi33iAAi/alpha-intelligence-hub
+          ref: main
+          path: aethel-grid/federated/alpha-intelligence-hub
+
+      - uses: actions/checkout@v4
+        with:
+          repository: iAAi33iAAi/World-Tribe-Protocol
+          ref: main
+          path: aethel-grid/federated/World-Tribe-Protocol
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test runner
+        run: python -m pip install "pytest>=8,<9"
+
+      - name: Test federation bridge
+        working-directory: aethel-grid
+        run: python -m pytest -q federation/test_caios_federation.py
+
+      - name: Generate federated snapshot
+        working-directory: aethel-grid
+        run: python federation/caios_federation.py --verify --output ops/caios/federation-snapshot.json
+
+      - name: Upload federated evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: caios-federation-snapshot
+          path: aethel-grid/ops/caios/federation-snapshot.json
