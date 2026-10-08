@@ -116,3 +116,10 @@ while minimizing risk + resource cost
 subject to constitutional invariants, provenance requirements, and explicit execution authority.
 
 This is a concrete engineering synthesis, not a claim that no prior system has ever used any individual component described above.
+
+
+## Agent arbitration
+
+External agents are workers, not constitutional authorities. Proposals are admitted only after registry-backed identity attestation. For actions above the high-risk threshold, CAIOS groups proposals by exact execution intent (kind, target, command, and patch contents) and requires the configured number of independent agent families to support that intent before the candidate can enter execution planning.
+
+Agreement is therefore evidence about an action, not permission to bypass the gate. The gate, deterministic validation, and proof-carrying certificate remain authoritative.
