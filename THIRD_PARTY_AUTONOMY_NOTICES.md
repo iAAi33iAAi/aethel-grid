@@ -20,6 +20,7 @@ CAIOS integration is adapter-first: external source is not copied into the CAIOS
 | Sigstore Cosign | Apache-2.0 | artifact signing/verification | adapter |
 | OpenTelemetry specification | Apache-2.0 | trace/evidence semantics | adapter |
 | NATS server | Apache-2.0 | event transport | adapter |
+| pyca/cryptography 50.0.2 | Apache-2.0 OR BSD-3-Clause | Ed25519 node identity | optional adapter; exact version pinned in CI |
 | Wasmtime | Apache-2.0 | optional Wasm isolation boundary | adapter |
 | Firecracker | Apache-2.0 | optional microVM isolation boundary | external service |
 | OpenSSF Scorecard | Apache-2.0 | repository security evidence | external process |
