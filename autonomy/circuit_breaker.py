@@ -3,15 +3,15 @@
 CAIOS persistent circuit breaker.
 
 Prevents autonomous repetition of the same failed intent after a bounded
-failure budget. Quarantine is keyed by intent fingerprint, action kind, and
-target. A new repository state clears the quarantine naturally because the
-state digest participates in the key.
+failure budget. Quarantine is keyed by observed state digest and action
+fingerprint.
 
 License: Apache-2.0
 Copyright (c) 2026 iAAi33iAAi
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -48,10 +48,13 @@ class CircuitBreaker:
             raw = json.loads(self.path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             return {}
-        rows = {}
+        if not isinstance(raw, dict):
+            return {}
+
+        rows: dict[str, CircuitRecord] = {}
         for key, item in raw.items():
             try:
-                rows[key] = CircuitRecord(
+                rows[str(key)] = CircuitRecord(
                     key=str(item["key"]),
                     state_digest=str(item["state_digest"]),
                     failures=int(item["failures"]),
@@ -64,23 +67,25 @@ class CircuitBreaker:
 
     def _write(self, rows: dict[str, CircuitRecord]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            key: row.as_dict()
+            for key, row in sorted(rows.items())
+        }
         self.path.write_text(
-            json.dumps(
-                {key: row.as_dict() for key, row in sorted(rows.items())},
-                indent=2,
-                sort_keys=True,
-            ) + "
-",
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
 
     @staticmethod
     def make_key(state_digest: str, action_fingerprint: str) -> str:
-        import hashlib
         payload = f"{state_digest}:{action_fingerprint}".encode("utf-8")
         return hashlib.sha256(payload).hexdigest()
 
-    def allowed(self, state_digest: str, action_fingerprint: str) -> tuple[bool, str]:
+    def allowed(
+        self,
+        state_digest: str,
+        action_fingerprint: str,
+    ) -> tuple[bool, str]:
         key = self.make_key(state_digest, action_fingerprint)
         row = self._read().get(key)
         if row is None:
@@ -100,7 +105,8 @@ class CircuitBreaker:
         key = self.make_key(state_digest, action_fingerprint)
         rows = self._read()
         previous = rows.get(key)
-        failures = (previous.failures if previous else 0)
+        failures = previous.failures if previous else 0
+
         if outcome in {"FAIL", "BLOCKED"}:
             failures += 1
         else:
