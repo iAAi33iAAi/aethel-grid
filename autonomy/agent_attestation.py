@@ -33,6 +33,7 @@ def digest(value: Any) -> str:
 class ProposalAttestation:
     agent_id: str
     protocol: str
+    protocol_version: str
     model_id: str
     model_revision: str
     agent_version: str
@@ -43,6 +44,7 @@ class ProposalAttestation:
         return {
             "agent_id": self.agent_id,
             "protocol": self.protocol,
+            "protocol_version": self.protocol_version,
             "model_id": self.model_id,
             "model_revision": self.model_revision,
             "agent_version": self.agent_version,
@@ -62,6 +64,7 @@ def validate_proposal(
 ) -> tuple[bool, list[str], ProposalAttestation | None]:
     agent_id = str(proposal.get("agent_id", ""))
     protocol = str(proposal.get("protocol", ""))
+    protocol_version = str(proposal.get("protocol_version", ""))
     model_id = str(proposal.get("model_id", ""))
     model_revision = str(proposal.get("model_revision", ""))
     agent_version = str(proposal.get("agent_version", ""))
@@ -80,6 +83,11 @@ def validate_proposal(
         return False, ["agent-is-not-proposal-authority"], None
     if protocol not in profile.protocols:
         return False, ["protocol-not-advertised-by-agent"], None
+    expected_protocol_version = profile.protocol_versions.get(protocol)
+    if not expected_protocol_version:
+        return False, ["protocol-version-not-pinned-by-agent"], None
+    if protocol_version != expected_protocol_version:
+        return False, ["protocol-version-mismatch"], None
     if profile.provenance_confidence < float(
         registry.policy.get("minimum_provenance_confidence", 0.90)
     ):
@@ -98,6 +106,7 @@ def validate_proposal(
     reasons.extend(model_reasons)
 
     for field_name, value in {
+        "protocol_version": protocol_version,
         "model_id": model_id,
         "model_revision": model_revision,
         "agent_version": agent_version,
@@ -111,6 +120,7 @@ def validate_proposal(
         attestation = ProposalAttestation(
             agent_id=agent_id,
             protocol=protocol,
+            protocol_version=protocol_version,
             model_id=model_id,
             agent_version=agent_version,
             source_ref=source_ref,
