@@ -1,0 +1,53 @@
+{
+  "schema": "caios-protocols/v1",
+  "policy": {
+    "unknown_protocol": "REJECT",
+    "draft_protocol_requires_opt_in": true,
+    "major_version_mismatch": "REJECT",
+    "capabilities_are_advisory": true
+  },
+  "protocols": [
+    {
+      "id": "caios-internal",
+      "latest_known_revision": "1",
+      "status": "stable",
+      "transport_role": "internal-control-plane",
+      "license": "Apache-2.0",
+      "source_url": "https://github.com/iAAi33iAAi/aethel-grid",
+      "conformance_tool": null,
+      "draft": false
+    },
+    {
+      "id": "mcp",
+      "latest_known_revision": "2026-07-28",
+      "status": "final",
+      "transport_role": "agent-to-tool-context",
+      "license": "MIT-for-current-python-sdk; project licensing transition requires file-level review",
+      "source_url": "https://modelcontextprotocol.io/",
+      "conformance_url": "https://plan.modelcontextprotocol.io/conformance",
+      "draft": false
+    },
+    {
+      "id": "acp",
+      "latest_known_revision": "1",
+      "status": "stable",
+      "transport_role": "agent-client",
+      "license": "Apache-2.0",
+      "source_url": "https://github.com/agentclientprotocol/agent-client-protocol",
+      "conformance_tool": "acp-tck",
+      "draft": false,
+      "v2_status": "draft-or-unstable-surface; require explicit opt-in"
+    },
+    {
+      "id": "a2a",
+      "latest_known_revision": "1.0.0",
+      "status": "stable",
+      "transport_role": "agent-to-agent",
+      "license": "Apache-2.0",
+      "source_url": "https://a2a-protocol.org/latest/",
+      "cli": "a2a",
+      "conformance": "A2A Protocol TCK / Inspector",
+      "draft": false
+    }
+  ]
+}

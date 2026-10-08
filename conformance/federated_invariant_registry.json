@@ -1,0 +1,34 @@
+{
+  "schema": "caios-federated-invariants/v1",
+  "sources": [
+    {
+      "id": "PFP-SPEC-2026-001",
+      "repository": "iAAi33iAAi/openclaw-colony",
+      "path": "docs/specs/PFP-SPEC-2026-001.md",
+      "authority": "integration-reference",
+      "status_semantics": "declared-by-source-document"
+    }
+  ],
+  "invariants": [
+    {"id":"INV-001","domain":"binding","priority":"critical","declared_status":"partial","definition":"Frame references ACTIVE BindingContract"},
+    {"id":"INV-002","domain":"lineage","priority":"critical","declared_status":"partial","definition":"Sequence number is strictly monotonic with no gaps"},
+    {"id":"INV-003","domain":"integrity","priority":"high","declared_status":"satisfied","definition":"payload_digest equals SHA-256(payload)"},
+    {"id":"INV-004","domain":"lineage","priority":"high","declared_status":"satisfied","definition":"Lineage hash binds parent hash and payload digest"},
+    {"id":"INV-005","domain":"manifest","priority":"critical","declared_status":"partial","definition":"Root LineageNode is recorded in KernelManifest"},
+    {"id":"INV-006","domain":"manifest","priority":"critical","declared_status":"not_implemented","definition":"KernelManifest is immutable after issuance"},
+    {"id":"INV-007","domain":"audit","priority":"critical","declared_status":"not_implemented","definition":"Every AuditRecord has a valid Ed25519 signature"},
+    {"id":"INV-008","domain":"lifecycle","priority":"high","declared_status":"partial","definition":"DECOMMISSIONED is terminal"},
+    {"id":"INV-009","domain":"binding","priority":"high","declared_status":"not_implemented","definition":"BindingContract only exists for ACTIVE venues"},
+    {"id":"INV-010","domain":"tokens","priority":"high","declared_status":"not_implemented","definition":"Commitment Tokens are globally unique"},
+    {"id":"INV-011","domain":"namespace","priority":"high","declared_status":"partial","definition":"Namespace strings are globally unique"},
+    {"id":"INV-012","domain":"manifest","priority":"high","declared_status":"partial","definition":"KernelManifest policy_assertions is non-empty"},
+    {"id":"INV-013","domain":"session","priority":"critical","declared_status":"not_implemented","definition":"Session anchor hash is written before OpenSessionResponse"},
+    {"id":"INV-014","domain":"transport","priority":"critical","declared_status":"not_implemented","definition":"mTLS is enforced on all inter-service channels"},
+    {"id":"INV-015","domain":"audit","priority":"high","declared_status":"not_implemented","definition":"Audit Epoch IDs strictly increase"},
+    {"id":"INV-016","domain":"replay","priority":"high","declared_status":"not_implemented","definition":"Session replay is detected via Anchor Registry"},
+    {"id":"INV-017","domain":"namespace","priority":"high","declared_status":"not_implemented","definition":"Venue namespace boundary is hermetic"},
+    {"id":"INV-018","domain":"schema","priority":"high","declared_status":"not_implemented","definition":"BindingContract rejects incompatible schema versions"},
+    {"id":"INV-019","domain":"authorization","priority":"critical","declared_status":"not_implemented","definition":"Cross-namespace access requires explicit authorization"},
+    {"id":"INV-020","domain":"keys","priority":"high","declared_status":"not_implemented","definition":"Governance signing keys rotate within 365 days"}
+  ]
+}

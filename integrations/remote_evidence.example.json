@@ -1,0 +1,33 @@
+{
+  "schema": "caios-remote-evidence/v1",
+  "endpoints": [
+    {
+      "id": "aethel-grid",
+      "url_env": "AETHEL_GRID_URL",
+      "token_env": "AETHEL_GRID_TOKEN",
+      "operation": "capabilities",
+      "payload": {}
+    },
+    {
+      "id": "safety-kernel-proof",
+      "url_env": "AETHEL_PROOF_KERNEL_URL",
+      "token_env": "AETHEL_PROOF_KERNEL_TOKEN",
+      "operation": "capabilities",
+      "payload": {}
+    },
+    {
+      "id": "undermoon",
+      "url_env": "AETHEL_UNDERMOON_URL",
+      "token_env": "AETHEL_UNDERMOON_TOKEN",
+      "operation": "conformance-status",
+      "payload": {}
+    },
+    {
+      "id": "project-mono",
+      "url_env": "AETHEL_PROJECT_MONO_URL",
+      "token_env": "AETHEL_PROJECT_MONO_TOKEN",
+      "operation": "capabilities",
+      "payload": {}
+    }
+  ]
+}

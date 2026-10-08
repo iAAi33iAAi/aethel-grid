@@ -1,0 +1,191 @@
+{
+  "schema": "caios-agents/v1",
+  "selection_policy": {
+    "high_risk_threshold": 0.55,
+    "high_risk_min_independent_agents": 2,
+    "minimum_protocol_confidence": 0.9,
+    "minimum_provenance_confidence": 0.9,
+    "high_risk_min_independent_models": 2
+  },
+  "agents": [
+    {
+      "id": "openai-agents",
+      "family": "openai-agents-sdk",
+      "protocols": [
+        "openai-compatible",
+        "mcp"
+      ],
+      "capabilities": [
+        "reasoning",
+        "planning",
+        "multi-agent",
+        "tool-use"
+      ],
+      "authority": "proposal",
+      "license": "MIT",
+      "sandbox": false,
+      "provenance_confidence": 0.95,
+      "protocol_versions": {
+        "mcp": "2026-07-28"
+      },
+      "software_version": "0.22.3",
+      "source_ref": "https://github.com/openai/openai-agents-python"
+    },
+    {
+      "id": "codex",
+      "family": "openai-codex",
+      "protocols": [
+        "acp"
+      ],
+      "capabilities": [
+        "coding",
+        "patching",
+        "testing",
+        "terminal"
+      ],
+      "authority": "proposal",
+      "license": "Apache-2.0",
+      "sandbox": true,
+      "provenance_confidence": 0.95,
+      "protocol_versions": {
+        "acp": "1"
+      }
+    },
+    {
+      "id": "gemini-cli",
+      "family": "google-gemini-cli",
+      "protocols": [
+        "acp",
+        "mcp"
+      ],
+      "capabilities": [
+        "coding",
+        "patching",
+        "testing",
+        "terminal",
+        "sandbox"
+      ],
+      "authority": "proposal",
+      "license": "Apache-2.0",
+      "sandbox": true,
+      "provenance_confidence": 0.95,
+      "protocol_versions": {
+        "acp": "1",
+        "mcp": "2026-07-28"
+      },
+      "software_version": "0.65.0-nightly.20261006",
+      "source_ref": "https://github.com/google-gemini/gemini-cli"
+    },
+    {
+      "id": "qwen-code",
+      "family": "qwen-code",
+      "protocols": [
+        "mcp",
+        "openai-compatible"
+      ],
+      "capabilities": [
+        "coding",
+        "patching",
+        "testing",
+        "terminal",
+        "sandbox"
+      ],
+      "authority": "proposal",
+      "license": "Apache-2.0",
+      "sandbox": true,
+      "provenance_confidence": 0.95,
+      "protocol_versions": {
+        "mcp": "2026-07-28"
+      },
+      "software_version": "0.25.0",
+      "source_ref": "https://github.com/QwenLM/qwen-code"
+    },
+    {
+      "id": "openhands-core",
+      "family": "openhands-core",
+      "protocols": [
+        "acp",
+        "mcp"
+      ],
+      "capabilities": [
+        "coding",
+        "planning",
+        "patching",
+        "testing",
+        "terminal",
+        "sandbox"
+      ],
+      "authority": "proposal",
+      "license": "MIT",
+      "sandbox": true,
+      "provenance_confidence": 0.9,
+      "protocol_versions": {
+        "acp": "1",
+        "mcp": "2026-07-28"
+      },
+      "software_version": "0.34.0",
+      "source_ref": "https://github.com/All-Hands-AI/OpenHands"
+    },
+    {
+      "id": "swe-agent",
+      "family": "swe-agent",
+      "protocols": [
+        "openai-compatible"
+      ],
+      "capabilities": [
+        "coding",
+        "patching",
+        "testing"
+      ],
+      "authority": "proposal",
+      "license": "MIT",
+      "sandbox": true,
+      "provenance_confidence": 0.9,
+      "protocol_versions": {
+        "openai-compatible": "unspecified"
+      }
+    },
+    {
+      "id": "aider",
+      "family": "aider",
+      "protocols": [
+        "openai-compatible"
+      ],
+      "capabilities": [
+        "coding",
+        "patching",
+        "testing"
+      ],
+      "authority": "proposal",
+      "license": "Apache-2.0",
+      "sandbox": false,
+      "provenance_confidence": 0.9,
+      "protocol_versions": {
+        "openai-compatible": "unspecified"
+      }
+    },
+    {
+      "id": "claude-agent-acp",
+      "family": "claude-agent-acp",
+      "protocols": [
+        "acp"
+      ],
+      "capabilities": [
+        "coding",
+        "planning",
+        "patching",
+        "testing",
+        "terminal"
+      ],
+      "authority": "proposal",
+      "license": "Apache-2.0",
+      "sandbox": false,
+      "provenance_confidence": 0.95,
+      "protocol_versions": {
+        "acp": "1"
+      },
+      "software_version": "0.83.0",
+      "source_ref": "https://github.com/agentclientprotocol/claude-agent-acp"
+    }
+  ]
+}

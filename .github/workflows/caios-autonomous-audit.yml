@@ -1,0 +1,99 @@
+name: CAIOS Autonomous Evidence Loop
+
+concurrency:
+  group: caios-autonomy-${{ github.ref }}
+  cancel-in-progress: true
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "47 * * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  caios:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install test runner and crypto adapter
+        run: python -m pip install "pytest>=8,<9" "cryptography==50.0.2"
+
+      - name: Run deterministic architecture tests
+        run: python -m pytest -q autonomy conformance federation interop
+
+      - name: Run adversarial constitutional gate campaign
+        run: python -m autonomy.red_team --repo-root . --output ops/caios/red-team.json
+
+      - name: Run CAIOS bounded autonomy loop
+        run: python -m autonomy.caios_runtime --repo-root . --cycles 3 --max-commands 8
+
+      - name: Verify proof-carrying certificate chain
+        run: python -m autonomy.verify_certificates ops/caios/autonomy-certificates.jsonl
+
+      - name: Verify ordered evidence ledger
+        run: python -m autonomy.evidence_ledger ops/caios/evidence-ledger.jsonl
+
+      - name: Seal federated topology manifest
+        run: python -m federation.manifest_seal --manifest federation/system_manifest.json --output ops/caios/federation-manifest-seal.json
+
+      - name: Materialize proof graph
+        run: python -m autonomy.proof_graph ops/caios/autonomy-certificates.jsonl --output ops/caios/proof-graph.json
+
+      - name: Build unsigned SLSA provenance predicate
+        run: python -m autonomy.slsa_provenance --repo-root . --subject federation/system_manifest.json --subject docs/PCWC-SPEC-001.md --output ops/caios/slsa-provenance.json
+
+      - name: Verify SLSA provenance statement
+        run: |
+          python -c "from pathlib import Path; from autonomy.slsa_verifier import verify_file; ok, errors = verify_file(Path('ops/caios/slsa-provenance.json')); print({'status': 'PASS' if ok else 'FAIL', 'errors': errors}); raise SystemExit(0 if ok else 1)"
+
+      - name: Build system evidence bundle
+        run: python -m autonomy.evidence_bundle --repo-root . --output ops/caios/evidence-bundle.json
+
+      - name: Evaluate promotion readiness
+        run: python -m autonomy.promotion_gate --repo-root . --output ops/caios/promotion-decision.json
+
+      - name: Build unified system readiness
+        run: python -m autonomy.system_readiness --repo-root . --output ops/caios/system-readiness.json
+
+      - name: Build system knowledge graph
+        run: python -m autonomy.system_knowledge_graph --repo-root . --output ops/caios/system-knowledge-graph.json
+
+      - name: Build authority-aware directive plan
+        run: python -m autonomy.directive_engine --repo-root . --output ops/caios/directive-plan.json
+
+      - name: Build supply-chain evidence plan
+        run: python -m autonomy.supply_chain_plan --repo-root . --output ops/caios/supply-chain-plan.json
+
+      - name: Build sovereign integration admission report
+        run: python -m autonomy.sovereign_admission --repo-root . --output ops/caios/sovereign-admission.json
+
+      - name: Upload proof-carrying evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: caios-autonomy-evidence
+          path: |
+            ops/caios/autonomy-certificates.jsonl
+            ops/caios/red-team.json
+            ops/caios/session-anchors.jsonl
+            ops/caios/evidence-ledger.jsonl
+            ops/caios/federation-manifest-seal.json
+            ops/caios/proof-graph.json
+            ops/caios/evidence-bundle.json
+            ops/caios/promotion-decision.json
+            ops/caios/system-readiness.json
+            ops/caios/system-knowledge-graph.json
+            ops/caios/directive-plan.json
+            ops/caios/supply-chain-plan.json
+            ops/caios/sovereign-admission.json
