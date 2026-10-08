@@ -1,0 +1,14 @@
+{
+  "schema": "caios-agent-endpoints/v1",
+  "agents": [
+    {
+      "agent_id": "codex",
+      "endpoint": "https://YOUR-ENDPOINT/v1/chat/completions",
+      "model": "YOUR_MODEL_ID",
+      "protocol": "openai-compatible",
+      "agent_version": "PINNED_VERSION_OR_COMMIT",
+      "source_ref": "git:PINNED_COMMIT",
+      "api_key_env": "CAIOS_CODEX_API_KEY"
+    }
+  ]
+}
