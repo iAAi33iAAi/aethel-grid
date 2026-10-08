@@ -29,6 +29,8 @@ def certificate_from_dict(item: dict[str, Any]) -> DecisionCertificate:
         elapsed_ms=int(item.get("elapsed_ms", 0)),
         observation_digest=item.get("observation_digest"),
         council_digest=item.get("council_digest"),
+        session_id=item.get("session_id"),
+        session_anchor_hash=item.get("session_anchor_hash"),
     )
 
 
@@ -47,6 +49,23 @@ def verify(path: Path) -> tuple[bool, list[str]]:
 
         if item.get("proof_digest") != certificate.proof_digest:
             errors.append(f"line {line_number}: proof_digest mismatch")
+
+        session_id = certificate.session_id
+        anchor_hash = certificate.session_anchor_hash
+        anchor_evidence = next(
+            (
+                entry for entry in item.get("evidence", [])
+                if entry.get("kind") == "session-anchor"
+            ),
+            None,
+        )
+        if not session_id or not anchor_hash or not anchor_evidence:
+            errors.append(f"line {line_number}: session anchor missing")
+        elif anchor_evidence.get("digest") != anchor_hash:
+            errors.append(f"line {line_number}: session anchor digest mismatch")
+
+        if previous is not None and session_id != previous.get("session_id"):
+            errors.append(f"line {line_number}: session_id changed within certificate chain")
 
         expected_previous = digest(previous) if previous is not None else None
         if item.get("previous_certificate_digest") != expected_previous:
