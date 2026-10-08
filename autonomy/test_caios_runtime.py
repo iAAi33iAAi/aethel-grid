@@ -18,7 +18,7 @@ def _seed_authority(tmp_path: Path) -> None:
             "schema": "caios-authority-lattice/v1",
             "principals": [
                 {"principal_id": "model", "authority": 10, "capabilities": ["propose"], "boundary": "proposal-only"},
-                {"principal_id": "caios", "authority": 30, "capabilities": ["policy"], "boundary": "test"},
+                {"principal_id": "caios", "authority": 30, "capabilities": ["policy", "supervise"], "boundary": "test"},
             ],
         }),
         encoding="utf-8",
