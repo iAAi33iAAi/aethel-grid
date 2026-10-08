@@ -31,6 +31,7 @@ def certificate_from_dict(item: dict[str, Any]) -> DecisionCertificate:
         council_digest=item.get("council_digest"),
         session_id=item.get("session_id"),
         session_anchor_hash=item.get("session_anchor_hash"),
+        work_contract_digest=item.get("work_contract_digest"),
     )
 
 
