@@ -1150,6 +1150,63 @@ class AutonomousRuntime:
             )
         ]
 
+    def _build_work_contract(
+        self,
+        action: CandidateAction,
+        snapshot: dict[str, Any],
+        action_evidence: list[Evidence],
+        decision: str,
+    ) -> tuple[ProofCarryingWorkContract, Evidence]:
+        state_after = None
+        if self.commands_used + 2 <= self.max_commands:
+            try:
+                state_after = self.snapshotter.capture_state_digest()
+                self.commands_used += 2
+            except Exception:
+                state_after = None
+
+        simulation_digest = next(
+            (item.digest for item in action_evidence if item.kind == "patch-simulation"),
+            None,
+        )
+        contract = ProofCarryingWorkContract(
+            work_id=f"{self.session_id}:{action.action_id}",
+            intent_fingerprint=action.intent_fingerprint,
+            action_kind=action.kind,
+            state_before=snapshot["observation_digest"],
+            state_after=state_after,
+            protocol=action.protocol or "caios-internal",
+            protocol_version=action.protocol_version or "1",
+            agent_id=action.agent_id,
+            model_id=action.model_id,
+            model_revision=action.model_revision,
+            agent_attestation=action.attestation_digest,
+            tool_ids=action.tool_ids,
+            invariant_ids=action.invariant_ids,
+            expected_gain=action.expected_gain,
+            risk=action.risk,
+            reversibility=action.reversibility,
+            simulation_digest=simulation_digest,
+            execution_digest=digest([item.as_dict() for item in action_evidence]),
+            decision="PASS" if decision == "CONTINUE" else decision,
+            evidence_digests=tuple(item.digest for item in action_evidence),
+        )
+        ok, reasons = verify_contract(self.repo_root, contract)
+        return (
+            contract,
+            Evidence(
+                kind="work-contract",
+                status="PASS" if ok else "BLOCKED",
+                source="autonomy/proof_work_verifier.py",
+                digest=contract.contract_digest,
+                details={
+                    "contract": contract.as_dict(),
+                    "verified": ok,
+                    "reasons": reasons,
+                },
+            ),
+        )
+
     def run(self) -> list[DecisionCertificate]:
         for cycle in range(1, self.max_cycles + 1):
             started = time.monotonic_ns()
@@ -1328,6 +1385,17 @@ class AutonomousRuntime:
                     risk=action.risk,
                     rollback=rollback,
                 )
+
+            contract, contract_evidence = self._build_work_contract(
+                action,
+                snapshot,
+                action_evidence,
+                decision,
+            )
+            evidence.append(contract_evidence)
+            if contract_evidence.status != "PASS":
+                decision = "HALT"
+                reasons.append("work contract verification failed")
 
             cert = DecisionCertificate(
                 cycle=cycle,
