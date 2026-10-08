@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from autonomy.agent_router import AgentRegistry
+from autonomy.model_admission import ModelRegistry
 
 
 def canonical_json(value: Any) -> bytes:
@@ -66,8 +67,11 @@ def validate_proposal(
     reasons: list[str] = []
     try:
         registry = AgentRegistry(repo_root)
+        model_registry = ModelRegistry(repo_root)
     except Exception as exc:
         return False, [f"registry-unavailable:{type(exc).__name__}"], None
+
+    model_admitted, model_reasons = model_registry.admit(model_id)
 
     profile = registry.agents.get(agent_id)
     if profile is None:
@@ -79,6 +83,8 @@ def validate_proposal(
             reasons.append("protocol-not-advertised-by-agent")
         if profile.provenance_confidence < float(registry.policy.get("minimum_provenance_confidence", 0.90)):
             reasons.append("agent-provenance-confidence-below-floor")
+
+    reasons.extend(model_reasons)
 
     for field_name, value in {
         "model_id": model_id,
