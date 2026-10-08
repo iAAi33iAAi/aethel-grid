@@ -32,3 +32,34 @@ def test_remote_nonlocal_http_is_rejected():
         pass
     else:
         raise AssertionError("remote plaintext endpoint must be rejected")
+
+
+def test_remote_client_uses_aethel_v1_evaluate_path(monkeypatch):
+    from integrations.remote_interop import InteropEvidence, RemoteInteropClient
+
+    captured = {}
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self, limit=-1):
+            captured["read_limit"] = limit
+            return (
+                b'{"protocol":"aethel-interop/1","service":"x","version":"1",'
+                b'"request_id":"r","status":"PASS","decision":"OK",'
+                b'"reasons":[],"result":{},"evidence":{}}'
+            )
+
+    def fake_urlopen(request, timeout):
+        captured["url"] = request.full_url
+        captured["method"] = request.method
+        return Response()
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    client = RemoteInteropClient("https://example.com")
+    response = client.evaluate("r", "capabilities", {})
+    assert isinstance(response, InteropEvidence)
+    assert captured["url"] == "https://example.com/aethel/evaluate"
+    assert captured["method"] == "POST"
