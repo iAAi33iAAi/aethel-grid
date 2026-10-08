@@ -122,6 +122,7 @@ def validate_proposal(
             protocol=protocol,
             protocol_version=protocol_version,
             model_id=model_id,
+            model_revision=model_revision,
             agent_version=agent_version,
             source_ref=source_ref,
             proposal_digest=proposal_digest,
