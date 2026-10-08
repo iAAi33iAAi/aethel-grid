@@ -74,6 +74,31 @@ class TopologyAgent(CouncilAgent):
         return AgentOpinion(self.role, self.weight, focus, ("repair dependencies before downstream mutation",), {"focus": focus})
 
 
+class RedTeamAgent(CouncilAgent):
+    role = "red-team"
+    weight = 1.35
+
+    def advise(self, gaps, evidence):
+        failures = sum(
+            1
+            for item in evidence
+            if getattr(item, "kind", "") in {"agent-worker-failure", "execution"}
+            and getattr(item, "status", "") == "FAIL"
+        )
+        focus = {
+            "security": min(1.0, gaps.get("security", 0.0) + failures * 0.25),
+            "verification": min(1.0, gaps.get("verification", 0.0) + failures * 0.20),
+            "conformance": gaps.get("conformance", 0.0) * 0.50,
+        }
+        return AgentOpinion(
+            self.role,
+            self.weight,
+            focus,
+            ("attack the decision boundary before widening autonomy",),
+            {"focus": focus, "observed_execution_failures": failures},
+        )
+
+
 class EvidenceAgent(CouncilAgent):
     role = "evidence"
     weight = 1.30
@@ -92,6 +117,7 @@ class CAIOSCouncil:
             GovernanceAgent(),
             TopologyAgent(),
             EvidenceAgent(),
+            RedTeamAgent(),
         )
 
     def deliberate(self, gaps: dict[str, float], evidence: list[Any]) -> CouncilVerdict:
