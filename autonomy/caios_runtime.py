@@ -31,6 +31,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Iterable
 
+from autonomy.agent_attestation import validate_proposal
 from autonomy.agent_router import AgentRegistry
 from autonomy.caios_council import CAIOSCouncil
 from conformance.contract import inspect_contract
@@ -178,7 +179,8 @@ class OpenAICompatibleProposalProvider:
                     "content": (
                         "Return JSON only. You are a proposal engine, not an execution authority. "
                         "Generate small, reversible, evidence-producing actions. Never claim a test passed "
-                        "without evidence. Never request arbitrary shell access."
+                        "without evidence. Never request arbitrary shell access. Every proposal must declare "
+                        "agent_id, protocol, model_id, agent_version, and source_ref."
                     ),
                 },
                 {
@@ -510,6 +512,7 @@ class AutonomousRuntime:
         self.max_commands = max_commands
         self.commands_used = 0
         self.certificates: list[DecisionCertificate] = []
+        self.last_model_admission: list[dict[str, Any]] = []
 
     def _gap_vector(self, evidence: list[Evidence], snapshot: dict[str, Any]) -> dict[str, float]:
         gaps = {
@@ -627,9 +630,34 @@ class AutonomousRuntime:
         except Exception:
             return []
         candidates: list[CandidateAction] = []
+        self.last_model_admission = []
         for idx, item in enumerate(raw[:20]):
             if not isinstance(item, dict):
+                self.last_model_admission.append({
+                    "index": idx,
+                    "status": "REJECTED",
+                    "reasons": ["proposal-not-object"],
+                })
                 continue
+            proposal_digest = digest(item)
+            admitted, reasons, attestation = validate_proposal(
+                self.repo_root, item, proposal_digest
+            )
+            if not admitted or attestation is None:
+                self.last_model_admission.append({
+                    "index": idx,
+                    "status": "REJECTED",
+                    "reasons": reasons,
+                    "proposal_digest": proposal_digest,
+                })
+                continue
+            self.last_model_admission.append({
+                "index": idx,
+                "status": "ADMITTED",
+                "agent_id": attestation.agent_id,
+                "protocol": attestation.protocol,
+                "attestation_digest": attestation.attestation_digest,
+            })
             kind = str(item.get("kind", "human_review"))
             target = str(item.get("target", "."))
             diff = str(item.get("unified_diff", ""))
@@ -659,6 +687,8 @@ class AutonomousRuntime:
                     evidence_gain=metrics["evidence_gain"],
                     command=command,
                     unified_diff=diff,
+                    agent_id=attestation.agent_id,
+                    attestation_digest=attestation.attestation_digest,
                 )
             )
         return candidates
@@ -896,6 +926,19 @@ class AutonomousRuntime:
 
             candidates = self._baseline_candidates(gaps)
             candidates.extend(self._model_candidates(snapshot, gaps))
+            if self.last_model_admission:
+                evidence.append(
+                    Evidence(
+                        kind="model-admission",
+                        status="PASS" if any(
+                            row["status"] == "ADMITTED"
+                            for row in self.last_model_admission
+                        ) else "BLOCKED",
+                        source="autonomy/agent_attestation.py",
+                        digest=digest(self.last_model_admission),
+                        details={"proposals": self.last_model_admission},
+                    )
+                )
             action, score, rejected = self.planner.select(candidates, self.gate, council.priority)
 
             if action is not None and action.kind == "human_review":
