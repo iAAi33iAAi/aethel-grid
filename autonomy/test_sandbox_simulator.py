@@ -16,7 +16,7 @@ def test_disposable_worktree_simulates_valid_patch(tmp_path: Path):
     subprocess.run(("git", "init"), cwd=repo, capture_output=True, check=True)
     subprocess.run(("git", "config", "user.email", "caios@test"), cwd=repo, check=True)
     subprocess.run(("git", "config", "user.name", "CAIOS Test"), cwd=repo, check=True)
-    (repo / "value.txt").write_text("one\\n", encoding="utf-8")
+    (repo / "value.txt").write_text("one\n", encoding="utf-8")
     subprocess.run(("git", "add", "."), cwd=repo, check=True)
     subprocess.run(("git", "commit", "-m", "base"), cwd=repo, capture_output=True, check=True)
 
@@ -28,10 +28,13 @@ index 43dd47b..9d3f98f 100644
 -one
 +two
 """
-    result = DisposableWorktree(repo).run(patch, ("python", "-c", "print(open('value.txt').read().strip())"))
+    result = DisposableWorktree(repo).run(
+        patch,
+        ("python", "-c", "print(open('value.txt').read().strip())"),
+    )
     assert result.status == "PASS"
     assert result.validation_returncode == 0
-    assert (repo / "value.txt").read_text(encoding="utf-8") == "one\\n"
+    assert (repo / "value.txt").read_text(encoding="utf-8") == "one\n"
 
 
 @pytest.mark.skipif(
@@ -44,13 +47,12 @@ def test_disposable_worktree_rejects_bad_patch(tmp_path: Path):
     subprocess.run(("git", "init"), cwd=repo, capture_output=True, check=True)
     subprocess.run(("git", "config", "user.email", "caios@test"), cwd=repo, check=True)
     subprocess.run(("git", "config", "user.name", "CAIOS Test"), cwd=repo, check=True)
-    (repo / "value.txt").write_text("one\\n", encoding="utf-8")
+    (repo / "value.txt").write_text("one\n", encoding="utf-8")
     subprocess.run(("git", "add", "."), cwd=repo, check=True)
     subprocess.run(("git", "commit", "-m", "base"), cwd=repo, capture_output=True, check=True)
 
     result = DisposableWorktree(repo).run(
-        "this is not a patch
-",
+        "this is not a patch\n",
         ("python", "-c", "raise SystemExit(0)"),
     )
     assert result.status == "FAIL"
