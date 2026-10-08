@@ -1,39 +1,46 @@
 # Third-Party Autonomy Integration Notices
 
-**Purpose:** record integration targets researched for the CAIOS autonomous runtime.
+**Purpose:** machine-auditable record of external integration targets considered for CAIOS.
 
-The CAIOS code in this repository is original integration/orchestration code. No third-party source code is copied into these files.
+CAIOS integration is adapter-first: external source is not copied into the CAIOS core. A dependency is admitted only after version-specific license, provenance, security, and notice review.
 
-## Permissive integration targets verified in the research pass
+## Current candidates
 
-- Model Context Protocol specification — MIT
-- Model Context Protocol Python SDK — MIT
-- Temporal Python SDK — MIT
-- Open Policy Agent — Apache-2.0
-- in-toto — Apache-2.0
-- Sigstore Cosign — Apache-2.0
-- OpenTelemetry specification — Apache-2.0
-- NATS server — Apache-2.0
-- Dagster — Apache-2.0
-- Prefect — Apache-2.0
-- Argo Workflows — Apache-2.0
-- Argo Events — Apache-2.0
-- OpenSSF Scorecard — Apache-2.0
-- Syft — Apache-2.0
-- Grype — Apache-2.0
-- Pydantic AI — MIT
-- Aider — Apache-2.0
-- SWE-agent — MIT
-- OpenHands — MIT
-- LlamaIndex — MIT
-- Agent Zero — MIT
+| Project | Current project-level license evidence | CAIOS role | Default treatment |
+|---|---|---|---|
+| Model Context Protocol specification / SDK | MIT | tool/context transport | adapter |
+| OpenAI Agents Python | MIT | optional multi-agent proposal layer | adapter |
+| Pydantic AI | MIT | typed model/tool adapter | adapter |
+| Temporal Python SDK | MIT | durable execution/orchestration | adapter |
+| Aider | Apache-2.0 | coding proposal backend | external process |
+| SWE-agent | MIT | coding proposal backend | external process |
+| OpenHands core | MIT; enterprise directory separately licensed | coding proposal backend | core only, exclude enterprise |
+| Open Policy Agent | Apache-2.0 | policy evaluation | adapter |
+| in-toto | Apache-2.0 | provenance/attestation | adapter |
+| Sigstore Cosign | Apache-2.0 | artifact signing/verification | adapter |
+| OpenTelemetry specification | Apache-2.0 | trace/evidence semantics | adapter |
+| NATS server | Apache-2.0 | event transport | adapter |
+| Wasmtime | Apache-2.0 | optional Wasm isolation boundary | adapter |
+| Firecracker | Apache-2.0 | optional microVM isolation boundary | external service |
+| OpenSSF Scorecard | Apache-2.0 | repository security evidence | external process |
+| Syft | Apache-2.0 | SBOM generation | external process |
+| Grype | Apache-2.0 | vulnerability evidence | external process |
+| Dagster | Apache-2.0 | data/orchestration integration | optional adapter |
+| Argo Workflows | Apache-2.0 | Kubernetes workflow execution | optional adapter |
+| Argo Events | Apache-2.0 | event-driven automation | optional adapter |
 
-## Restricted / mixed-license target
+## Code-model boundary
 
-AutoGPT is not treated as a blanket MIT dependency. Its current repository places `autogpt_platform/` under Polyform Shield and other portions under MIT. CAIOS therefore avoids depending on the Polyform Shield platform code by default.
+Model weights, checkpoints, hosted APIs, and training-data licenses are **not** treated as equivalent to source-code licenses. CAIOS therefore uses an OpenAI-compatible proposal interface and does not vendor model weights. Each chosen model must have a separate version-specific terms and provenance record before production use.
 
-## Compliance rule
+## Admission rule
 
-For any future vendored code, copy the exact license and required notices from the exact version/commit being incorporated. Runtime dependencies should be pinned to a known version and tracked in a machine-readable software bill of materials.
+1. Pin an exact version or commit.
+2. Capture the exact license/NOTICE files.
+3. Record SPDX identifier and provenance.
+4. Generate an SBOM for distributed builds.
+5. Run repository/security evidence before granting any execution capability.
+6. Keep signing credentials outside model and proposal paths.
+7. Never let an external model bypass the CAIOS constitutional gate.
 
-This notice is an engineering record, not legal advice.
+This document is an engineering provenance record, not legal advice.
