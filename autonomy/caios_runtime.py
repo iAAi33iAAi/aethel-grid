@@ -719,6 +719,7 @@ class AutonomousRuntime:
             check = self.repo_root / ".caios-pending.patch"
             check.write_text(action.unified_diff, encoding="utf-8")
             applied = False
+            validated = False
             try:
                 rc, _, stderr = self.runner.run(("git", "apply", "--check", str(check)))
                 self.commands_used += 1
@@ -750,6 +751,7 @@ class AutonomousRuntime:
                 rc, stdout, stderr = self.runner.run(test_command)
                 self.commands_used += 1
                 if rc == 0:
+                    validated = True
                     return [
                         Evidence(
                             kind="patch",
@@ -769,6 +771,7 @@ class AutonomousRuntime:
 
                 reverse_rc, _, reverse_err = self.runner.run(("git", "apply", "-R", str(check)))
                 self.commands_used += 1
+                applied = False
                 return [
                     Evidence(
                         kind="patch",
@@ -792,8 +795,9 @@ class AutonomousRuntime:
                     ),
                 ]
             finally:
-                if applied and not self.runner.run(("git", "status", "--porcelain")):
-                    pass
+                if applied and not validated:
+                    self.runner.run(("git", "apply", "-R", str(check)))
+                    self.commands_used += 1
                 check.unlink(missing_ok=True)
 
         if action.kind == "verify_conformance":
