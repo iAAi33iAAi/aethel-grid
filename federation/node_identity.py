@@ -81,5 +81,5 @@ def verify_envelope(identity: NodeIdentity, message: bytes, signature_b64: str) 
             message,
         )
         return True
-    except (ValueError, TypeError):
+    except Exception:
         return False
