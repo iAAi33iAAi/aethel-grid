@@ -1,0 +1,36 @@
+{
+  "specification_id": "SPEC-004",
+  "specification_version": "candidate-0.1",
+  "status": "CANDIDATE_NONCANONICAL",
+  "test_id": "TV-007",
+  "name": "Topological dependency ordering verification",
+  "input": {
+    "events": [
+      {
+        "id": "b",
+        "parents": [
+          "a"
+        ],
+        "state": {
+          "y": 2
+        }
+      },
+      {
+        "id": "a",
+        "parents": [],
+        "state": {
+          "x": 1
+        }
+      }
+    ]
+  },
+  "expected": {
+    "status": "PASS",
+    "ordered_event_ids": [
+      "a",
+      "b"
+    ],
+    "state_sha256": "ac60b300ef2e920cd400b2ac19499e0f33f12c1bf0f12fca3ea6f76bc0399d1c"
+  },
+  "anchor": "403e7308ecd6cb34040d8a747d30799653390226569748ee7aab74f1e8f930cd"
+}
