@@ -222,6 +222,8 @@ class ConstitutionalGate:
                 if line.startswith(("+++ ", "--- ")):
                     patch_path = line[4:].split("\t", 1)[0]
                     if patch_path == "/dev/null":
+                        if line.startswith("+++ "):
+                            reasons.append("autonomous patch deletion is not permitted")
                         continue
                     normalized = patch_path[2:] if patch_path.startswith(("a/", "b/")) else patch_path
                     if normalized.startswith(("/", "../")) or "/../" in normalized or normalized.startswith(".git/"):
@@ -475,7 +477,7 @@ class AutonomousRuntime:
             try:
                 candidates.append(
                     CandidateAction(
-                        action_id=str(item.get("action_id", f"model-{idx}")),
+                        action_id=f"model-{idx}-{str(item.get('action_id', 'proposal'))}",
                         kind=kind,
                         target=target,
                         rationale=str(item.get("rationale", "model proposal")),
