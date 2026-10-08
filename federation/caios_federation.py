@@ -232,8 +232,8 @@ def dependency_pressure(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if node["status"] == "PRESENT" and not node["metadata"].get("has_license"):
             evidence_gap += 0.5
 
-        cost = 1.0 if not node.get("verification") else max(
-            1.0, node["verification"].get("elapsed_ms", 1) / 1000.0
+        cost = 0.0 if not node.get("verification") else max(
+            0.0, node["verification"].get("elapsed_ms", 1) / 1000.0
         )
 
         upstream_pressure = (
