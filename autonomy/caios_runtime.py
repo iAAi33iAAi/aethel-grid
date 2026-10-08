@@ -79,6 +79,7 @@ class DecisionCertificate:
     evidence: tuple[Evidence, ...]
     reasons: tuple[str, ...]
     action_fingerprint: str | None
+    previous_certificate_digest: str | None
     elapsed_ms: int
 
     def as_dict(self) -> dict[str, Any]:
@@ -91,6 +92,7 @@ class DecisionCertificate:
             "evidence": [e.as_dict() for e in self.evidence],
             "reasons": list(self.reasons),
             "action_fingerprint": self.action_fingerprint,
+            "previous_certificate_digest": self.previous_certificate_digest,
             "elapsed_ms": self.elapsed_ms,
         }
 
@@ -349,11 +351,16 @@ class AutonomousRuntime:
             "security": 0.0,
             "working_tree": 0.0,
         }
+        has_tests = bool(
+            (self.repo_root / "tests").exists()
+            or (self.repo_root / "interop").exists()
+        )
+        gaps["verification"] = 1.0 if has_tests else 0.0
         for item in evidence:
             if item.kind == "canonical-conformance" and item.status != "PASS":
                 gaps["conformance"] = 1.0
-            if item.kind == "test" and item.status != "PASS":
-                gaps["verification"] = 1.0
+            if item.kind == "test":
+                gaps["verification"] = 0.0 if item.status == "PASS" else 1.0
             if item.kind == "security" and item.status != "PASS":
                 gaps["security"] = 1.0
         if snapshot.get("status"):
@@ -365,6 +372,11 @@ class AutonomousRuntime:
     def _baseline_candidates(self, gaps: dict[str, float]) -> list[CandidateAction]:
         candidates: list[CandidateAction] = []
         if gaps["verification"]:
+            test_command = (
+                ("python", "-m", "pytest", "-q", "interop")
+                if (self.repo_root / "interop").exists()
+                else ("python", "-m", "pytest", "-q")
+            )
             candidates.append(
                 CandidateAction(
                     action_id="run-tests",
@@ -376,6 +388,7 @@ class AutonomousRuntime:
                     risk=0.10,
                     reversibility=1.0,
                     resource_cost=0.20,
+                    command=test_command,
                 )
             )
         if gaps["conformance"]:
@@ -605,6 +618,9 @@ class AutonomousRuntime:
                     ),
                     reasons=("no constitutionally viable action exists",),
                     action_fingerprint=None,
+                    previous_certificate_digest=(
+                        digest(self.certificates[-1].as_dict()) if self.certificates else None
+                    ),
                     elapsed_ms=(time.monotonic_ns() - started) // 1_000_000,
                 )
                 self.certificates.append(cert)
@@ -629,6 +645,9 @@ class AutonomousRuntime:
                 evidence=tuple(evidence + action_evidence),
                 reasons=tuple(reasons),
                 action_fingerprint=action.fingerprint,
+                previous_certificate_digest=(
+                    digest(self.certificates[-1].as_dict()) if self.certificates else None
+                ),
                 elapsed_ms=(time.monotonic_ns() - started) // 1_000_000,
             )
             self.certificates.append(cert)
