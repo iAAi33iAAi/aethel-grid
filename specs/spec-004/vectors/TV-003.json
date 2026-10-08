@@ -1,0 +1,22 @@
+{
+  "specification_id": "SPEC-004",
+  "specification_version": "candidate-0.1",
+  "status": "CANDIDATE_NONCANONICAL",
+  "test_id": "TV-003",
+  "name": "Multi-agent quorum signature payload validation",
+  "input": {
+    "active_peers": 3,
+    "approving_peers": [
+      "node-a",
+      "node-b"
+    ],
+    "quorum_threshold": 0.51
+  },
+  "expected": {
+    "status": "PASS",
+    "required_quorum": 2,
+    "valid_approvals": 2,
+    "active_peers": 3
+  },
+  "anchor": "0fa9e031e64eb704b7535295e833cb1740a004a42a8124538caa2caf5eae03e0"
+}
