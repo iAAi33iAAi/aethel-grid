@@ -1435,6 +1435,17 @@ class AutonomousRuntime:
                         details={"proposals": self.last_model_admission},
                     )
                 )
+            provider_egress = getattr(self.proposal_provider, "last_egress", None) if self.proposal_provider else None
+            if provider_egress is not None:
+                evidence.append(
+                    Evidence(
+                        kind="model-egress",
+                        status=provider_egress.status,
+                        source="autonomy/egress_policy.py",
+                        digest=provider_egress.digest,
+                        details=provider_egress.as_dict(),
+                    )
+                )
             provider_errors = getattr(self.proposal_provider, "last_errors", []) if self.proposal_provider else []
             if provider_errors:
                 evidence.append(
