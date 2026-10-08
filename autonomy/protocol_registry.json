@@ -8,6 +8,16 @@
   },
   "protocols": [
     {
+      "id": "caios-internal",
+      "latest_known_revision": "1",
+      "status": "stable",
+      "transport_role": "internal-control-plane",
+      "license": "Apache-2.0",
+      "source_url": "https://github.com/iAAi33iAAi/aethel-grid",
+      "conformance_tool": null,
+      "draft": false
+    },
+    {
       "id": "mcp",
       "latest_known_revision": "2026-07-28",
       "status": "final",
