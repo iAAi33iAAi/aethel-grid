@@ -8,7 +8,8 @@
       "protocol": "openai-compatible",
       "agent_version": "PINNED_VERSION_OR_COMMIT",
       "source_ref": "git:PINNED_COMMIT",
-      "api_key_env": "CAIOS_CODEX_API_KEY"
+      "api_key_env": "CAIOS_CODEX_API_KEY",
+      "send_source_context": false
     }
   ]
 }
