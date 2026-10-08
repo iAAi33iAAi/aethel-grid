@@ -1,0 +1,16 @@
+{
+  "specification_id": "SPEC-004",
+  "specification_version": "candidate-0.1",
+  "status": "CANDIDATE_NONCANONICAL",
+  "test_id": "TV-004",
+  "name": "Invalid state delta — execution blast radius",
+  "input": {
+    "blast_radius": 1.01,
+    "max_blast_radius": 1
+  },
+  "expected": {
+    "status": "REJECT",
+    "reason_code": "BLAST_RADIUS_EXCEEDED"
+  },
+  "anchor": "f73ed4453bb9a361d79921182c5975f0c029c9fa0fcfb0a90724de3c049082d1"
+}
