@@ -1,0 +1,32 @@
+name: CAIOS Autonomous Evidence Loop
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  caios:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run CAIOS bounded autonomy loop
+        run: |
+          python autonomy/caios_runtime.py             --repo-root .             --cycles 3             --max-commands 8
+
+      - name: Upload proof-carrying certificates
+        uses: actions/upload-artifact@v4
+        with:
+          name: caios-autonomy-certificates
+          path: ops/caios/autonomy-certificates.jsonl
