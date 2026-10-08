@@ -37,6 +37,7 @@ def digest(value: Any) -> str:
 class ProofCarryingWorkContract:
     work_id: str
     intent_fingerprint: str
+    action_kind: str
     state_before: str
     state_after: str | None
     protocol: str
@@ -62,6 +63,7 @@ class ProofCarryingWorkContract:
             "schema": "caios-pcwc/v1",
             "work_id": self.work_id,
             "intent_fingerprint": self.intent_fingerprint,
+            "action_kind": self.action_kind,
             "state_before": self.state_before,
             "state_after": self.state_after,
             "protocol": self.protocol,
@@ -105,10 +107,14 @@ class ProofCarryingWorkContract:
             reasons.append("state-after-must-be-sha256")
         if not self.intent_fingerprint:
             reasons.append("intent-fingerprint-missing")
+        if not self.action_kind:
+            reasons.append("action-kind-missing")
         if not self.protocol or not self.protocol_version:
             reasons.append("protocol-identity-missing")
         if self.risk >= 0.55 and not self.invariant_ids:
             reasons.append("high-risk-work-requires-invariant-bindings")
+        if self.action_kind in {"run_test", "run_security_scan", "apply_patch"} and not self.tool_ids:
+            reasons.append("executable-work-requires-tool-bindings")
         if self.decision == "PASS" and not self.execution_digest:
             reasons.append("passed-work-requires-execution-evidence")
         if self.decision == "PASS" and self.state_after is None:
