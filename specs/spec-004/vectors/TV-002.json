@@ -1,0 +1,26 @@
+{
+  "specification_id": "SPEC-004",
+  "specification_version": "candidate-0.1",
+  "status": "CANDIDATE_NONCANONICAL",
+  "test_id": "TV-002",
+  "name": "Single valid state transition hash",
+  "input": {
+    "events": [
+      {
+        "id": "evt-001",
+        "parents": [],
+        "state": {
+          "x": 1
+        }
+      }
+    ]
+  },
+  "expected": {
+    "status": "PASS",
+    "state_sha256": "5041bf1f713df204784353e82f6a4a535931cb64f1f4b4a5aeaffcb720918b22",
+    "ordered_event_ids": [
+      "evt-001"
+    ]
+  },
+  "anchor": "9324fe4fabf585e9529220c6766b5246a47b31c1ef970e8016469739791a38c1"
+}
