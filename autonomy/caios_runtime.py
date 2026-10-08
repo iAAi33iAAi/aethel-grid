@@ -1470,6 +1470,29 @@ class AutonomousRuntime:
                 decision = "CONTINUE"
                 reasons.append("failed test evidence increases the verification gap; next cycle may repair")
 
+            circuit_outcome = (
+                "FAIL" if any(item.status == "FAIL" for item in action_evidence)
+                else "BLOCKED" if any(
+                    item.status in {"BLOCKED", "REQUIRED"}
+                    for item in action_evidence
+                )
+                else "PASS"
+            )
+            circuit_record = self.circuit.record(
+                snapshot["observation_digest"],
+                action.fingerprint,
+                circuit_outcome,
+            )
+            evidence.append(
+                Evidence(
+                    kind="circuit-breaker",
+                    status="PASS" if not circuit_record.quarantined else "BLOCKED",
+                    source="autonomy/circuit_breaker.py",
+                    digest=digest(circuit_record.as_dict()),
+                    details=circuit_record.as_dict(),
+                )
+            )
+
             if action.agent_id:
                 failed = any(item.status == "FAIL" for item in action_evidence)
                 blocked = any(item.status in {"BLOCKED", "REQUIRED"} for item in action_evidence)
