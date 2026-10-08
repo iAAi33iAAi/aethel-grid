@@ -1442,6 +1442,7 @@ class AutonomousRuntime:
                 council_digest=digest(council.digest_material),
                 session_id=self.session_id,
                 session_anchor_hash=session_anchor.anchor_hash,
+                work_contract_digest=contract.contract_digest,
             )
             self.certificates.append(cert)
 
