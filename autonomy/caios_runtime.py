@@ -46,6 +46,7 @@ from autonomy.context_window import ContextWindow
 from autonomy.agent_reputation import AgentReputationStore
 from autonomy.circuit_breaker import CircuitBreaker
 from autonomy.evidence_ledger import EvidenceLedger
+from autonomy.egress_policy import EgressPolicy, scan_context
 from autonomy.sandbox_simulator import DisposableWorktree
 from autonomy.red_team import run_campaign
 from autonomy.proof_work_contract import ProofCarryingWorkContract
@@ -217,11 +218,26 @@ class OpenAICompatibleProposalProvider:
         self.model = model
         self.api_key = api_key
         self.send_source_context = bool(send_source_context)
+        self.egress_policy = EgressPolicy(
+            allow_source_context=self.send_source_context,
+        )
+        self.last_egress = None
 
     def propose(self, snapshot: dict[str, Any]) -> list[dict[str, Any]]:
         model_snapshot = dict(snapshot)
         if not self.send_source_context:
             model_snapshot.pop("source_context", None)
+        egress = scan_context(
+            model_snapshot,
+            self.egress_policy,
+        )
+        self.last_egress = egress
+        if egress.status != "ALLOW":
+            raise PermissionError(
+                "model context egress blocked: "
+                + ",".join(egress.reasons)
+            )
+
         body = {
             "model": self.model,
             "temperature": 0,
