@@ -35,6 +35,7 @@ from autonomy.agent_attestation import validate_proposal
 from autonomy.agent_router import AgentRegistry
 from autonomy.caios_council import CAIOSCouncil
 from conformance.contract import inspect_contract
+from integrations.remote_interop import RemoteInteropClient
 
 
 def canonical_json(value: Any) -> bytes:
@@ -339,6 +340,84 @@ class AethelObserver:
                     details={"reason": "bootstrap source still declares canonical conformance as unresolved"},
                 )
             )
+        return evidence
+
+
+class RemoteEvidenceObserver:
+    """Optionally queries configured sibling services through aethel-interop/1."""
+
+    def observe(self, repo_root: Path) -> list[Evidence]:
+        config_path = repo_root / "integrations" / "remote_evidence.json"
+        if not config_path.is_file():
+            return []
+
+        try:
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            return [
+                Evidence(
+                    kind="remote-interop",
+                    status="FAIL",
+                    source=str(config_path),
+                    digest=digest(str(exc)),
+                    details={"exception": type(exc).__name__, "message": str(exc)},
+                )
+            ]
+
+        evidence = []
+        for entry in config.get("endpoints", []):
+            endpoint_id = str(entry.get("id", "unknown"))
+            url_env = str(entry.get("url_env", ""))
+            url = os.getenv(url_env, "").strip()
+            if not url:
+                evidence.append(
+                    Evidence(
+                        kind="remote-interop",
+                        status="UNKNOWN",
+                        source=endpoint_id,
+                        digest=digest({"id": endpoint_id, "url_env": url_env, "configured": False}),
+                        details={"configured": False, "url_env": url_env},
+                    )
+                )
+                continue
+
+            try:
+                token_env = str(entry.get("token_env", ""))
+                token = os.getenv(token_env) if token_env else None
+                client = RemoteInteropClient(url, bearer_token=token)
+                response = client.evaluate(
+                    request_id=f"caios-{int(time.time_ns())}",
+                    operation=str(entry.get("operation", "capabilities")),
+                    payload=dict(entry.get("payload", {})),
+                )
+                evidence.append(
+                    Evidence(
+                        kind="remote-interop",
+                        status="PASS" if response.status == "PASS" else "DEGRADED",
+                        source=endpoint_id,
+                        digest=response.response_digest,
+                        details={
+                            "protocol": response.protocol,
+                            "service": response.service,
+                            "version": response.version,
+                            "request_id": response.request_id,
+                            "status": response.status,
+                            "decision": response.decision,
+                            "reasons": list(response.reasons),
+                            "evidence": response.evidence,
+                        },
+                    )
+                )
+            except Exception as exc:
+                evidence.append(
+                    Evidence(
+                        kind="remote-interop",
+                        status="FAIL",
+                        source=endpoint_id,
+                        digest=digest(str(exc)),
+                        details={"exception": type(exc).__name__, "message": str(exc)},
+                    )
+                )
         return evidence
 
 
