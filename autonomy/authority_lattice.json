@@ -16,7 +16,7 @@
     {
       "principal_id": "caios",
       "authority": 30,
-      "capabilities": ["observe", "propose", "evidence", "policy"],
+      "capabilities": ["observe", "propose", "evidence", "policy", "supervise"],
       "boundary": "repository-root-and-declared-federation"
     },
     {
@@ -28,7 +28,7 @@
     {
       "principal_id": "human",
       "authority": 50,
-      "capabilities": ["observe", "propose", "evidence", "policy", "execute", "human-final"],
+      "capabilities": ["observe", "propose", "evidence", "policy", "supervise", "execute", "human-final"],
       "boundary": "explicit-human-decision"
     }
   ]
