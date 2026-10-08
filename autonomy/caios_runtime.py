@@ -1280,7 +1280,7 @@ class AutonomousRuntime:
                 self.certificates.append(cert)
                 break
 
-            evidence = self.aethel.observe(self.repo_root)
+            evidence.extend(self.aethel.observe(self.repo_root))
             federation_evidence = self.federation.observe(self.repo_root)
             if federation_evidence:
                 evidence.append(federation_evidence)
