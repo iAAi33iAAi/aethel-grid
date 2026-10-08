@@ -137,7 +137,7 @@ class AgentRegistry:
                     agent_id=profile.agent_id,
                     score=round(score, 6),
                     reasons=tuple(reasons),
-                    profile_digest=digest(profile.__dict__),
+                    profile_digest=digest(profile.as_dict()),
                 )
             )
         assignments.sort(key=lambda item: (-item.score, item.agent_id))
