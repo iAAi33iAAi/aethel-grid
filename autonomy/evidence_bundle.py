@@ -30,6 +30,8 @@ DEFAULT_ARTIFACTS = (
     "ops/caios/autonomy-certificates.jsonl",
     "ops/caios/session-anchors.jsonl",
     "ops/caios/evidence-ledger.jsonl",
+    "ops/caios/telemetry.jsonl",
+    "ops/caios/slsa-provenance.json",
     "ops/caios/federation-manifest-seal.json",
     "ops/caios/proof-graph.json",
     "ops/caios/agent-reputation.jsonl",
