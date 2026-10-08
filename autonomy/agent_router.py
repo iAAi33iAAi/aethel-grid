@@ -36,8 +36,6 @@ class AgentProfile:
     sandbox: bool
     provenance_confidence: float
 
-
-@dataclass(frozen=True)
     def as_dict(self) -> dict[str, object]:
         return {
             "agent_id": self.agent_id,
@@ -51,6 +49,7 @@ class AgentProfile:
         }
 
 
+@dataclass(frozen=True)
 class AgentAssignment:
     agent_id: str
     score: float
@@ -95,19 +94,20 @@ class AgentRegistry:
     ) -> tuple[float, list[str]]:
         required_capabilities = frozenset(required_capabilities)
         required_protocols = frozenset(required_protocols)
+
         capability_match = (
             len(required_capabilities & profile.capabilities) / len(required_capabilities)
-            if required_capabilities
-            else 1.0
+            if required_capabilities else 1.0
         )
         protocol_match = (
             len(required_protocols & profile.protocols) / len(required_protocols)
-            if required_protocols
-            else 1.0
+            if required_protocols else 1.0
         )
-        sandbox_fit = 1.0 if (not risk or profile.sandbox) else 0.25
+        sandbox_fit = 1.0 if risk < 0.55 or profile.sandbox else 0.25
         evidence = max(0.0, min(1.0, evidence_score))
-        provenance = max(0.0, min(1.0, min(profile.provenance_confidence, provenance_score)))
+        provenance = max(
+            0.0, min(1.0, min(profile.provenance_confidence, provenance_score))
+        )
 
         score = (
             0.40 * capability_match
@@ -134,9 +134,14 @@ class AgentRegistry:
     ) -> list[AgentAssignment]:
         evidence = evidence or {}
         assignments = []
+
+        required_protocols = frozenset(required_protocols)
         for profile in self.agents.values():
             if profile.authority != "proposal":
                 continue
+            if required_protocols and not (required_protocols & profile.protocols):
+                continue
+
             score, reasons = self._score(
                 profile,
                 required_capabilities,
@@ -153,6 +158,7 @@ class AgentRegistry:
                     profile_digest=digest(profile.as_dict()),
                 )
             )
+
         assignments.sort(key=lambda item: (-item.score, item.agent_id))
         return assignments
 
@@ -165,18 +171,17 @@ class AgentRegistry:
         max_agents: int = 3,
     ) -> QuorumPlan:
         ranked = self.rank(required_capabilities, required_protocols, risk, evidence)
-        min_protocol = float(self.policy.get("minimum_protocol_confidence", 0.70))
+        min_score = float(self.policy.get("minimum_agent_score", 0.70))
         min_provenance = float(self.policy.get("minimum_provenance_confidence", 0.90))
 
         eligible = []
         seen_families = set()
+
         for assignment in ranked:
             profile = self.agents[assignment.agent_id]
-            protocol_ok = bool(set(required_protocols) & profile.protocols) if required_protocols else True
-            provenance_ok = profile.provenance_confidence >= min_provenance
-            if assignment.score < min_protocol and required_protocols:
+            if assignment.score < min_score:
                 continue
-            if not protocol_ok or not provenance_ok:
+            if profile.provenance_confidence < min_provenance:
                 continue
             if profile.family in seen_families:
                 continue
@@ -186,8 +191,12 @@ class AgentRegistry:
                 break
 
         high_risk = risk >= float(self.policy.get("high_risk_threshold", 0.55))
-        required = 2 if high_risk else 1
+        required = int(
+            self.policy.get("high_risk_min_independent_agents", 2)
+            if high_risk else 1
+        )
         satisfied = len(eligible) >= required
+
         material = {
             "assignments": [assignment.__dict__ for assignment in eligible],
             "required_independent_families": required,
