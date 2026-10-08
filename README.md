@@ -2,135 +2,90 @@
 
 **Deterministic Governance. Verifiable State. Human-Centered Infrastructure.**
 
-AETHEL Grid is an open protocol for building systems where every decision is auditable, every state is reproducible, and no authority is hidden.
-
----
-
-## What is AETHEL?
-
-AETHEL is an event-sourced protocol. Every action in the system produces an immutable, signed event. State is never stored directly — it is always computed from the history of events.
-
-The entire system reduces to one equation:
-
-```
-STATE(G) = fold(topo_order(closure(G)))
-```
-
-That is not a simplification. That is the complete runtime semantics.
-
-What it means in plain language:
-
-- Take every event that has ever happened
-- Resolve their causal dependencies
-- Order them deterministically
-- Fold them into current state
-
-Any two nodes that have the same events will compute the same state. There is no ambiguity, no hidden logic, no privileged authority that holds the real version.
-
----
-
-## Why does it exist?
-
-Most systems treat state as primary and history as secondary.
-
-When you query a database, you get today's value — not the chain of decisions that produced it. When an institution makes a decision, you see the outcome — not the rules that were applied or whether they were followed correctly.
-
-AETHEL inverts this.
-
-History is primary. State is a consequence. Governance is transparent. Safety constraints are enforced structurally, not by trust.
-
-The long-term goal is a common protocol layer for:
-
-- Civic infrastructure and community governance
-- Local energy, water, and logistics systems
-- Cooperative economic networks
-- Physical nodes operating under verifiable rules
-
-The first physical anchor is **Node 001 — Bethel Acres, Oklahoma**.
-
----
+AETHEL Grid is an open protocol and bootstrap implementation for systems where event history can be inspected, state can be reconstructed deterministically, and governance rules can be made explicit.
 
 ## Current repository status
 
 | Component | Status |
-|-----------|--------|
-| Bootstrap event algebra in `interop/aethel_service.py` | Implemented |
-| Bootstrap interop API + tests | Implemented |
-| Candidate SPEC-004 TV-001 through TV-007 suite | Implemented as candidate/non-canonical |
-| Canonical SPEC-004 validator + ratified golden vectors | **Not yet established** |
+|---|---|
+| Bootstrap event algebra and interop service | Implemented |
+| Bootstrap interop tests | Implemented |
+| Candidate SPEC-004 TV-001 through TV-007 package | Implemented as candidate/non-canonical |
+| Canonical SPEC-004 validator and ratified golden vectors | **Not yet established** |
 | Multi-language canonical conformance | Pending canonical specification |
-| Node 001 physical deployment | In progress |
+| Node 001 physical deployment | Not independently established here |
 
----
+## Protocol model
 
-## How do I run it?
+The repository is centered on the event-sourcing model:
 
-```bash
-git clone https://github.com/iAAi33iAAi/aethel-grid.git
-cd aethel-grid
+    STATE(G) = fold(topo_order(closure(G)))
 
-# TypeScript — Reference Validator + compliance suite
-cd sdk/typescript
-npm install
-npm test
+The implementation in interop/aethel_service.py is explicitly a bootstrap reconstruction of that model.
 
-# Python — Core algebra
-pip install -e ./00_core
-pytest tests/
-```
+Important boundary: the bootstrap service does not establish final canonical ordering semantics, cryptographic event signatures, canonical SPEC-004 conformance, or production federation certification.
 
----
+Identical input to the bootstrap implementation produces deterministic output. That does not by itself prove the complete federated protocol or eliminate all privileged authority.
 
-## Why should I care?
+## Run the current implementation
 
-**If you build infrastructure:**
-AETHEL gives you a verifiable audit trail, deterministic state reconstruction, and governance constraints enforced by the protocol — not by policy documents.
+Start the bootstrap service:
 
-**If you fund civic technology:**
-The system is designed to operate community infrastructure — energy, logistics, housing, governance — with transparent economics and no extractive intermediary layer.
+    python3 interop/aethel_service.py --host 127.0.0.1 --port 8103
 
-**If you care about sovereignty:**
-Every community that runs a node owns its own history. State is computed locally. No central server holds the authoritative version.
+The service exposes:
 
-**If you write code:**
-The reference validator is a pure function. Any implementation in any language that passes the compliance suite is a conforming AETHEL node.
+- GET /aethel/health
+- GET /aethel/capabilities
+- POST /aethel/evaluate
 
----
+Run the candidate SPEC-004 validator:
 
-## Repository Structure
+    python3 specs/spec-004/validate_spec_004.py
 
-```
-interop/       Bootstrap AETHEL interop service and tests
-specs/spec-004 Candidate SPEC-004 vectors, schema, and validator
-.github/       CI workflows
-docs/          Protocol and audit documentation
-AETHEL*.pdf    Protocol and deployment reference documents
-```
+A successful candidate-vector run does not promote SPEC-004 to canonical status.
 
----
+## Repository structure
+
+    interop/
+      aethel_service.py
+      test_aethel_service.py
+
+    specs/spec-004/
+      vectors/TV-001.json through TV-007.json
+      SPEC-004.schema.json
+      validate_spec_004.py
+      README.md
+
+    .github/workflows/
+
+## Why it matters
+
+AETHEL explores infrastructure in which event history is explicit, state reconstruction is deterministic, governance rules can become executable, and evidence can be inspected independently.
+
+These are engineering goals. They are not presented here as proof that the complete civilizational, federated, or physical architecture is already deployed or independently certified.
 
 ## Roadmap
 
-**Phase 1 — Foundation** (current)
-Reference validator, test vectors, compliance suite, safety kernel
+### Phase 1 — Foundation
+Bootstrap event algebra, candidate conformance package, tests, and CI.
 
-**Phase 2 — Multi-language**
-TypeScript, Python, Rust conformance across all test vectors
+### Phase 2 — Canonicalization
+Ratify authoritative SPEC-004 semantics, schema, golden vectors, and an independent reference validator.
 
-**Phase 3 — Pilot Deployments**
-Node 001, construction workflows, logistics, community infrastructure
+### Phase 3 — Multi-language conformance
+Test additional implementations against the ratified vectors.
 
-**Phase 4 — Federated Network**
-Multi-node synchronization, distributed governance, cross-domain interoperability
+### Phase 4 — Pilot deployments
+Validate real operational event flows against the canonical protocol.
 
----
+### Phase 5 — Federation
+Demonstrate multi-node synchronization and governance only after canonical semantics and security boundaries are independently verified.
 
 ## Founder
 
 **John David Taylor Preston**
-Founder-Architect | Bethel Acres, Oklahoma | Node 001
-
----
+Founder-Architect | AETHEL Grid / Alpha Intelligence
 
 ## License
 
