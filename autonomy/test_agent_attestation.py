@@ -50,6 +50,27 @@ def test_registered_proposal_gets_attestation(tmp_path: Path):
         }""",
         encoding="utf-8",
     )
+    (tmp_path / "autonomy/model_registry.json").write_text(
+        """{
+          "policy": {
+            "service_terms_required": true,
+            "weight_license_required": true,
+            "source_commit_required_for_local_weights": true
+          },
+          "models": [
+            {
+              "model_id": "coder-model",
+              "class": "hosted-service",
+              "software_license": "N/A",
+              "weight_license": "N/A",
+              "service_terms_status": "REVIEWED",
+              "redistribution": "N/A",
+              "production": "ALLOWED_AFTER_REVIEW"
+            }
+          ]
+        }""",
+        encoding="utf-8",
+    )
     ok, reasons, attestation = validate_proposal(
         tmp_path,
         {
