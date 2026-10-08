@@ -33,6 +33,33 @@
       "service_terms_status": "N/A_LOCAL",
       "redistribution": "RESTRICTED_BY_MODEL_LICENSE",
       "production": "REQUIRES_MODEL_LICENSE_REVIEW"
+    },
+    {
+      "model_id": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+      "class": "local-code-model",
+      "software_license": "Apache-2.0-for-software-components",
+      "weight_license": "Apache-2.0",
+      "service_terms_status": "N/A_LOCAL",
+      "redistribution": "ALLOWED_SUBJECT_TO_LICENSE_AND_PROVENANCE",
+      "production": "REQUIRES_EXACT_REVISION_PIN"
+    },
+    {
+      "model_id": "Qwen/Qwen2.5-Coder-32B-Instruct",
+      "class": "local-code-model",
+      "software_license": "Apache-2.0-for-software-components",
+      "weight_license": "Apache-2.0",
+      "service_terms_status": "N/A_LOCAL",
+      "redistribution": "ALLOWED_SUBJECT_TO_LICENSE_AND_PROVENANCE",
+      "production": "REQUIRES_EXACT_REVISION_PIN"
+    },
+    {
+      "model_id": "deepseek-ai/DeepSeek-Coder-V2-Instruct",
+      "class": "local-code-model",
+      "software_license": "N/A_MODEL",
+      "weight_license": "DeepSeek-License",
+      "service_terms_status": "N/A_LOCAL",
+      "redistribution": "REQUIRES_LICENSE_REVIEW",
+      "production": "REQUIRES_MODEL_LICENSE_REVIEW"
     }
   ]
 }
