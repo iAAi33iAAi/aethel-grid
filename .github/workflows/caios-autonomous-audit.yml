@@ -66,6 +66,9 @@ jobs:
       - name: Build supply-chain evidence plan
         run: python -m autonomy.supply_chain_plan --repo-root . --output ops/caios/supply-chain-plan.json
 
+      - name: Build sovereign integration admission report
+        run: python -m autonomy.sovereign_admission --repo-root . --output ops/caios/sovereign-admission.json
+
       - name: Upload proof-carrying evidence
         uses: actions/upload-artifact@v4
         with:
@@ -82,3 +85,4 @@ jobs:
             ops/caios/system-knowledge-graph.json
             ops/caios/directive-plan.json
             ops/caios/supply-chain-plan.json
+            ops/caios/sovereign-admission.json
