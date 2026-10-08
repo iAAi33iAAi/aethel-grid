@@ -99,6 +99,33 @@ class RedTeamAgent(CouncilAgent):
         )
 
 
+class AdversarialAgent(CouncilAgent):
+    role = "adversarial"
+    weight = 1.35
+
+    def advise(self, gaps, evidence):
+        red_team = next(
+            (
+                item for item in evidence
+                if getattr(item, "kind", "") == "red-team"
+            ),
+            None,
+        )
+        status = getattr(red_team, "status", "MISSING")
+        penalty = 1.0 if status in {"FAIL", "BLOCKED", "MISSING"} else 0.0
+        focus = {
+            "security": min(1.0, gaps.get("security", 0.0) + penalty),
+            "verification": min(1.0, gaps.get("verification", 0.0) + penalty * 0.5),
+        }
+        return AgentOpinion(
+            self.role,
+            self.weight,
+            focus,
+            ("adversarial evidence must remain green before mutation",),
+            {"red_team_status": status, "penalty": penalty},
+        )
+
+
 class EvidenceAgent(CouncilAgent):
     role = "evidence"
     weight = 1.30
@@ -117,6 +144,7 @@ class CAIOSCouncil:
             GovernanceAgent(),
             TopologyAgent(),
             EvidenceAgent(),
+            AdversarialAgent(),
             RedTeamAgent(),
         )
 
