@@ -830,12 +830,15 @@ class AutonomousRuntime:
             return []
 
         families_by_intent: dict[str, set[str]] = {}
+        models_by_intent: dict[str, set[str]] = {}
         for candidate in candidates:
             if not candidate.agent_id or candidate.risk < threshold:
                 continue
             profile = registry.agents.get(candidate.agent_id)
             if profile:
                 families_by_intent.setdefault(candidate.intent_fingerprint, set()).add(profile.family)
+                if candidate.model_id:
+                    models_by_intent.setdefault(candidate.intent_fingerprint, set()).add(candidate.model_id)
 
         admitted: list[CandidateAction] = []
         for candidate in candidates:
@@ -843,7 +846,9 @@ class AutonomousRuntime:
                 admitted.append(candidate)
                 continue
             families = families_by_intent.get(candidate.intent_fingerprint, set())
-            if len(families) >= required:
+            models = models_by_intent.get(candidate.intent_fingerprint, set())
+            model_required = int(registry.policy.get("high_risk_min_independent_models", 2))
+            if len(families) >= required and len(models) >= model_required:
                 self.last_model_admission.append({
                     "action": candidate.action_id,
                     "status": "ADMITTED",
@@ -855,7 +860,9 @@ class AutonomousRuntime:
                     "action": candidate.action_id,
                     "status": "QUORUM_REJECTED",
                     "independent_families": sorted(families),
+                    "independent_models": sorted(models),
                     "required_independent_families": required,
+                    "required_independent_models": model_required,
                 })
         return admitted
 
