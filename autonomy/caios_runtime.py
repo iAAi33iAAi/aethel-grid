@@ -229,6 +229,7 @@ class OpenAICompatibleProposalProvider:
         egress = scan_context(
             model_snapshot,
             self.egress_policy,
+            source_context=self.send_source_context,
         )
         self.last_egress = egress
         if egress.status != "ALLOW":
