@@ -1224,6 +1224,7 @@ def main(argv: list[str] | None = None) -> int:
             endpoint=os.environ["CAIOS_MODEL_URL"],
             model=os.environ["CAIOS_MODEL_NAME"],
             api_key=os.getenv("CAIOS_MODEL_API_KEY"),
+            send_source_context=os.getenv("CAIOS_SEND_SOURCE_CONTEXT", "false").lower() == "true",
         )
 
     config_path = Path(args.agent_config) if args.agent_config else (Path(args.config) if args.config else None)
@@ -1246,6 +1247,7 @@ def main(argv: list[str] | None = None) -> int:
                         source_ref=str(item.get("source_ref", "unspecified")),
                         api_key=os.getenv(str(api_key_env)) if api_key_env else None,
                         max_proposals=int(item.get("max_proposals", 8)),
+                        send_source_context=bool(item.get("send_source_context", False)),
                     )
                 )
             provider = MultiAgentProposalProvider(tuple(specs))
@@ -1256,6 +1258,7 @@ def main(argv: list[str] | None = None) -> int:
                     endpoint=str(model_cfg["endpoint"]),
                     model=str(model_cfg["model"]),
                     api_key=str(model_cfg.get("api_key")) if model_cfg.get("api_key") else None,
+                    send_source_context=bool(model_cfg.get("send_source_context", False)),
                 )
 
     runtime = AutonomousRuntime(
