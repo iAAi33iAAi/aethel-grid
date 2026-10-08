@@ -465,7 +465,10 @@ class AutonomousRuntime:
     def _model_candidates(self, snapshot: dict[str, Any], gaps: dict[str, float]) -> list[CandidateAction]:
         if not self.proposal_provider:
             return []
-        raw = self.proposal_provider.propose({"snapshot": snapshot, "gaps": gaps})
+        try:
+            raw = self.proposal_provider.propose({"snapshot": snapshot, "gaps": gaps})
+        except Exception:
+            return []
         candidates: list[CandidateAction] = []
         for idx, item in enumerate(raw[:20]):
             if not isinstance(item, dict):
@@ -644,7 +647,18 @@ class AutonomousRuntime:
                 self.certificates.append(cert)
                 break
 
-            action_evidence = self._execute(action)
+            try:
+                action_evidence = self._execute(action)
+            except Exception as exc:
+                action_evidence = [
+                    Evidence(
+                        kind="execution",
+                        status="FAIL",
+                        source="caios-runtime",
+                        digest=digest(str(exc)),
+                        details={"exception": type(exc).__name__, "message": str(exc)},
+                    )
+                ]
             decision = "CONTINUE"
             reasons = [action.rationale]
             if any(e.status in {"BLOCKED", "REQUIRED"} for e in action_evidence):
