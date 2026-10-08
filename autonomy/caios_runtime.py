@@ -31,6 +31,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Iterable
 
+from autonomy.agent_router import AgentRegistry
 from autonomy.caios_council import CAIOSCouncil
 from conformance.contract import inspect_contract
 
@@ -328,6 +329,40 @@ class AethelObserver:
                 )
             )
         return evidence
+
+
+class AgentObserver:
+    """Reports which registered agent families are eligible for the cycle."""
+
+    def observe(self, repo_root: Path, risk: float = 0.60) -> Evidence:
+        try:
+            registry = AgentRegistry(repo_root)
+            capabilities = ("coding", "testing", "patching") if risk >= 0.55 else ("planning", "reasoning")
+            plan = registry.plan_quorum(
+                capabilities,
+                ("acp", "mcp", "openai-compatible"),
+                risk,
+                max_agents=3,
+            )
+            return Evidence(
+                kind="agent-arbitration",
+                status="PASS" if plan.satisfied else "BLOCKED",
+                source="autonomy/agent_registry.json",
+                digest=plan.plan_digest,
+                details={
+                    "required_independent_families": plan.required_independent_families,
+                    "satisfied": plan.satisfied,
+                    "assignments": [a.__dict__ for a in plan.assignments],
+                },
+            )
+        except Exception as exc:
+            return Evidence(
+                kind="agent-arbitration",
+                status="FAIL",
+                source="autonomy/agent_registry.json",
+                digest=digest(str(exc)),
+                details={"exception": type(exc).__name__, "message": str(exc)},
+            )
 
 
 class FederationObserver:
