@@ -678,10 +678,50 @@ class AutonomousRuntime:
             ]
 
         if action.kind == "apply_patch":
+            status_rc, status_out, status_err = self.runner.run(("git", "status", "--porcelain"))
+            self.commands_used += 1
+            if status_rc != 0 or status_out.strip():
+                return [
+                    Evidence(
+                        kind="patch",
+                        status="BLOCKED",
+                        source="git status",
+                        digest=digest(status_out or status_err),
+                        details={"reason": "autonomous patching requires a clean working tree"},
+                    )
+                ]
+            test_command = (
+                ("python", "-m", "pytest", "-q", "interop")
+                if (self.repo_root / "interop").exists()
+                else (("python", "-m", "pytest", "-q", "tests") if (self.repo_root / "tests").exists() else ())
+            )
+            if not test_command:
+                return [
+                    Evidence(
+                        kind="patch",
+                        status="BLOCKED",
+                        source="caios-runtime",
+                        digest=digest("no-validation-suite"),
+                        details={"reason": "mutation requires a deterministic validation suite"},
+                    )
+                ]
+            if self.commands_used + 4 > self.max_commands:
+                return [
+                    Evidence(
+                        kind="budget",
+                        status="BLOCKED",
+                        source="caios-runtime",
+                        digest=digest("patch-validation-budget"),
+                        details={"max_commands": self.max_commands},
+                    )
+                ]
+
             check = self.repo_root / ".caios-pending.patch"
             check.write_text(action.unified_diff, encoding="utf-8")
+            applied = False
             try:
                 rc, _, stderr = self.runner.run(("git", "apply", "--check", str(check)))
+                self.commands_used += 1
                 if rc != 0:
                     return [
                         Evidence(
@@ -692,18 +732,68 @@ class AutonomousRuntime:
                             details={"stderr": stderr[-4000:]},
                         )
                     ]
-                self.runner.run(("git", "apply", str(check)))
-                self.commands_used += 2
+
+                rc, _, stderr = self.runner.run(("git", "apply", str(check)))
+                self.commands_used += 1
+                if rc != 0:
+                    return [
+                        Evidence(
+                            kind="patch",
+                            status="FAIL",
+                            source="git apply",
+                            digest=digest(stderr),
+                            details={"stderr": stderr[-4000:]},
+                        )
+                    ]
+                applied = True
+
+                rc, stdout, stderr = self.runner.run(test_command)
+                self.commands_used += 1
+                if rc == 0:
+                    return [
+                        Evidence(
+                            kind="patch",
+                            status="PASS",
+                            source="git apply + validation",
+                            digest=digest(action.unified_diff),
+                            details={"changed": True, "validation_command": list(test_command)},
+                        ),
+                        Evidence(
+                            kind="test",
+                            status="PASS",
+                            source=" ".join(test_command),
+                            digest=digest({"rc": rc, "stdout": stdout, "stderr": stderr}),
+                            details={"returncode": rc, "stdout_tail": stdout[-3000:], "stderr_tail": stderr[-3000:]},
+                        ),
+                    ]
+
+                reverse_rc, _, reverse_err = self.runner.run(("git", "apply", "-R", str(check)))
+                self.commands_used += 1
                 return [
                     Evidence(
                         kind="patch",
-                        status="PASS",
-                        source="git apply",
-                        digest=digest(action.unified_diff),
-                        details={"changed": True},
-                    )
+                        status="FAIL",
+                        source="git apply + validation",
+                        digest=digest({"patch": action.unified_diff, "validation_rc": rc, "reverse_rc": reverse_rc}),
+                        details={
+                            "changed": False,
+                            "validation_command": list(test_command),
+                            "validation_stderr": stderr[-3000:],
+                            "rollback_returncode": reverse_rc,
+                            "rollback_stderr": reverse_err[-2000:],
+                        },
+                    ),
+                    Evidence(
+                        kind="test",
+                        status="FAIL",
+                        source=" ".join(test_command),
+                        digest=digest({"rc": rc, "stdout": stdout, "stderr": stderr}),
+                        details={"returncode": rc, "stdout_tail": stdout[-3000:], "stderr_tail": stderr[-3000:]},
+                    ),
                 ]
             finally:
+                if applied and not self.runner.run(("git", "status", "--porcelain")):
+                    pass
                 check.unlink(missing_ok=True)
 
         if action.kind == "verify_conformance":
