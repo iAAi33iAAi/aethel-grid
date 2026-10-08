@@ -11,13 +11,13 @@ Copyright (c) 2026 iAAi33iAAi
 from __future__ import annotations
 
 import json
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from autonomy.evidence_bundle import digest
 from autonomy.protocol_admission import ProtocolRegistry
+from integrations.tool_compiler import compile_command
 
 
 @dataclass(frozen=True)
@@ -38,18 +38,15 @@ class ProtocolConformanceRunner:
         self.registry = ProtocolRegistry(self.repo_root)
 
     def available_command(self, protocol_id: str) -> tuple[str, ...] | None:
-        profile = self.registry.get(protocol_id)
-        if profile is None:
+        tool_id = {
+            "acp": "acp-tck",
+            "a2a": "a2a-cli",
+            "mcp": "mcp-cli",
+        }.get(protocol_id)
+        if not tool_id:
             return None
-        candidates = {
-            "acp": ("acp-tck",),
-            "a2a": ("a2a", "version"),
-            "mcp": ("mcp", "--help"),
-        }
-        command = candidates.get(protocol_id)
-        if not command or not shutil.which(command[0]):
-            return None
-        return command
+        compiled, reason = compile_command(self.repo_root, tool_id)
+        return compiled.argv if compiled and reason == "compiled" else None
 
     def plan(self) -> list[dict[str, Any]]:
         rows = []
