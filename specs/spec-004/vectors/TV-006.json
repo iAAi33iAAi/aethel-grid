@@ -1,0 +1,16 @@
+{
+  "specification_id": "SPEC-004",
+  "specification_version": "candidate-0.1",
+  "status": "CANDIDATE_NONCANONICAL",
+  "test_id": "TV-006",
+  "name": "Egress payload 2 MiB boundary",
+  "input": {
+    "payload_size_bytes": 2097152,
+    "max_payload_bytes": 2097152
+  },
+  "expected": {
+    "status": "PASS",
+    "accepted_bytes": 2097152
+  },
+  "anchor": "d282187dd83ac58e8a1c91c0f77fb1c900e7d117d9c0b3346cca30a357499e57"
+}
