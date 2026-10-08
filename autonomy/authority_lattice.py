@@ -55,7 +55,15 @@ REQUIRED_LEVELS = {
 
 class AuthorityLattice:
     def __init__(self, repo_root: Path, path: str = "autonomy/authority_lattice.json") -> None:
-        raw = json.loads((repo_root / path).read_text(encoding="utf-8"))
+        self.load_error: str | None = None
+        try:
+            raw = json.loads((repo_root / path).read_text(encoding="utf-8"))
+            if not isinstance(raw, dict):
+                raise TypeError("authority lattice root must be an object")
+        except (OSError, json.JSONDecodeError, TypeError) as exc:
+            self.load_error = f"{type(exc).__name__}: {exc}"
+            raw = {"principals": []}
+
         self.principals = {
             item["principal_id"]: Principal(
                 principal_id=str(item["principal_id"]),
@@ -64,12 +72,15 @@ class AuthorityLattice:
                 boundary=str(item.get("boundary", "")),
             )
             for item in raw.get("principals", [])
+            if isinstance(item, dict) and "principal_id" in item
         }
 
     def get(self, principal_id: str) -> Principal | None:
         return self.principals.get(principal_id)
 
     def authorize(self, principal_id: str, capability: str) -> tuple[bool, str]:
+        if self.load_error:
+            return False, f"authority-lattice-unavailable: {self.load_error}"
         principal = self.get(principal_id)
         if principal is None:
             return False, "principal-not-registered"
@@ -86,5 +97,7 @@ class AuthorityLattice:
         return {
             "schema": "caios-authority-lattice/v1",
             "required_levels": {key: int(value) for key, value in REQUIRED_LEVELS.items()},
+            "load_status": "PASS" if self.load_error is None else "BLOCKED",
+            "load_error": self.load_error,
             "principals": [item.as_dict() for item in self.principals.values()],
         }
