@@ -15,6 +15,18 @@ def test_system_graph_binds_repositories_agents_tools_and_invariants(tmp_path: P
             {"id": "core", "role": "core", "path": ".", "depends_on": []}
         ]
     }), encoding="utf-8")
+    (tmp_path / "autonomy/protocol_registry.json").write_text(json.dumps({
+        "policy": {"draft_protocol_requires_opt_in": True},
+        "protocols": [{
+            "id": "acp",
+            "latest_known_revision": "1",
+            "status": "stable",
+            "transport_role": "agent-client",
+            "license": "Apache-2.0",
+            "source_url": "https://example.invalid/acp",
+            "draft": False
+        }]
+    }), encoding="utf-8")
     (tmp_path / "autonomy/agent_registry.json").write_text(json.dumps({
         "agents": [
             {"id": "a", "family": "a", "protocols": ["acp"], "capabilities": ["coding"], "authority": "proposal"}
