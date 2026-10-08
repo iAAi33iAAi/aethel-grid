@@ -24,9 +24,14 @@ jobs:
       - name: Install test runner
         run: python -m pip install "pytest>=8,<9"
 
+      - name: Run deterministic architecture tests
+        run: python -m pytest -q autonomy conformance federation interop
+
       - name: Run CAIOS bounded autonomy loop
-        run: |
-          python autonomy/caios_runtime.py             --repo-root .             --cycles 3             --max-commands 8
+        run: python autonomy/caios_runtime.py --repo-root . --cycles 3 --max-commands 8
+
+      - name: Verify proof-carrying certificate chain
+        run: python autonomy/verify_certificates.py ops/caios/autonomy-certificates.jsonl
 
       - name: Upload proof-carrying certificates
         uses: actions/upload-artifact@v4
