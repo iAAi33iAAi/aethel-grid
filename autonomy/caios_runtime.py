@@ -39,6 +39,8 @@ from conformance.contract import inspect_contract
 from integrations.remote_interop import RemoteInteropClient
 from integrations.tool_compiler import compile_command
 from federation.security_primitives import SessionAnchor, SessionAnchorRegistry
+from telemetry.caios_events import new_event
+from telemetry.event_log import TelemetryLog
 from autonomy.context_window import ContextWindow
 from autonomy.agent_reputation import AgentReputationStore
 from autonomy.evidence_ledger import EvidenceLedger
@@ -707,6 +709,10 @@ class AutonomousRuntime:
             self.repo_root / "ops" / "caios" / "agent-reputation.jsonl"
         )
         self.session_id = str(uuid.uuid4())
+        self.trace_id = uuid.uuid4().hex
+        self.telemetry = TelemetryLog(
+            self.repo_root / "ops" / "caios" / "telemetry.jsonl"
+        )
         self.anchors = SessionAnchorRegistry(
             self.repo_root / "ops" / "caios" / "session-anchors.jsonl"
         )
@@ -1248,6 +1254,14 @@ class AutonomousRuntime:
         for cycle in range(1, self.max_cycles + 1):
             started = time.monotonic_ns()
             snapshot = self.snapshotter.capture()
+            self.telemetry.write(
+                new_event(
+                    "caios.cycle.started",
+                    trace_id=self.trace_id,
+                    attributes={"caios.session.id": self.session_id},
+                    body={"cycle": cycle, "observation_digest": snapshot["observation_digest"]},
+                )
+            )
             evidence: list[Evidence] = []
             session_anchor = SessionAnchor.create(
                 self.session_id,
@@ -1341,6 +1355,20 @@ class AutonomousRuntime:
                     )
                 )
             action, score, rejected = self.planner.select(candidates, self.gate, council.priority)
+            if action is not None:
+                self.telemetry.write(
+                    new_event(
+                        "caios.route.selected",
+                        trace_id=self.trace_id,
+                        attributes={"caios.session.id": self.session_id},
+                        body={
+                            "cycle": cycle,
+                            "action_id": action.action_id,
+                            "score": score,
+                            "intent_fingerprint": action.intent_fingerprint,
+                        },
+                    )
+                )
 
             if action is not None and action.kind == "human_review":
                 executable = [c for c in candidates if c.kind != "human_review" and self.gate.validate(c)[0]]
@@ -1462,6 +1490,19 @@ class AutonomousRuntime:
                 work_contract_digest=contract.contract_digest,
             )
             self.certificates.append(cert)
+            self.telemetry.write(
+                new_event(
+                    "caios.proof.sealed",
+                    trace_id=self.trace_id,
+                    attributes={"caios.session.id": self.session_id},
+                    body={
+                        "cycle": cycle,
+                        "proof_digest": cert.proof_digest,
+                        "work_contract_digest": cert.work_contract_digest,
+                        "decision": cert.decision,
+                    },
+                )
+            )
 
             if decision == "HALT":
                 break
