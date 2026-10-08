@@ -28,13 +28,13 @@ jobs:
         run: python -m pytest -q autonomy conformance federation interop
 
       - name: Run CAIOS bounded autonomy loop
-        run: python autonomy/caios_runtime.py --repo-root . --cycles 3 --max-commands 8
+        run: python -m autonomy.caios_runtime --repo-root . --cycles 3 --max-commands 8
 
       - name: Verify proof-carrying certificate chain
-        run: python autonomy/verify_certificates.py ops/caios/autonomy-certificates.jsonl
+        run: python -m autonomy.verify_certificates ops/caios/autonomy-certificates.jsonl
 
       - name: Materialize proof graph
-        run: python autonomy/proof_graph.py ops/caios/autonomy-certificates.jsonl --output ops/caios/proof-graph.json
+        run: python -m autonomy.proof_graph ops/caios/autonomy-certificates.jsonl --output ops/caios/proof-graph.json
 
       - name: Upload proof-carrying evidence
         uses: actions/upload-artifact@v4
