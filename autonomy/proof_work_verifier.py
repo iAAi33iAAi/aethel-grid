@@ -57,6 +57,21 @@ def verify_contract(repo_root: Path, contract: ProofCarryingWorkContract) -> tup
         except Exception as exc:
             reasons.append(f"model-registry-error:{type(exc).__name__}")
 
+    if contract.invariant_ids:
+        registry_path = repo_root / "conformance" / "federated_invariant_registry.json"
+        try:
+            invariant_registry = json.loads(registry_path.read_text(encoding="utf-8"))
+            known = {
+                str(item["id"])
+                for item in invariant_registry.get("invariants", [])
+                if isinstance(item, dict) and "id" in item
+            }
+            for invariant_id in contract.invariant_ids:
+                if invariant_id not in known:
+                    reasons.append(f"invariant-not-registered:{invariant_id}")
+        except (OSError, json.JSONDecodeError, TypeError):
+            reasons.append("invariant-registry-unavailable")
+
     try:
         tools = ToolRegistry(repo_root)
         for tool_id in contract.tool_ids:
