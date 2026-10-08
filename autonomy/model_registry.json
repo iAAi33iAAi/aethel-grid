@@ -1,0 +1,38 @@
+{
+  "schema": "caios-models/v1",
+  "policy": {
+    "unknown_model": "REJECT",
+    "service_terms_required": true,
+    "weight_license_required": true,
+    "source_commit_required_for_local_weights": true
+  },
+  "models": [
+    {
+      "model_id": "REPLACE_WITH_EXACT_HOSTED_MODEL_ID",
+      "class": "hosted-service",
+      "software_license": "N/A",
+      "weight_license": "N/A",
+      "service_terms_status": "REQUIRED_OPERATOR_RECORD",
+      "redistribution": "NOT_APPLICABLE",
+      "production": "REQUIRES_TERMS_REVIEW"
+    },
+    {
+      "model_id": "bigcode/starcoder2-15b",
+      "class": "local-code-model",
+      "software_license": "Apache-2.0-for-software-components",
+      "weight_license": "BigCode-OpenRAIL-M-v1",
+      "service_terms_status": "N/A_LOCAL",
+      "redistribution": "RESTRICTED_BY_MODEL_LICENSE",
+      "production": "REQUIRES_MODEL_LICENSE_REVIEW"
+    },
+    {
+      "model_id": "mistralai/Codestral-22B-v0.1",
+      "class": "local-code-model",
+      "software_license": "Apache-2.0-for-related-software-not-model",
+      "weight_license": "MNPL",
+      "service_terms_status": "N/A_LOCAL",
+      "redistribution": "RESTRICTED_BY_MODEL_LICENSE",
+      "production": "REQUIRES_MODEL_LICENSE_REVIEW"
+    }
+  ]
+}
