@@ -39,7 +39,20 @@ STATUS_GAP = {
 
 def load_registry(repo_root: Path) -> dict[str, Any]:
     path = repo_root / "conformance" / "federated_invariant_registry.json"
-    return json.loads(path.read_text(encoding="utf-8"))
+    if not path.is_file():
+        return {
+            "invariants": [],
+            "_missing": True,
+            "_path": str(path.relative_to(repo_root)),
+        }
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {
+            "invariants": [],
+            "_invalid": True,
+            "_path": str(path.relative_to(repo_root)),
+        }
 
 
 def evaluate(repo_root: Path) -> dict[str, Any]:
@@ -93,6 +106,8 @@ def evaluate(repo_root: Path) -> dict[str, Any]:
     }
 
     blockers = [
+        "federated-invariant-registry-missing" if invariant_registry.get("_missing") else None,
+        "federated-invariant-registry-invalid" if invariant_registry.get("_invalid") else None,
         "canonical-conformance"
         if contract.status != "PASS"
         else None,
