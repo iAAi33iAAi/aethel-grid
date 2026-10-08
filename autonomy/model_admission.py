@@ -3,7 +3,7 @@
 CAIOS model admission.
 
 Model identity is independent from agent identity. A registered agent may not
-smuggle an unregistered model into the autonomous path.
+smuggle an unregistered or unpinned model into the autonomous path.
 
 License: Apache-2.0
 Copyright (c) 2026 iAAi33iAAi
@@ -24,6 +24,8 @@ class ModelProfile:
     service_terms_status: str
     redistribution: str
     production: str
+    revision: str | None
+    terms_ref: str | None
 
 
 class ModelRegistry:
@@ -39,6 +41,8 @@ class ModelRegistry:
                 service_terms_status=str(item["service_terms_status"]),
                 redistribution=str(item["redistribution"]),
                 production=str(item["production"]),
+                revision=str(item["revision"]) if item.get("revision") else None,
+                terms_ref=str(item["terms_ref"]) if item.get("terms_ref") else None,
             )
             for item in raw.get("models", [])
         }
@@ -46,7 +50,12 @@ class ModelRegistry:
     def get(self, model_id: str) -> ModelProfile | None:
         return self.models.get(model_id)
 
-    def admit(self, model_id: str) -> tuple[bool, list[str]]:
+    def admit(
+        self,
+        model_id: str,
+        *,
+        model_revision: str | None = None,
+    ) -> tuple[bool, list[str]]:
         profile = self.get(model_id)
         if profile is None:
             return False, ["model-id-not-registered"]
@@ -54,11 +63,20 @@ class ModelRegistry:
         reasons = []
         if self.policy.get("weight_license_required", True) and not profile.weight_license:
             reasons.append("weight-license-missing")
+
         if profile.model_class == "hosted-service" and self.policy.get("service_terms_required", True):
             if profile.service_terms_status in {"UNKNOWN", "MISSING", "REQUIRED_OPERATOR_RECORD"}:
                 reasons.append("service-terms-review-required")
-        if profile.model_class == "local-code-model" and self.policy.get("source_commit_required_for_local_weights", True):
-            reasons.append("local-model-source-pin-required")
+            if not profile.terms_ref:
+                reasons.append("service-terms-reference-missing")
+
+        if profile.model_class == "local-code-model":
+            if self.policy.get("source_commit_required_for_local_weights", True):
+                if not model_revision:
+                    reasons.append("model-revision-missing")
+                elif profile.revision and profile.revision != model_revision:
+                    reasons.append("model-revision-mismatch")
+
         if "REQUIRES_MODEL_LICENSE_REVIEW" in profile.production:
             reasons.append("model-license-review-required")
 
