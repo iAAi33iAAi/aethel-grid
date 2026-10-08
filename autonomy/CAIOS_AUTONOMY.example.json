@@ -1,0 +1,21 @@
+{
+  "model": {
+    "endpoint": "http://127.0.0.1:8000/v1/chat/completions",
+    "model": "any-openai-compatible-code-model"
+  },
+  "execution_policy": {
+    "max_cycles": 5,
+    "max_commands": 20,
+    "max_patch_lines": 250
+  },
+  "external_capabilities": {
+    "opa": "opa eval",
+    "scorecard": "scorecard",
+    "syft": "syft",
+    "grype": "grype",
+    "cosign": "cosign",
+    "aider": "aider",
+    "swe_agent": "swe-agent",
+    "openhands": "openhands"
+  }
+}
