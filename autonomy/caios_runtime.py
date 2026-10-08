@@ -77,6 +77,14 @@ class CandidateAction:
     evidence_gain: float
     command: tuple[str, ...] = ()
     unified_diff: str = ""
+    agent_id: str | None = None
+    protocol: str | None = None
+    protocol_version: str | None = None
+    model_id: str | None = None
+    model_revision: str | None = None
+    attestation_digest: str | None = None
+    invariant_ids: tuple[str, ...] = ()
+    tool_ids: tuple[str, ...] = ()
 
     @property
     def fingerprint(self) -> str:
