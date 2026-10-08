@@ -1,0 +1,36 @@
+name: Gate 3 Cross-Substrate Reference
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install pytest
+      - run: python -m pytest -q conformance/test_gate3_reference.py
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: |
+          rustc --test conformance/test_gate3_reference.rs -o /tmp/gate3-tests
+          /tmp/gate3-tests
+
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node --experimental-strip-types conformance/gate3_reference_test.ts
