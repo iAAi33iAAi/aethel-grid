@@ -174,3 +174,27 @@ def test_missing_authority_lattice_fails_closed(tmp_path: Path):
     allowed, reasons = gate.validate(action)
     assert allowed is False
     assert any("authority-lattice-unavailable" in reason for reason in reasons)
+
+
+def test_malformed_authority_principal_fails_closed(tmp_path: Path):
+    path = tmp_path / "autonomy"
+    path.mkdir()
+    (path / "authority_lattice.json").write_text(
+        "{\"schema\":\"caios-authority-lattice/v1\",\"principals\":[{\"principal_id\":\"caios\",\"authority\":\"not-a-number\"}]}\n",
+        encoding="utf-8",
+    )
+    gate = ConstitutionalGate(tmp_path)
+    action = CandidateAction(
+        action_id="blocked",
+        kind="observe",
+        target=".",
+        rationale="malformed authority must not authorize",
+        expected_gain=0.1,
+        risk=0.01,
+        reversibility=1.0,
+        resource_cost=0.01,
+        evidence_gain=0.1,
+    )
+    allowed, reasons = gate.validate(action)
+    assert allowed is False
+    assert any("authority-lattice-unavailable" in reason for reason in reasons)
