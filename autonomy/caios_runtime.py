@@ -890,7 +890,13 @@ class AutonomousRuntime:
                     command=command,
                     unified_diff=diff,
                     agent_id=attestation.agent_id,
+                    protocol=attestation.protocol,
+                    protocol_version=attestation.protocol_version,
+                    model_id=attestation.model_id,
+                    model_revision=attestation.model_revision,
                     attestation_digest=attestation.attestation_digest,
+                    invariant_ids=tuple(str(value) for value in item.get("invariant_ids", [])),
+                    tool_ids=tuple(str(value) for value in item.get("tool_ids", [])),
                 )
             )
         return self._apply_model_quorum(candidates)
