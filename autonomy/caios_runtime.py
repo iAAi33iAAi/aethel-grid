@@ -206,6 +206,9 @@ class ConstitutionalGate:
             reasons.append("risk exceeds autonomous threshold")
         if action.reversibility < 0.40 and action.kind != "human_review":
             reasons.append("action is insufficiently reversible")
+        if action.kind in {"run_test", "run_security_scan"} and action.action_id.startswith("model-"):
+            reasons.append("model-originated actions cannot supply arbitrary executable commands")
+
         if action.kind == "apply_patch":
             if not action.unified_diff:
                 reasons.append("patch action has no unified diff")
@@ -215,6 +218,14 @@ class ConstitutionalGate:
             )
             if changed_lines > self.max_patch_lines:
                 reasons.append("patch exceeds maximum autonomous change budget")
+            for line in action.unified_diff.splitlines():
+                if line.startswith(("+++ ", "--- ")):
+                    patch_path = line[4:].split("\t", 1)[0]
+                    if patch_path == "/dev/null":
+                        continue
+                    normalized = patch_path[2:] if patch_path.startswith(("a/", "b/")) else patch_path
+                    if normalized.startswith(("/", "../")) or "/../" in normalized or normalized.startswith(".git/"):
+                        reasons.append("patch path escapes or targets git internals")
 
         return not reasons, reasons
 
@@ -596,6 +607,11 @@ class AutonomousRuntime:
             candidates = self._baseline_candidates(gaps)
             candidates.extend(self._model_candidates(snapshot, gaps))
             action, score, rejected = self.planner.select(candidates, self.gate)
+
+            if action is not None and action.kind == "human_review":
+                executable = [c for c in candidates if c.kind != "human_review" and self.gate.validate(c)[0]]
+                if executable:
+                    action, score, rejected = self.planner.select(executable, self.gate)
 
             if action is None:
                 cert = DecisionCertificate(
