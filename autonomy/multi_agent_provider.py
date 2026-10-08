@@ -15,9 +15,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from autonomy.caios_runtime import OpenAICompatibleProposalProvider
-
-
 @dataclass(frozen=True)
 class EndpointSpec:
     agent_id: str
@@ -34,7 +31,7 @@ class MultiAgentProposalProvider:
     def __init__(
         self,
         specs: tuple[EndpointSpec, ...],
-        provider_factory: Callable[..., Any] = OpenAICompatibleProposalProvider,
+        provider_factory: Callable[..., Any] | None = None,
         max_workers: int = 8,
     ) -> None:
         self.specs = specs
@@ -42,7 +39,11 @@ class MultiAgentProposalProvider:
         self.max_workers = max_workers
 
     def _call(self, spec: EndpointSpec, snapshot: dict[str, Any]) -> list[dict[str, Any]]:
-        provider = self.provider_factory(
+        factory = self.provider_factory
+        if factory is None:
+            from autonomy.caios_runtime import OpenAICompatibleProposalProvider
+            factory = OpenAICompatibleProposalProvider
+        provider = factory(
             endpoint=spec.endpoint,
             model=spec.model,
             api_key=spec.api_key,
