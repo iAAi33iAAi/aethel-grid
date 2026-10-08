@@ -25,8 +25,7 @@ def test_contract_passes_when_validator_and_all_vectors_are_hash_anchored(tmp_pa
     vectors.mkdir(parents=True)
 
     validator = conformance / "validator.py"
-    validator.write_text("print('canonical')
-", encoding="utf-8")
+    validator.write_text("print('canonical')\n", encoding="utf-8")
 
     import hashlib
     import json
