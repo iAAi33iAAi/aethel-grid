@@ -62,8 +62,8 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install test runner
-        run: python -m pip install "pytest>=8,<9"
+      - name: Install test runner and crypto adapter
+        run: python -m pip install "pytest>=8,<9" "cryptography==50.0.2"
 
       - name: Test federation bridge
         working-directory: aethel-grid
