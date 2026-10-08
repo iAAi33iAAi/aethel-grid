@@ -27,6 +27,7 @@ def build_graph(repo_root: Path) -> dict[str, Any]:
     invariant_path = repo_root / "conformance" / "federated_invariant_registry.json"
     authority_path = repo_root / "autonomy" / "authority_lattice.json"
     model_path = repo_root / "autonomy" / "model_registry.json"
+    invariant_evidence_path = repo_root / "conformance" / "invariant_evidence_map.json"
 
     federation = json.loads(federation_path.read_text(encoding="utf-8")) if federation_path.is_file() else {}
     agents = json.loads(agent_path.read_text(encoding="utf-8")) if agent_path.is_file() else {}
@@ -34,6 +35,9 @@ def build_graph(repo_root: Path) -> dict[str, Any]:
     invariants = json.loads(invariant_path.read_text(encoding="utf-8")) if invariant_path.is_file() else {}
     authorities = json.loads(authority_path.read_text(encoding="utf-8")) if authority_path.is_file() else {}
     models = json.loads(model_path.read_text(encoding="utf-8")) if model_path.is_file() else {}
+    invariant_evidence = json.loads(
+        invariant_evidence_path.read_text(encoding="utf-8")
+    ) if invariant_evidence_path.is_file() else {}
 
     nodes = []
     edges = []
@@ -118,6 +122,39 @@ def build_graph(repo_root: Path) -> dict[str, Any]:
             "source": model_id,
             "target": "system:caios",
             "relation": "proposal-input",
+        })
+
+    for invariant_id, evidence in invariant_evidence.get("entries", {}).items():
+        evidence_id = f"mechanism:{invariant_id}"
+        nodes.append({
+            "id": evidence_id,
+            "kind": "mechanism",
+            "label": evidence.get("implementation", invariant_id),
+            "state": evidence.get("state"),
+            "basis": evidence.get("basis"),
+        })
+        edges.append({
+            "source": evidence_id,
+            "target": f"invariant:{invariant_id}",
+            "relation": "implements-mechanism",
+        })
+
+    security_artifacts = (
+        ("artifact:session-anchors", "session-anchor-log", "ops/caios/session-anchors.jsonl"),
+        ("artifact:manifest-seal", "federation-manifest-seal", "ops/caios/federation-manifest-seal.json"),
+    )
+    for artifact_id, label, relative in security_artifacts:
+        nodes.append({
+            "id": artifact_id,
+            "kind": "security-artifact",
+            "label": label,
+            "present": (repo_root / relative).is_file(),
+            "path": relative,
+        })
+        edges.append({
+            "source": artifact_id,
+            "target": "system:caios",
+            "relation": "evidence-input",
         })
 
     for tool in tools.get("tools", []):
