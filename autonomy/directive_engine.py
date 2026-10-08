@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from autonomy.system_readiness import evaluate as evaluate_readiness
+from autonomy.counterfactual import Scenario, rank_scenarios
 
 
 @dataclass(frozen=True)
@@ -148,10 +149,30 @@ def build_directives(repo_root: Path) -> dict[str, Any]:
             ordered.append(directive)
             seen.add(directive.directive_id)
 
+    scenarios = (
+        Scenario(
+            "establish-canonical-conformance",
+            {"canonical_conformance": True},
+            "establish authoritative SPEC-004 conformance evidence",
+        ),
+        Scenario(
+            "complete-critical-invariants",
+            {"resolved_invariants": [item["id"] for item in readiness["unresolved_invariants"] if item["priority"] == "critical"]},
+            "resolve declared critical protocol gaps",
+        ),
+        Scenario(
+            "complete-proof-surface",
+            {"proof_integrity": True, "proof_graph": True},
+            "complete local proof materialization",
+        ),
+    )
+    counterfactuals = rank_scenarios(readiness, scenarios)
+
     material = {
         "schema": "caios-directive-plan/v1",
         "readiness_digest": readiness["readiness_digest"],
         "directives": [item.as_dict() for item in ordered],
+        "counterfactuals": counterfactuals,
     }
 
     from autonomy.evidence_bundle import digest
