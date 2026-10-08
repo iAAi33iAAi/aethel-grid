@@ -25,6 +25,7 @@ class ToolSpec:
     license: str
     command: tuple[str, ...] = ()
     scope_note: str = ""
+    argument_policy: str = "none"
 
     @property
     def executable(self) -> str | None:
@@ -46,6 +47,7 @@ class ToolRegistry:
                 license=str(item["license"]),
                 command=tuple(str(part) for part in item.get("command", [])),
                 scope_note=str(item.get("scope_note", "")),
+                argument_policy=str(item.get("argument_policy", "none")),
             )
             for item in raw.get("tools", [])
         }
@@ -63,6 +65,7 @@ class ToolRegistry:
                 "license": spec.license,
                 "available": bool(spec.executable) if spec.command else None,
                 "scope_note": spec.scope_note,
+                "argument_policy": spec.argument_policy,
             })
         return sorted(result, key=lambda item: str(item["id"]))
 
