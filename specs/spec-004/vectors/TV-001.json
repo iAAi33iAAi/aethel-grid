@@ -1,0 +1,16 @@
+{
+  "specification_id": "SPEC-004",
+  "specification_version": "candidate-0.1",
+  "status": "CANDIDATE_NONCANONICAL",
+  "test_id": "TV-001",
+  "name": "Empty state initialization hash",
+  "input": {
+    "events": []
+  },
+  "expected": {
+    "status": "PASS",
+    "state_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "reason_code": "EMPTY_STATE"
+  },
+  "anchor": "b272b066f563be014f78ee1ca78e584eecc81dbfaf9656947ab2640e9d55376f"
+}
