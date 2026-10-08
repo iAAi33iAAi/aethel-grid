@@ -104,9 +104,6 @@ class DecisionCertificate:
             "elapsed_ms": self.elapsed_ms,
             "observation_digest": self.observation_digest,
             "council_digest": self.council_digest,
-            "proof_digest": self.proof_digest,
-            "observation_digest": self.observation_digest,
-            "council_digest": self.council_digest,
         })
 
     def as_dict(self) -> dict[str, Any]:
