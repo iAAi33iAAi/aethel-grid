@@ -34,6 +34,7 @@ class ProposalAttestation:
     agent_id: str
     protocol: str
     model_id: str
+    model_revision: str
     agent_version: str
     source_ref: str
     proposal_digest: str
@@ -43,6 +44,7 @@ class ProposalAttestation:
             "agent_id": self.agent_id,
             "protocol": self.protocol,
             "model_id": self.model_id,
+            "model_revision": self.model_revision,
             "agent_version": self.agent_version,
             "source_ref": self.source_ref,
             "proposal_digest": self.proposal_digest,
@@ -61,6 +63,7 @@ def validate_proposal(
     agent_id = str(proposal.get("agent_id", ""))
     protocol = str(proposal.get("protocol", ""))
     model_id = str(proposal.get("model_id", ""))
+    model_revision = str(proposal.get("model_revision", ""))
     agent_version = str(proposal.get("agent_version", ""))
     source_ref = str(proposal.get("source_ref", ""))
 
@@ -87,12 +90,16 @@ def validate_proposal(
     except Exception as exc:
         return False, [f"model-registry-unavailable:{type(exc).__name__}"], None
 
-    model_admitted, model_reasons = model_registry.admit(model_id)
+    model_admitted, model_reasons = model_registry.admit(
+        model_id,
+        model_revision=model_revision or None,
+    )
 
     reasons.extend(model_reasons)
 
     for field_name, value in {
         "model_id": model_id,
+        "model_revision": model_revision,
         "agent_version": agent_version,
         "source_ref": source_ref,
     }.items():
