@@ -9,7 +9,8 @@
       "agent_version": "PINNED_VERSION_OR_COMMIT",
       "source_ref": "git:PINNED_COMMIT",
       "api_key_env": "CAIOS_CODEX_API_KEY",
-      "send_source_context": false
+      "send_source_context": false,
+      "model_revision": "PINNED_MODEL_REVISION_OR_DIGEST"
     }
   ]
 }
