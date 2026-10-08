@@ -28,6 +28,7 @@ import sys
 import time
 import urllib.parse
 import urllib.request
+import uuid
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -36,6 +37,7 @@ from autonomy.agent_router import AgentRegistry
 from autonomy.caios_council import CAIOSCouncil
 from conformance.contract import inspect_contract
 from integrations.remote_interop import RemoteInteropClient
+from federation.security_primitives import SessionAnchor, SessionAnchorRegistry
 from autonomy.context_window import ContextWindow
 from autonomy.agent_reputation import AgentReputationStore
 
@@ -102,6 +104,8 @@ class DecisionCertificate:
     elapsed_ms: int
     observation_digest: str | None = None
     council_digest: str | None = None
+    session_id: str | None = None
+    session_anchor_hash: str | None = None
 
     @property
     def proof_digest(self) -> str:
@@ -118,6 +122,8 @@ class DecisionCertificate:
             "elapsed_ms": self.elapsed_ms,
             "observation_digest": self.observation_digest,
             "council_digest": self.council_digest,
+            "session_id": self.session_id,
+            "session_anchor_hash": self.session_anchor_hash,
         })
 
     def as_dict(self) -> dict[str, Any]:
@@ -134,6 +140,8 @@ class DecisionCertificate:
             "elapsed_ms": self.elapsed_ms,
             "observation_digest": self.observation_digest,
             "council_digest": self.council_digest,
+            "session_id": self.session_id,
+            "session_anchor_hash": self.session_anchor_hash,
             "proof_digest": self.proof_digest,
         }
 
@@ -648,6 +656,10 @@ class AutonomousRuntime:
         self.reputation = AgentReputationStore(
             self.repo_root / "ops" / "caios" / "agent-reputation.jsonl"
         )
+        self.session_id = str(uuid.uuid4())
+        self.anchors = SessionAnchorRegistry(
+            self.repo_root / "ops" / "caios" / "session-anchors.jsonl"
+        )
 
     def _gap_vector(self, evidence: list[Evidence], snapshot: dict[str, Any]) -> dict[str, float]:
         gaps = {
@@ -1085,6 +1097,48 @@ class AutonomousRuntime:
         for cycle in range(1, self.max_cycles + 1):
             started = time.monotonic_ns()
             snapshot = self.snapshotter.capture()
+            session_anchor = SessionAnchor.create(
+                self.session_id,
+                cycle,
+                snapshot["observation_digest"],
+            )
+            anchor_ok, anchor_reason = self.anchors.accept(session_anchor)
+            evidence.append(
+                Evidence(
+                    kind="session-anchor",
+                    status="PASS" if anchor_ok else "BLOCKED",
+                    source="federation/security_primitives.py",
+                    digest=session_anchor.anchor_hash,
+                    details={
+                        "session_id": self.session_id,
+                        "epoch": cycle,
+                        "state_digest": snapshot["observation_digest"],
+                        "reason": anchor_reason,
+                    },
+                )
+            )
+            if not anchor_ok:
+                cert = DecisionCertificate(
+                    cycle=cycle,
+                    selected_action=None,
+                    decision="HALT",
+                    score=0.0,
+                    gaps_before={"session": 1.0},
+                    evidence=tuple(evidence),
+                    reasons=(f"session anchor rejected: {anchor_reason}",),
+                    action_fingerprint=None,
+                    previous_certificate_digest=(
+                        digest(self.certificates[-1].as_dict()) if self.certificates else None
+                    ),
+                    elapsed_ms=(time.monotonic_ns() - started) // 1_000_000,
+                    observation_digest=snapshot.get("observation_digest"),
+                    council_digest=None,
+                    session_id=self.session_id,
+                    session_anchor_hash=session_anchor.anchor_hash,
+                )
+                self.certificates.append(cert)
+                break
+
             evidence = self.aethel.observe(self.repo_root)
             federation_evidence = self.federation.observe(self.repo_root)
             if federation_evidence:
@@ -1155,6 +1209,8 @@ class AutonomousRuntime:
                     elapsed_ms=(time.monotonic_ns() - started) // 1_000_000,
                     observation_digest=snapshot.get("observation_digest"),
                     council_digest=digest(council.digest_material),
+                    session_id=self.session_id,
+                    session_anchor_hash=session_anchor.anchor_hash,
                 )
                 self.certificates.append(cert)
                 break
@@ -1220,6 +1276,8 @@ class AutonomousRuntime:
                 elapsed_ms=(time.monotonic_ns() - started) // 1_000_000,
                 observation_digest=snapshot.get("observation_digest"),
                 council_digest=digest(council.digest_material),
+                session_id=self.session_id,
+                session_anchor_hash=session_anchor.anchor_hash,
             )
             self.certificates.append(cert)
 
@@ -1248,6 +1306,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config", default=None)
     parser.add_argument("--agent-config", default=None)
     parser.add_argument("--output", default="ops/caios/autonomy-certificates.jsonl")
+    parser.add_argument("--session-id", default=None)
     args = parser.parse_args(argv)
 
     repo_root = Path(args.repo_root).resolve()
@@ -1300,6 +1359,8 @@ def main(argv: list[str] | None = None) -> int:
         max_cycles=args.cycles,
         max_commands=args.max_commands,
     )
+    if args.session_id:
+        runtime.session_id = str(args.session_id)
     certificates = runtime.run()
     write_certificates(certificates, repo_root / args.output)
 
