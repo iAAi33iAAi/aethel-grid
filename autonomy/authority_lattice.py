@@ -64,16 +64,20 @@ class AuthorityLattice:
             self.load_error = f"{type(exc).__name__}: {exc}"
             raw = {"principals": []}
 
-        self.principals = {
-            item["principal_id"]: Principal(
-                principal_id=str(item["principal_id"]),
-                authority=AuthorityLevel(int(item["authority"])),
-                capabilities=frozenset(item.get("capabilities", [])),
-                boundary=str(item.get("boundary", "")),
-            )
-            for item in raw.get("principals", [])
-            if isinstance(item, dict) and "principal_id" in item
-        }
+        try:
+            self.principals = {
+                item["principal_id"]: Principal(
+                    principal_id=str(item["principal_id"]),
+                    authority=AuthorityLevel(int(item["authority"])),
+                    capabilities=frozenset(item.get("capabilities", [])),
+                    boundary=str(item.get("boundary", "")),
+                )
+                for item in raw.get("principals", [])
+                if isinstance(item, dict) and "principal_id" in item
+            }
+        except (KeyError, TypeError, ValueError) as exc:
+            self.load_error = f"{type(exc).__name__}: {exc}"
+            self.principals = {}
 
     def get(self, principal_id: str) -> Principal | None:
         return self.principals.get(principal_id)
