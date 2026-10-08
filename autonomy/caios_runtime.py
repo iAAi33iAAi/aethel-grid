@@ -20,6 +20,7 @@ import argparse
 import dataclasses
 import hashlib
 import json
+import math
 import os
 import shlex
 import subprocess
@@ -28,6 +29,9 @@ import time
 import urllib.request
 from pathlib import Path
 from typing import Any, Iterable
+
+from autonomy.caios_council import CAIOSCouncil
+from conformance.contract import inspect_contract
 
 
 def canonical_json(value: Any) -> bytes:
@@ -81,6 +85,28 @@ class DecisionCertificate:
     action_fingerprint: str | None
     previous_certificate_digest: str | None
     elapsed_ms: int
+    observation_digest: str | None = None
+    council_digest: str | None = None
+
+    @property
+    def proof_digest(self) -> str:
+        return digest({
+            "cycle": self.cycle,
+            "selected_action": self.selected_action,
+            "decision": self.decision,
+            "score": self.score,
+            "gaps_before": self.gaps_before,
+            "evidence": [e.as_dict() for e in self.evidence],
+            "reasons": list(self.reasons),
+            "action_fingerprint": self.action_fingerprint,
+            "previous_certificate_digest": self.previous_certificate_digest,
+            "elapsed_ms": self.elapsed_ms,
+            "observation_digest": self.observation_digest,
+            "council_digest": self.council_digest,
+            "proof_digest": self.proof_digest,
+            "observation_digest": self.observation_digest,
+            "council_digest": self.council_digest,
+        })
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -260,21 +286,30 @@ class AethelObserver:
                 details={"bootstrap_service_present": True},
             )
         )
+        contract = inspect_contract(repo_root)
         evidence.append(
             Evidence(
                 kind="canonical-conformance",
-                status="BLOCKED" if conformance_blocked else "UNKNOWN",
-                source=str(service),
-                digest=digest("blocked" if conformance_blocked else "unknown"),
+                status=contract.status,
+                source=str(repo_root / "conformance" / "canonical_contract.json"),
+                digest=contract.contract_digest,
                 details={
-                    "reason": (
-                        "bootstrap explicitly refuses to substitute for the canonical SPEC-004 validator"
-                        if conformance_blocked
-                        else "conformance state could not be determined"
-                    )
+                    "missing": list(contract.missing),
+                    "warnings": list(contract.warnings),
+                    "evidence": contract.evidence,
                 },
             )
         )
+        if conformance_blocked and contract.status == "PASS":
+            evidence.append(
+                Evidence(
+                    kind="canonical-promotion-guard",
+                    status="BLOCKED",
+                    source=str(service),
+                    digest=digest("bootstrap-cannot-promote"),
+                    details={"reason": "bootstrap source still declares canonical conformance as unresolved"},
+                )
+            )
         return evidence
 
 
@@ -290,9 +325,10 @@ class FederationObserver:
 
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             snapshot = build_federation(repo_root, manifest, run_verification=False)
+            federation_status = "PASS" if all(r["status"] == "PRESENT" for r in snapshot["repositories"]) else "DEGRADED"
             return Evidence(
                 kind="federation",
-                status="PASS",
+                status=federation_status,
                 source=str(manifest_path),
                 digest=digest(snapshot),
                 details={
@@ -327,11 +363,19 @@ class RepositorySnapshot:
         status_rc, status_out, _ = self.runner.run(("git", "status", "--short", "--branch"))
         tracked_rc, tracked_out, _ = self.runner.run(("git", "ls-files"))
 
-        return {
+        snapshot = {
             "head": head_out.strip() if head_rc == 0 else None,
             "status": status_out.strip() if status_rc == 0 else None,
             "tracked_files": tracked_out.splitlines() if tracked_rc == 0 else [],
         }
+        diff_rc, diff_out, _ = self.runner.run(("git", "diff", "--binary", "HEAD"))
+        snapshot["working_tree_diff_digest"] = digest(diff_out) if diff_rc == 0 else None
+        snapshot["working_tree_dirty"] = bool(
+            snapshot["status"]
+            and any(line and not line.startswith("##") for line in snapshot["status"].splitlines())
+        )
+        snapshot["observation_digest"] = digest(snapshot)
+        return snapshot
 
 
 class ViabilityPlanner:
@@ -389,6 +433,7 @@ class AutonomousRuntime:
         self.snapshotter = RepositorySnapshot(self.runner)
         self.aethel = AethelObserver()
         self.federation = FederationObserver()
+        self.council = CAIOSCouncil()
         self.gate = ConstitutionalGate(self.repo_root)
         self.planner = ViabilityPlanner()
         self.proposal_provider = proposal_provider
@@ -450,8 +495,8 @@ class AutonomousRuntime:
         if gaps["conformance"]:
             candidates.append(
                 CandidateAction(
-                    action_id="hold-conformance",
-                    kind="human_review",
+                    action_id="verify-conformance",
+                    kind="verify_conformance",
                     target=".",
                     rationale="canonical conformance is not established; do not promote bootstrap semantics",
                     expected_gain=0.55,
@@ -521,23 +566,32 @@ class AutonomousRuntime:
             diff = str(item.get("unified_diff", ""))
             command = tuple(shlex.split(str(item["command"]))) if item.get("command") else ()
             try:
-                candidates.append(
-                    CandidateAction(
-                        action_id=f"model-{idx}-{str(item.get('action_id', 'proposal'))}",
-                        kind=kind,
-                        target=target,
-                        rationale=str(item.get("rationale", "model proposal")),
-                        expected_gain=float(item.get("expected_gain", 0.30)),
-                        risk=float(item.get("risk", 0.50)),
-                        reversibility=float(item.get("reversibility", 0.60)),
-                        resource_cost=float(item.get("resource_cost", 0.30)),
-                        evidence_gain=float(item.get("evidence_gain", 0.50)),
-                        command=command,
-                        unified_diff=diff,
-                    )
-                )
+                metrics = {
+                    "expected_gain": float(item.get("expected_gain", 0.30)),
+                    "risk": float(item.get("risk", 0.50)),
+                    "reversibility": float(item.get("reversibility", 0.60)),
+                    "resource_cost": float(item.get("resource_cost", 0.30)),
+                    "evidence_gain": float(item.get("evidence_gain", 0.50)),
+                }
             except (TypeError, ValueError):
                 continue
+            if any(not math.isfinite(value) or not 0.0 <= value <= 1.0 for value in metrics.values()):
+                continue
+            candidates.append(
+                CandidateAction(
+                    action_id=f"model-{idx}-{str(item.get('action_id', 'proposal'))}",
+                    kind=kind,
+                    target=target,
+                    rationale=str(item.get("rationale", "model proposal")),
+                    expected_gain=metrics["expected_gain"],
+                    risk=metrics["risk"],
+                    reversibility=metrics["reversibility"],
+                    resource_cost=metrics["resource_cost"],
+                    evidence_gain=metrics["evidence_gain"],
+                    command=command,
+                    unified_diff=diff,
+                )
+            )
         return candidates
 
     def _execute(self, action: CandidateAction) -> list[Evidence]:
@@ -633,7 +687,16 @@ class AutonomousRuntime:
                 check.unlink(missing_ok=True)
 
         if action.kind == "verify_conformance":
-            return self.aethel.observe(self.repo_root)
+            result = inspect_contract(self.repo_root)
+            return [
+                Evidence(
+                    kind="canonical-conformance",
+                    status=result.status,
+                    source="conformance/canonical_contract.json",
+                    digest=result.contract_digest,
+                    details=result.as_dict(),
+                )
+            ]
 
         return [
             Evidence(
@@ -654,6 +717,19 @@ class AutonomousRuntime:
             if federation_evidence:
                 evidence.append(federation_evidence)
             gaps = self._gap_vector(evidence, snapshot)
+            council = self.council.deliberate(gaps, evidence)
+            council_evidence = Evidence(
+                kind="council",
+                status="PASS",
+                source="autonomy/caios_council.py",
+                digest=digest(council.digest_material),
+                details={
+                    "priority": council.priority,
+                    "dissent": list(council.dissent),
+                    "roles": [opinion.role for opinion in council.opinions],
+                },
+            )
+            evidence.append(council_evidence)
 
             candidates = self._baseline_candidates(gaps)
             candidates.extend(self._model_candidates(snapshot, gaps))
@@ -689,6 +765,8 @@ class AutonomousRuntime:
                         digest(self.certificates[-1].as_dict()) if self.certificates else None
                     ),
                     elapsed_ms=(time.monotonic_ns() - started) // 1_000_000,
+                    observation_digest=snapshot.get("observation_digest"),
+                    council_digest=digest(council.digest_material),
                 )
                 self.certificates.append(cert)
                 break
@@ -727,6 +805,8 @@ class AutonomousRuntime:
                     digest(self.certificates[-1].as_dict()) if self.certificates else None
                 ),
                 elapsed_ms=(time.monotonic_ns() - started) // 1_000_000,
+                observation_digest=snapshot.get("observation_digest"),
+                council_digest=digest(council.digest_material),
             )
             self.certificates.append(cert)
 
