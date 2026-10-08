@@ -33,6 +33,9 @@ jobs:
       - name: Run deterministic architecture tests
         run: python -m pytest -q autonomy conformance federation interop
 
+      - name: Run adversarial constitutional gate campaign
+        run: python -m autonomy.red_team --repo-root . --output ops/caios/red-team.json
+
       - name: Run CAIOS bounded autonomy loop
         run: python -m autonomy.caios_runtime --repo-root . --cycles 3 --max-commands 8
 
@@ -82,6 +85,7 @@ jobs:
           name: caios-autonomy-evidence
           path: |
             ops/caios/autonomy-certificates.jsonl
+            ops/caios/red-team.json
             ops/caios/session-anchors.jsonl
             ops/caios/evidence-ledger.jsonl
             ops/caios/federation-manifest-seal.json
