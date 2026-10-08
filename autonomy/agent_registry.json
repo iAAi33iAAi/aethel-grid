@@ -3,7 +3,7 @@
   "selection_policy": {
     "high_risk_threshold": 0.55,
     "high_risk_min_independent_agents": 2,
-    "minimum_protocol_confidence": 0.7,
+    "minimum_protocol_confidence": 0.9,
     "minimum_provenance_confidence": 0.9
   },
   "agents": [
@@ -23,7 +23,10 @@
       "authority": "proposal",
       "license": "MIT",
       "sandbox": false,
-      "provenance_confidence": 0.95
+      "provenance_confidence": 0.95,
+      "protocol_versions": {
+        "mcp": "2026-07-28"
+      }
     },
     {
       "id": "codex",
@@ -40,7 +43,10 @@
       "authority": "proposal",
       "license": "Apache-2.0",
       "sandbox": true,
-      "provenance_confidence": 0.95
+      "provenance_confidence": 0.95,
+      "protocol_versions": {
+        "acp": "1"
+      }
     },
     {
       "id": "gemini-cli",
@@ -59,7 +65,11 @@
       "authority": "proposal",
       "license": "Apache-2.0",
       "sandbox": true,
-      "provenance_confidence": 0.95
+      "provenance_confidence": 0.95,
+      "protocol_versions": {
+        "acp": "1",
+        "mcp": "2026-07-28"
+      }
     },
     {
       "id": "qwen-code",
@@ -78,7 +88,10 @@
       "authority": "proposal",
       "license": "Apache-2.0",
       "sandbox": true,
-      "provenance_confidence": 0.95
+      "provenance_confidence": 0.95,
+      "protocol_versions": {
+        "mcp": "2026-07-28"
+      }
     },
     {
       "id": "openhands-core",
@@ -98,7 +111,11 @@
       "authority": "proposal",
       "license": "MIT",
       "sandbox": true,
-      "provenance_confidence": 0.9
+      "provenance_confidence": 0.9,
+      "protocol_versions": {
+        "acp": "1",
+        "mcp": "2026-07-28"
+      }
     },
     {
       "id": "swe-agent",
@@ -114,7 +131,10 @@
       "authority": "proposal",
       "license": "MIT",
       "sandbox": true,
-      "provenance_confidence": 0.9
+      "provenance_confidence": 0.9,
+      "protocol_versions": {
+        "openai-compatible": "unspecified"
+      }
     },
     {
       "id": "aider",
@@ -130,7 +150,10 @@
       "authority": "proposal",
       "license": "Apache-2.0",
       "sandbox": false,
-      "provenance_confidence": 0.9
+      "provenance_confidence": 0.9,
+      "protocol_versions": {
+        "openai-compatible": "unspecified"
+      }
     },
     {
       "id": "claude-agent-acp",
@@ -148,7 +171,10 @@
       "authority": "proposal",
       "license": "Apache-2.0",
       "sandbox": false,
-      "provenance_confidence": 0.95
+      "provenance_confidence": 0.95,
+      "protocol_versions": {
+        "acp": "1"
+      }
     }
   ]
 }
