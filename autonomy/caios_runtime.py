@@ -51,6 +51,7 @@ from autonomy.sandbox_simulator import DisposableWorktree
 from autonomy.proof_work_contract import ProofCarryingWorkContract
 from autonomy.proof_work_verifier import verify_contract
 from autonomy.protocol_conformance import ProtocolConformanceRunner
+from autonomy.authority_lattice import AuthorityLattice
 
 
 def canonical_json(value: Any) -> bytes:
@@ -94,6 +95,7 @@ class CandidateAction:
     attestation_digest: str | None = None
     invariant_ids: tuple[str, ...] = ()
     tool_ids: tuple[str, ...] = ()
+    authority_principal: str = "caios"
 
     @property
     def fingerprint(self) -> str:
@@ -293,6 +295,7 @@ class ConstitutionalGate:
     def __init__(self, repo_root: Path, max_patch_lines: int = 250) -> None:
         self.repo_root = repo_root.resolve()
         self.max_patch_lines = max_patch_lines
+        self.authority = AuthorityLattice(self.repo_root)
         policy_path = self.repo_root / "autonomy" / "protected_surfaces.json"
         try:
             policy = json.loads(policy_path.read_text(encoding="utf-8"))
@@ -342,6 +345,16 @@ class ConstitutionalGate:
             reasons.append("action is insufficiently reversible")
         if action.kind in {"run_test", "run_security_scan"} and action.action_id.startswith("model-"):
             reasons.append("model-originated actions cannot supply arbitrary executable commands")
+
+        required_capability = "policy" if action.authority_principal == "caios" else "propose"
+        authorized, authority_reason = self.authority.authorize(
+            action.authority_principal,
+            required_capability,
+        )
+        if not authorized:
+            reasons.append(
+                f"authority principal '{action.authority_principal}' denied {required_capability}: {authority_reason}"
+            )
 
         if action.kind == "apply_patch":
             if not action.unified_diff:
@@ -533,29 +546,6 @@ class RedTeamObserver:
     def observe(self, repo_root: Path) -> Evidence:
         try:
             from autonomy.red_team import run_campaign
-            result = run_campaign(repo_root)
-            return Evidence(
-                kind="red-team",
-                status="PASS" if result["passed"] else "FAIL",
-                source="autonomy/red_team.py",
-                digest=digest(result),
-                details=result,
-            )
-        except Exception as exc:
-            return Evidence(
-                kind="red-team",
-                status="FAIL",
-                source="autonomy/red_team.py",
-                digest=digest(str(exc)),
-                details={"exception": type(exc).__name__, "message": str(exc)},
-            )
-
-
-class RedTeamObserver:
-    """Runs deterministic gate probes; never executes attacker commands."""
-
-    def observe(self, repo_root: Path) -> Evidence:
-        try:
             result = run_campaign(repo_root)
             return Evidence(
                 kind="red-team",
@@ -786,6 +776,7 @@ class AutonomousRuntime:
         self.protocols = ProtocolObserver()
         self.red_team = RedTeamObserver()
         self.council = CAIOSCouncil()
+        self.authority = AuthorityLattice(self.repo_root)
         self.gate = ConstitutionalGate(self.repo_root)
         self.planner = ViabilityPlanner()
         self.proposal_provider = proposal_provider
@@ -819,6 +810,7 @@ class AutonomousRuntime:
             "integration": 0.0,
             "security": 0.0,
             "working_tree": 0.0,
+            "authority": 0.0,
         }
         has_tests = bool(
             (self.repo_root / "tests").exists()
@@ -838,6 +830,8 @@ class AutonomousRuntime:
             gaps["working_tree"] = 0.5 if " M " in snapshot["status"] else 0.0
         if not any(item.kind == "aethel-runtime" and item.status == "PASS" for item in evidence):
             gaps["integration"] = 1.0
+        if not any(item.kind == "authority-lattice" and item.status == "PASS" for item in evidence):
+            gaps["authority"] = 1.0
         return gaps
 
     def _baseline_candidates(self, gaps: dict[str, float]) -> list[CandidateAction]:
@@ -1046,6 +1040,7 @@ class AutonomousRuntime:
                     attestation_digest=attestation.attestation_digest,
                     invariant_ids=tuple(str(value) for value in item.get("invariant_ids", [])),
                     tool_ids=tuple(str(value) for value in item.get("tool_ids", [])),
+                    authority_principal="model",
                 )
             )
         return self._apply_model_quorum(candidates)
@@ -1372,6 +1367,24 @@ class AutonomousRuntime:
                         "epoch": cycle,
                         "state_digest": snapshot["observation_digest"],
                         "reason": anchor_reason,
+                    },
+                )
+            )
+            authority_checks = {}
+            authority_pass = True
+            for principal, capability in (("caios", "policy"), ("model", "propose")):
+                ok, reason = self.authority.authorize(principal, capability)
+                authority_checks[f"{principal}:{capability}"] = {"authorized": ok, "reason": reason}
+                authority_pass = authority_pass and ok
+            evidence.append(
+                Evidence(
+                    kind="authority-lattice",
+                    status="PASS" if authority_pass else "BLOCKED",
+                    source="autonomy/authority_lattice.py",
+                    digest=digest(authority_checks),
+                    details={
+                        "checks": authority_checks,
+                        "note": "declarative authority configuration; execution delegation remains separately enforced by the runtime/tool boundary",
                     },
                 )
             )
