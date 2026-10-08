@@ -278,6 +278,46 @@ class AethelObserver:
         return evidence
 
 
+class FederationObserver:
+    """Observes the explicit CAIOS multi-repository manifest when present."""
+
+    def observe(self, repo_root: Path) -> Evidence | None:
+        manifest_path = repo_root / "federation" / "system_manifest.json"
+        if not manifest_path.exists():
+            return None
+        try:
+            from federation.caios_federation import build_federation
+
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            snapshot = build_federation(repo_root, manifest, run_verification=False)
+            return Evidence(
+                kind="federation",
+                status="PASS",
+                source=str(manifest_path),
+                digest=digest(snapshot),
+                details={
+                    "system_digest": snapshot["system_digest"],
+                    "next_inspection_target": snapshot["next_inspection_target"],
+                    "repositories": [
+                        {
+                            "id": r["id"],
+                            "status": r["status"],
+                            "cdp": r["constitutional_dependency_pressure"],
+                        }
+                        for r in snapshot["repositories"]
+                    ],
+                },
+            )
+        except Exception as exc:
+            return Evidence(
+                kind="federation",
+                status="FAIL",
+                source=str(manifest_path),
+                digest=digest(str(exc)),
+                details={"exception": type(exc).__name__, "message": str(exc)},
+            )
+
+
 class RepositorySnapshot:
     def __init__(self, runner: SafeCommandRunner) -> None:
         self.runner = runner
@@ -348,6 +388,7 @@ class AutonomousRuntime:
         self.runner = command_runner or SafeCommandRunner(self.repo_root)
         self.snapshotter = RepositorySnapshot(self.runner)
         self.aethel = AethelObserver()
+        self.federation = FederationObserver()
         self.gate = ConstitutionalGate(self.repo_root)
         self.planner = ViabilityPlanner()
         self.proposal_provider = proposal_provider
@@ -376,6 +417,8 @@ class AutonomousRuntime:
                 gaps["verification"] = 0.0 if item.status == "PASS" else 1.0
             if item.kind == "security" and item.status != "PASS":
                 gaps["security"] = 1.0
+            if item.kind == "federation" and item.status != "PASS":
+                gaps["integration"] = 1.0
         if snapshot.get("status"):
             gaps["working_tree"] = 0.5 if " M " in snapshot["status"] else 0.0
         if not any(item.kind == "aethel-runtime" and item.status == "PASS" for item in evidence):
@@ -607,6 +650,9 @@ class AutonomousRuntime:
             started = time.monotonic_ns()
             snapshot = self.snapshotter.capture()
             evidence = self.aethel.observe(self.repo_root)
+            federation_evidence = self.federation.observe(self.repo_root)
+            if federation_evidence:
+                evidence.append(federation_evidence)
             gaps = self._gap_vector(evidence, snapshot)
 
             candidates = self._baseline_candidates(gaps)
