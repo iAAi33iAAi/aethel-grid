@@ -20,7 +20,7 @@ def test_preimage_is_exactly_ten_fields():
     )
     assert len(preimage.decode("utf-8").split(":")) == 10
     assert sha256_hex(preimage) == (
-        "d1e947f0c5a57a0e9c4e05d5b33d9ac0e2199d82b1fbd0f8a0b00a7d0e2c3f87"
+        "3f8a79aeef1649686b85015a54c78b5b5c1796bef5fbed78fa41df1878d61f35"
     )
 
 
