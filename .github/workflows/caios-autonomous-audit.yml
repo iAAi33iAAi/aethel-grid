@@ -60,6 +60,9 @@ jobs:
       - name: Build authority-aware directive plan
         run: python -m autonomy.directive_engine --repo-root . --output ops/caios/directive-plan.json
 
+      - name: Build supply-chain evidence plan
+        run: python -m autonomy.supply_chain_plan --repo-root . --output ops/caios/supply-chain-plan.json
+
       - name: Upload proof-carrying evidence
         uses: actions/upload-artifact@v4
         with:
@@ -74,3 +77,4 @@ jobs:
             ops/caios/system-readiness.json
             ops/caios/system-knowledge-graph.json
             ops/caios/directive-plan.json
+            ops/caios/supply-chain-plan.json
