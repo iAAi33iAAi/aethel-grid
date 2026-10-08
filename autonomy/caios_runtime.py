@@ -42,6 +42,8 @@ from federation.security_primitives import SessionAnchor, SessionAnchorRegistry
 from autonomy.context_window import ContextWindow
 from autonomy.agent_reputation import AgentReputationStore
 from autonomy.sandbox_simulator import DisposableWorktree
+from autonomy.proof_work_contract import ProofCarryingWorkContract
+from autonomy.proof_work_verifier import verify_contract
 
 
 def canonical_json(value: Any) -> bytes:
@@ -116,6 +118,7 @@ class DecisionCertificate:
     council_digest: str | None = None
     session_id: str | None = None
     session_anchor_hash: str | None = None
+    work_contract_digest: str | None = None
 
     @property
     def proof_digest(self) -> str:
@@ -134,6 +137,7 @@ class DecisionCertificate:
             "council_digest": self.council_digest,
             "session_id": self.session_id,
             "session_anchor_hash": self.session_anchor_hash,
+            "work_contract_digest": self.work_contract_digest,
         })
 
     def as_dict(self) -> dict[str, Any]:
@@ -152,6 +156,7 @@ class DecisionCertificate:
             "council_digest": self.council_digest,
             "session_id": self.session_id,
             "session_anchor_hash": self.session_anchor_hash,
+            "work_contract_digest": self.work_contract_digest,
             "proof_digest": self.proof_digest,
         }
 
@@ -559,6 +564,14 @@ class FederationObserver:
 class RepositorySnapshot:
     def __init__(self, runner: SafeCommandRunner) -> None:
         self.runner = runner
+
+    def capture_state_digest(self) -> str:
+        head_rc, head_out, _ = self.runner.run(("git", "rev-parse", "HEAD"))
+        status_rc, status_out, _ = self.runner.run(("git", "status", "--porcelain"))
+        return digest({
+            "head": head_out.strip() if head_rc == 0 else None,
+            "status": status_out,
+        })
 
     def capture(self) -> dict[str, Any]:
         head_rc, head_out, _ = self.runner.run(("git", "rev-parse", "HEAD"))
