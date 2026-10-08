@@ -520,6 +520,29 @@ class RedTeamObserver:
             )
 
 
+class RedTeamObserver:
+    """Runs deterministic gate probes; never executes attacker commands."""
+
+    def observe(self, repo_root: Path) -> Evidence:
+        try:
+            result = run_campaign(repo_root)
+            return Evidence(
+                kind="red-team",
+                status="PASS" if result["passed"] else "FAIL",
+                source="autonomy/red_team.py",
+                digest=digest(result),
+                details=result,
+            )
+        except Exception as exc:
+            return Evidence(
+                kind="red-team",
+                status="FAIL",
+                source="autonomy/red_team.py",
+                digest=digest(str(exc)),
+                details={"exception": type(exc).__name__, "message": str(exc)},
+            )
+
+
 class ProtocolObserver:
     """Records admitted protocol revisions and available conformance tools."""
 
