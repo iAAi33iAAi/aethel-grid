@@ -592,6 +592,8 @@ class AutonomousRuntime:
         self.snapshotter = RepositorySnapshot(self.runner)
         self.aethel = AethelObserver()
         self.federation = FederationObserver()
+        self.agents = AgentObserver()
+        self.remote = RemoteEvidenceObserver()
         self.council = CAIOSCouncil()
         self.gate = ConstitutionalGate(self.repo_root)
         self.planner = ViabilityPlanner()
@@ -1037,6 +1039,8 @@ class AutonomousRuntime:
             federation_evidence = self.federation.observe(self.repo_root)
             if federation_evidence:
                 evidence.append(federation_evidence)
+            evidence.append(self.agents.observe(self.repo_root))
+            evidence.extend(self.remote.observe(self.repo_root))
             gaps = self._gap_vector(evidence, snapshot)
             council = self.council.deliberate(gaps, evidence)
             council_evidence = Evidence(
