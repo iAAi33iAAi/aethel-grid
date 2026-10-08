@@ -128,6 +128,10 @@ def repo_snapshot(workspace: Path, spec: dict[str, Any], run_verification: bool)
             "role": spec.get("role", ""),
             "status": "MISSING",
             "path": str(spec["path"]),
+            "weight": float(spec.get("weight", 1.0)),
+            "depends_on": list(spec.get("depends_on", [])),
+            "verification": None,
+            "metadata": {"has_readme": False, "has_license": False, "dirty": False},
             "evidence": [],
             "content_fingerprint": digest("missing"),
         }
