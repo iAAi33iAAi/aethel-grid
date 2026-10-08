@@ -75,6 +75,15 @@ class CandidateAction:
     def fingerprint(self) -> str:
         return digest(dataclasses.asdict(self))
 
+    @property
+    def intent_fingerprint(self) -> str:
+        return digest({
+            "kind": self.kind,
+            "target": self.target,
+            "command": list(self.command),
+            "unified_diff": self.unified_diff,
+        })
+
 
 @dataclasses.dataclass(frozen=True)
 class DecisionCertificate:
@@ -622,6 +631,46 @@ class AutonomousRuntime:
             )
         return candidates
 
+    def _apply_model_quorum(self, candidates: list[CandidateAction]) -> list[CandidateAction]:
+        if not candidates:
+            return candidates
+        try:
+            registry = AgentRegistry(self.repo_root)
+            threshold = float(registry.policy.get("high_risk_threshold", 0.55))
+            required = int(registry.policy.get("high_risk_min_independent_agents", 2))
+        except Exception:
+            return []
+
+        families_by_intent: dict[str, set[str]] = {}
+        for candidate in candidates:
+            if not candidate.agent_id or candidate.risk < threshold:
+                continue
+            profile = registry.agents.get(candidate.agent_id)
+            if profile:
+                families_by_intent.setdefault(candidate.intent_fingerprint, set()).add(profile.family)
+
+        admitted: list[CandidateAction] = []
+        for candidate in candidates:
+            if candidate.risk < threshold:
+                admitted.append(candidate)
+                continue
+            families = families_by_intent.get(candidate.intent_fingerprint, set())
+            if len(families) >= required:
+                self.last_model_admission.append({
+                    "action": candidate.action_id,
+                    "status": "ADMITTED",
+                    "independent_families": sorted(families),
+                })
+                admitted.append(candidate)
+            else:
+                self.last_model_admission.append({
+                    "action": candidate.action_id,
+                    "status": "QUORUM_REJECTED",
+                    "independent_families": sorted(families),
+                    "required_independent_families": required,
+                })
+        return admitted
+
     def _model_candidates(self, snapshot: dict[str, Any], gaps: dict[str, float]) -> list[CandidateAction]:
         if not self.proposal_provider:
             return []
@@ -653,7 +702,7 @@ class AutonomousRuntime:
                 continue
             self.last_model_admission.append({
                 "index": idx,
-                "status": "ADMITTED",
+                "status": "ATTESTED",
                 "agent_id": attestation.agent_id,
                 "protocol": attestation.protocol,
                 "attestation_digest": attestation.attestation_digest,
@@ -691,7 +740,7 @@ class AutonomousRuntime:
                     attestation_digest=attestation.attestation_digest,
                 )
             )
-        return candidates
+        return self._apply_model_quorum(candidates)
 
     def _execute(self, action: CandidateAction) -> list[Evidence]:
         if self.commands_used >= self.max_commands:
