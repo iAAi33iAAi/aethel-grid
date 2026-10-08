@@ -82,11 +82,13 @@ def test_certificate_proof_seal_is_self_consistent(tmp_path: Path):
         decision="HALT",
         score=0.0,
         gaps_before={"conformance": 1.0},
-        evidence=(Evidence("gate", "BLOCKED", "test", "abc", {}),),
+        evidence=(Evidence("session-anchor", "PASS", "test", "abc", {"session_id":"s1"}),),
         reasons=("blocked",),
         action_fingerprint=None,
         previous_certificate_digest=None,
         elapsed_ms=1,
+        session_id="s1",
+        session_anchor_hash="abc",
     )
     output = tmp_path / "certificates.jsonl"
     write_certificates([certificate], output)
