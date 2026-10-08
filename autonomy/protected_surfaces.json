@@ -1,0 +1,27 @@
+{
+  "schema": "caios-protected-surfaces/v1",
+  "policy": {
+    "autonomous_patch_to_protected_surface": "DENY",
+    "human_review_required": true
+  },
+  "protected_globs": [
+    ".github/workflows/**",
+    "conformance/**",
+    "autonomy/caios_runtime.py",
+    "autonomy/verify_certificates.py",
+    "autonomy/proof_work_contract.py",
+    "autonomy/proof_work_verifier.py",
+    "autonomy/authority_lattice.py",
+    "autonomy/agent_attestation.py",
+    "autonomy/model_admission.py",
+    "autonomy/protocol_admission.py",
+    "autonomy/protocol_registry.json",
+    "autonomy/agent_registry.json",
+    "autonomy/model_registry.json",
+    "integrations/tool_compiler.py",
+    "integrations/tool_registry.py",
+    "federation/security_primitives.py",
+    "federation/node_identity.py",
+    "federation/signed_envelope.py"
+  ]
+}
