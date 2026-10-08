@@ -35,3 +35,9 @@ ops/caios/autonomy-certificates.jsonl
 
 The implementation is dependency-light and uses Python's standard library. External model and security tooling are adapter targets rather than vendored source.
 
+
+## Federated mode
+
+When `federation/system_manifest.json` is present, the runtime records a system-wide federation evidence object containing repository heads, presence, dependency pressure, and a deterministic system digest.
+
+The dedicated GitHub Actions federation audit checks the public AETHEL-family repositories from a clean workspace. It is observation-only: discovering a problem never grants the controller permission to mutate another repository.
