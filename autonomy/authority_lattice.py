@@ -47,6 +47,7 @@ REQUIRED_LEVELS = {
     "propose": AuthorityLevel.ADVISORY,
     "evidence": AuthorityLevel.EVIDENCE,
     "policy": AuthorityLevel.POLICY,
+    "supervise": AuthorityLevel.POLICY,
     "execute": AuthorityLevel.EXECUTION,
     "human-final": AuthorityLevel.HUMAN,
 }
