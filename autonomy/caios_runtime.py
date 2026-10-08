@@ -980,7 +980,7 @@ class AutonomousRuntime:
                     Evidence(
                         kind="model-admission",
                         status="PASS" if any(
-                            row["status"] == "ADMITTED"
+                            row["status"] in {"ATTESTED", "ADMITTED"}
                             for row in self.last_model_admission
                         ) else "BLOCKED",
                         source="autonomy/agent_attestation.py",
@@ -1088,6 +1088,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cycles", type=int, default=5)
     parser.add_argument("--max-commands", type=int, default=20)
     parser.add_argument("--config", default=None)
+    parser.add_argument("--agent-config", default=None)
     parser.add_argument("--output", default="ops/caios/autonomy-certificates.jsonl")
     args = parser.parse_args(argv)
 
@@ -1100,15 +1101,37 @@ def main(argv: list[str] | None = None) -> int:
             api_key=os.getenv("CAIOS_MODEL_API_KEY"),
         )
 
-    if args.config:
-        config = load_json(Path(args.config))
-        model_cfg = config.get("model", {})
-        if model_cfg.get("endpoint") and model_cfg.get("model"):
-            provider = OpenAICompatibleProposalProvider(
-                endpoint=str(model_cfg["endpoint"]),
-                model=str(model_cfg["model"]),
-                api_key=str(model_cfg.get("api_key")) if model_cfg.get("api_key") else None,
-            )
+    config_path = Path(args.agent_config) if args.agent_config else (Path(args.config) if args.config else None)
+    if config_path:
+        config = load_json(config_path)
+        agent_cfgs = config.get("agents") or []
+        if agent_cfgs:
+            from autonomy.multi_agent_provider import EndpointSpec, MultiAgentProposalProvider
+
+            specs = []
+            for item in agent_cfgs:
+                api_key_env = item.get("api_key_env")
+                specs.append(
+                    EndpointSpec(
+                        agent_id=str(item["agent_id"]),
+                        endpoint=str(item["endpoint"]),
+                        model=str(item["model"]),
+                        protocol=str(item.get("protocol", "openai-compatible")),
+                        agent_version=str(item.get("agent_version", "unspecified")),
+                        source_ref=str(item.get("source_ref", "unspecified")),
+                        api_key=os.getenv(str(api_key_env)) if api_key_env else None,
+                        max_proposals=int(item.get("max_proposals", 8)),
+                    )
+                )
+            provider = MultiAgentProposalProvider(tuple(specs))
+        else:
+            model_cfg = config.get("model", {})
+            if model_cfg.get("endpoint") and model_cfg.get("model"):
+                provider = OpenAICompatibleProposalProvider(
+                    endpoint=str(model_cfg["endpoint"]),
+                    model=str(model_cfg["model"]),
+                    api_key=str(model_cfg.get("api_key")) if model_cfg.get("api_key") else None,
+                )
 
     runtime = AutonomousRuntime(
         repo_root=repo_root,
