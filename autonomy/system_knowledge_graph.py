@@ -25,11 +25,15 @@ def build_graph(repo_root: Path) -> dict[str, Any]:
     agent_path = repo_root / "autonomy" / "agent_registry.json"
     tool_path = repo_root / "integrations" / "caios_tool_registry.json"
     invariant_path = repo_root / "conformance" / "federated_invariant_registry.json"
+    authority_path = repo_root / "autonomy" / "authority_lattice.json"
+    model_path = repo_root / "autonomy" / "model_registry.json"
 
     federation = json.loads(federation_path.read_text(encoding="utf-8")) if federation_path.is_file() else {}
     agents = json.loads(agent_path.read_text(encoding="utf-8")) if agent_path.is_file() else {}
     tools = json.loads(tool_path.read_text(encoding="utf-8")) if tool_path.is_file() else {}
     invariants = json.loads(invariant_path.read_text(encoding="utf-8")) if invariant_path.is_file() else {}
+    authorities = json.loads(authority_path.read_text(encoding="utf-8")) if authority_path.is_file() else {}
+    models = json.loads(model_path.read_text(encoding="utf-8")) if model_path.is_file() else {}
 
     nodes = []
     edges = []
@@ -83,6 +87,37 @@ def build_graph(repo_root: Path) -> dict[str, Any]:
             "source": agent_id,
             "target": "system:caios",
             "relation": "advises",
+        })
+
+    for principal in authorities.get("principals", []):
+        principal_id = f"authority:{principal['principal_id']}"
+        nodes.append({
+            "id": principal_id,
+            "kind": "authority",
+            "label": principal["principal_id"],
+            "level": principal.get("authority"),
+            "boundary": principal.get("boundary"),
+        })
+        edges.append({
+            "source": principal_id,
+            "target": "system:caios",
+            "relation": "authority-boundary",
+        })
+
+    for model in models.get("models", []):
+        model_id = f"model:{model['model_id']}"
+        nodes.append({
+            "id": model_id,
+            "kind": "model",
+            "label": model["model_id"],
+            "class": model.get("class"),
+            "weight_license": model.get("weight_license"),
+            "production": model.get("production"),
+        })
+        edges.append({
+            "source": model_id,
+            "target": "system:caios",
+            "relation": "proposal-input",
         })
 
     for tool in tools.get("tools", []):
