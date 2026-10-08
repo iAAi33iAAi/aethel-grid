@@ -21,6 +21,7 @@ from typing import Any
 from autonomy.evidence_bundle import digest
 from autonomy.verify_certificates import verify
 from conformance.contract import inspect_contract
+from federation.security_primitives import ManifestSeal, ManifestSealer
 
 
 PRIORITY_WEIGHTS = {
@@ -62,6 +63,9 @@ def evaluate(repo_root: Path) -> dict[str, Any]:
     federation = repo_root / "ops/caios/federation-snapshot.json"
     agents = repo_root / "autonomy/agent_registry.json"
     tools = repo_root / "integrations/caios_tool_registry.json"
+    session_anchors = repo_root / "ops/caios/session-anchors.jsonl"
+    manifest_seal_path = repo_root / "ops/caios/federation-manifest-seal.json"
+    invariant_evidence_path = repo_root / "conformance/invariant_evidence_map.json"
 
     invariant_registry = load_registry(repo_root)
     invariants = invariant_registry.get("invariants", [])
@@ -88,6 +92,27 @@ def evaluate(repo_root: Path) -> dict[str, Any]:
 
     pfp_score = 1.0 - (weighted_gap / weighted_total if weighted_total else 1.0)
 
+    manifest_seal_ok = False
+    manifest_seal_reason = "missing"
+    federation_manifest = repo_root / "federation/system_manifest.json"
+    if manifest_seal_path.is_file() and federation_manifest.is_file():
+        try:
+            seal_row = json.loads(manifest_seal_path.read_text(encoding="utf-8"))
+            seal = ManifestSeal(**seal_row["seal"])
+            manifest = json.loads(federation_manifest.read_text(encoding="utf-8"))
+            manifest_seal_ok, manifest_seal_reason = ManifestSealer.verify(manifest, seal)
+        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            manifest_seal_reason = f"invalid:{type(exc).__name__}"
+
+    invariant_evidence = {}
+    if invariant_evidence_path.is_file():
+        try:
+            invariant_evidence = json.loads(
+                invariant_evidence_path.read_text(encoding="utf-8")
+            )
+        except (OSError, json.JSONDecodeError):
+            invariant_evidence = {"_invalid": True}
+
     proof_ok = certificate_path.is_file() and verify(certificate_path)[0]
     operational = proof_ok and proof_graph.is_file()
     federation_ok = federation.is_file()
@@ -102,6 +127,9 @@ def evaluate(repo_root: Path) -> dict[str, Any]:
         "federation_observability": 1.0 if federation_ok else 0.0,
         "agent_registry": 1.0 if agents_ok else 0.0,
         "tool_registry": 1.0 if tools_ok else 0.0,
+        "session_anchor_surface": 1.0 if session_anchors.is_file() else 0.0,
+        "federation_manifest_seal": 1.0 if manifest_seal_ok else 0.0,
+        "invariant_evidence_map": 1.0 if invariant_evidence_path.is_file() and not invariant_evidence.get("_invalid") else 0.0,
         "pfp_declared_completeness": round(pfp_score, 6),
     }
 
@@ -113,6 +141,7 @@ def evaluate(repo_root: Path) -> dict[str, Any]:
         else None,
         "proof-integrity" if not proof_ok else None,
         "proof-graph" if not proof_graph.is_file() else None,
+        "federation-manifest-seal" if federation_manifest.is_file() and not manifest_seal_ok else None,
         "critical-protocol-invariants"
         if any(item["priority"] == "critical" and item["gap"] > 0 for item in unresolved)
         else None,
@@ -140,6 +169,12 @@ def evaluate(repo_root: Path) -> dict[str, Any]:
         "next_inspection_target": unresolved[0] if unresolved else None,
         "unresolved_invariants": unresolved,
         "contract": contract.as_dict(),
+        "manifest_seal": {
+            "present": manifest_seal_path.is_file(),
+            "verified": manifest_seal_ok,
+            "reason": manifest_seal_reason,
+        },
+        "invariant_evidence": invariant_evidence,
         "readiness_digest": digest(bundle_material),
     }
 
