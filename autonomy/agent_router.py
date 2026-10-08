@@ -71,7 +71,8 @@ class QuorumPlan:
 
 class AgentRegistry:
     def __init__(self, repo_root: Path, path: str = "autonomy/agent_registry.json") -> None:
-        raw = json.loads((repo_root / path).read_text(encoding="utf-8"))
+        self.repo_root = repo_root.resolve()
+        raw = json.loads((self.repo_root / path).read_text(encoding="utf-8"))
         self.policy = dict(raw.get("selection_policy", {}))
         self.agents = {
             item["id"]: AgentProfile(
