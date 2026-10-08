@@ -40,6 +40,7 @@ def test_registered_proposal_gets_attestation(tmp_path: Path):
               "id":"coder",
               "family":"coder",
               "protocols":["acp"],
+              "protocol_versions":{"acp":"1"},
               "capabilities":["coding"],
               "authority":"proposal",
               "license":"MIT",
@@ -65,7 +66,8 @@ def test_registered_proposal_gets_attestation(tmp_path: Path):
               "weight_license": "N/A",
               "service_terms_status": "REVIEWED",
               "redistribution": "N/A",
-              "production": "ALLOWED_AFTER_REVIEW"
+              "production": "ALLOWED_AFTER_REVIEW",
+              "terms_ref": "operator-reviewed-terms"
             }
           ]
         }""",
@@ -76,7 +78,9 @@ def test_registered_proposal_gets_attestation(tmp_path: Path):
         {
             "agent_id": "coder",
             "protocol": "acp",
+            "protocol_version": "1",
             "model_id": "coder-model",
+            "model_revision": "hosted-reviewed",
             "agent_version": "2026.10",
             "source_ref": "git:abc",
         },
