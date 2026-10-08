@@ -22,7 +22,8 @@
         "pytest",
         "-q"
       ],
-      "license": "pytest-project-license"
+      "license": "pytest-project-license",
+      "argument_policy": "path-only"
     },
     {
       "id": "scorecard",
