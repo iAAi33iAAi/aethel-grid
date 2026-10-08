@@ -4,12 +4,28 @@ CAIOS runtime tests.
 License: Apache-2.0
 Copyright (c) 2026 iAAi33iAAi
 """
+import json
 from pathlib import Path
 
-from autonomy.caios_runtime import CandidateAction, ConstitutionalGate, ViabilityPlanner
+from autonomy.caios_runtime import CandidateAction, ConstitutionalGate, RedTeamObserver, ViabilityPlanner
 
+
+def _seed_authority(tmp_path: Path) -> None:
+    path = tmp_path / "autonomy"
+    path.mkdir(exist_ok=True)
+    (path / "authority_lattice.json").write_text(
+        json.dumps({
+            "schema": "caios-authority-lattice/v1",
+            "principals": [
+                {"principal_id": "model", "authority": 10, "capabilities": ["propose"], "boundary": "proposal-only"},
+                {"principal_id": "caios", "authority": 30, "capabilities": ["policy"], "boundary": "test"},
+            ],
+        }),
+        encoding="utf-8",
+    )
 
 def test_gate_rejects_escape_target(tmp_path: Path):
+    _seed_authority(tmp_path)
     gate = ConstitutionalGate(tmp_path)
     action = CandidateAction(
         action_id="bad",
@@ -28,6 +44,7 @@ def test_gate_rejects_escape_target(tmp_path: Path):
 
 
 def test_gate_rejects_high_risk_model_action(tmp_path: Path):
+    _seed_authority(tmp_path)
     gate = ConstitutionalGate(tmp_path)
     action = CandidateAction(
         action_id="danger",
@@ -113,3 +130,29 @@ def test_proof_graph_contains_certificate_chain():
     graph = build_proof_graph(certificate)
     assert graph["schema"] == "caios-proof-graph/v1"
     assert any(edge["relation"] == "supports" for edge in graph["edges"])
+
+
+def test_gate_accepts_caios_policy_action_when_authority_is_present(tmp_path: Path):
+    _seed_authority(tmp_path)
+    gate = ConstitutionalGate(tmp_path)
+    action = CandidateAction(
+        action_id="observe",
+        kind="observe",
+        target=".",
+        rationale="trusted supervisor observation",
+        expected_gain=0.2,
+        risk=0.05,
+        reversibility=1.0,
+        resource_cost=0.05,
+        evidence_gain=0.5,
+    )
+    allowed, reasons = gate.validate(action)
+    assert allowed is True, reasons
+
+
+def test_red_team_observer_executes_campaign_inside_runtime():
+    repo_root = Path(__file__).resolve().parents[1]
+    evidence = RedTeamObserver().observe(repo_root)
+    assert evidence.kind == "red-team"
+    assert evidence.status == "PASS", evidence.details
+    assert evidence.details["probe_count"] == 11
