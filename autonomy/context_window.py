@@ -11,6 +11,7 @@ Copyright (c) 2026 iAAi33iAAi
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 
 
@@ -104,6 +105,6 @@ class ContextWindow:
             "total_bytes": total,
         }
         material["context_digest"] = hashlib.sha256(
-            repr(material).encode("utf-8")
+            json.dumps(material, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
         ).hexdigest()
         return material
