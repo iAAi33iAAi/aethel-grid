@@ -109,7 +109,7 @@ class RemoteInteropClient:
             headers["Authorization"] = f"Bearer {self.bearer_token}"
 
         request = urllib.request.Request(
-            self.url + "/evaluate",
+            self.url + "/aethel/evaluate",
             data=json.dumps(body, sort_keys=True).encode("utf-8"),
             headers=headers,
             method="POST",
