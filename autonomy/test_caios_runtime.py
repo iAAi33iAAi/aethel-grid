@@ -156,3 +156,21 @@ def test_red_team_observer_executes_campaign_inside_runtime():
     assert evidence.kind == "red-team"
     assert evidence.status == "PASS", evidence.details
     assert evidence.details["probe_count"] == 11
+
+
+def test_missing_authority_lattice_fails_closed(tmp_path: Path):
+    gate = ConstitutionalGate(tmp_path)
+    action = CandidateAction(
+        action_id="blocked",
+        kind="observe",
+        target=".",
+        rationale="authority must exist",
+        expected_gain=0.1,
+        risk=0.01,
+        reversibility=1.0,
+        resource_cost=0.01,
+        evidence_gain=0.1,
+    )
+    allowed, reasons = gate.validate(action)
+    assert allowed is False
+    assert any("authority-lattice-unavailable" in reason for reason in reasons)
