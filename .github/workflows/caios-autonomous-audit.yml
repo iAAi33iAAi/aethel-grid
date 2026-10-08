@@ -48,6 +48,9 @@ jobs:
       - name: Materialize proof graph
         run: python -m autonomy.proof_graph ops/caios/autonomy-certificates.jsonl --output ops/caios/proof-graph.json
 
+      - name: Build unsigned SLSA provenance predicate
+        run: python -m autonomy.slsa_provenance --repo-root . --output ops/caios/slsa-provenance.json
+
       - name: Build system evidence bundle
         run: python -m autonomy.evidence_bundle --repo-root . --output ops/caios/evidence-bundle.json
 
