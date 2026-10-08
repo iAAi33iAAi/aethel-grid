@@ -18,41 +18,41 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           path: aethel-grid
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           repository: iAAi33iAAi/safety-kernel
           ref: main
           path: aethel-grid/federated/safety-kernel
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           repository: iAAi33iAAi/project-mono
           ref: main
           path: aethel-grid/federated/project-mono
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           repository: iAAi33iAAi/openclaw-governance
           ref: main
           path: aethel-grid/federated/openclaw-governance
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           repository: iAAi33iAAi/undermoon
           ref: main
           path: aethel-grid/federated/undermoon
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           repository: iAAi33iAAi/alpha-intelligence-hub
           ref: main
           path: aethel-grid/federated/alpha-intelligence-hub
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           repository: iAAi33iAAi/World-Tribe-Protocol
           ref: main
