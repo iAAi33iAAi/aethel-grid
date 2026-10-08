@@ -88,6 +88,12 @@ jobs:
           ref: main
           path: aethel-grid/federated/clawhub
 
+      - uses: actions/checkout@v7
+        with:
+          repository: iAAi33iAAi/ALEXARAC
+          ref: main
+          path: aethel-grid/federated/ALEXARAC
+
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
