@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from autonomy.evidence_bundle import build_bundle
+from autonomy.system_readiness import evaluate as evaluate_readiness
 from autonomy.verify_certificates import verify
 from conformance.contract import inspect_contract
 
@@ -32,13 +33,18 @@ def evaluate(repo_root: Path) -> dict[str, Any]:
     graph_ok = (repo_root / "ops/caios/proof-graph.json").is_file()
 
     bundle = build_bundle(repo_root)
+    readiness = evaluate_readiness(repo_root)
     required_present = {
         entry["path"]: entry["status"] == "PRESENT"
         for entry in bundle["artifacts"]
     }
 
     operational = certificate_ok and graph_ok
-    canonical = operational and contract.status == "PASS"
+    canonical = (
+        operational
+        and contract.status == "PASS"
+        and not readiness["blockers"]
+    )
 
     decision = "PASS" if canonical else "HOLD"
     reason = (
@@ -57,6 +63,7 @@ def evaluate(repo_root: Path) -> dict[str, Any]:
         "conformance": contract.as_dict(),
         "artifacts": required_present,
         "bundle_digest": bundle["bundle_digest"],
+        "system_readiness": readiness,
     }
 
 
