@@ -1,5 +1,8 @@
 name: CAIOS Federated System Audit
 
+concurrency:
+  group: caios-federation-${{ github.ref }}
+  cancel-in-progress: true
 on:
   pull_request:
     branches: [main]
@@ -15,47 +18,47 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           path: aethel-grid
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: iAAi33iAAi/safety-kernel
           ref: main
           path: aethel-grid/federated/safety-kernel
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: iAAi33iAAi/project-mono
           ref: main
           path: aethel-grid/federated/project-mono
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: iAAi33iAAi/openclaw-governance
           ref: main
           path: aethel-grid/federated/openclaw-governance
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: iAAi33iAAi/undermoon
           ref: main
           path: aethel-grid/federated/undermoon
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: iAAi33iAAi/alpha-intelligence-hub
           ref: main
           path: aethel-grid/federated/alpha-intelligence-hub
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: iAAi33iAAi/World-Tribe-Protocol
           ref: main
           path: aethel-grid/federated/World-Tribe-Protocol
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
