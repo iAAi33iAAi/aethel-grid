@@ -1,0 +1,29 @@
+{
+  "schema": "caios-tools/v1",
+  "policy": {
+    "model_text_never_becomes_authority": true,
+    "unregistered_command_is_denied": true,
+    "exact_versions_required_before_distribution": true
+  },
+  "tools": [
+    {"id":"git","capability":"repository-state","authority":"deterministic","license":"external-system"},
+    {"id":"pytest","capability":"verification","authority":"deterministic","command":["python","-m","pytest","-q"],"license":"pytest-project-license"},
+    {"id":"scorecard","capability":"supply-chain-security","authority":"evidence","license":"Apache-2.0"},
+    {"id":"syft","capability":"sbom","authority":"evidence","license":"Apache-2.0"},
+    {"id":"grype","capability":"vulnerability-scan","authority":"evidence","license":"Apache-2.0"},
+    {"id":"cosign","capability":"artifact-signing","authority":"cryptographic","license":"Apache-2.0"},
+    {"id":"opa","capability":"policy-evaluation","authority":"deterministic","license":"Apache-2.0"},
+    {"id":"in-toto","capability":"provenance-attestation","authority":"cryptographic","license":"Apache-2.0"},
+    {"id":"wasmtime","capability":"wasm-isolation","authority":"sandbox","license":"Apache-2.0"},
+    {"id":"firecracker","capability":"microvm-isolation","authority":"sandbox","license":"Apache-2.0"},
+    {"id":"nats","capability":"event-transport","authority":"transport","license":"Apache-2.0"},
+    {"id":"otel","capability":"telemetry","authority":"evidence","license":"Apache-2.0"},
+    {"id":"mcp","capability":"tool-context-transport","authority":"adapter","license":"MIT"},
+    {"id":"temporal","capability":"durable-workflow","authority":"orchestration","license":"MIT"},
+    {"id":"openai-agents","capability":"multi-agent-proposals","authority":"advisory","license":"MIT"},
+    {"id":"pydantic-ai","capability":"typed-agent-proposals","authority":"advisory","license":"MIT"},
+    {"id":"aider","capability":"coding-proposals","authority":"advisory","license":"Apache-2.0"},
+    {"id":"swe-agent","capability":"coding-proposals","authority":"advisory","license":"MIT"},
+    {"id":"openhands-core","capability":"coding-proposals","authority":"advisory","license":"MIT","scope_note":"exclude separately licensed enterprise directory"}
+  ]
+}
