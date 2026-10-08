@@ -48,7 +48,6 @@ from autonomy.circuit_breaker import CircuitBreaker
 from autonomy.evidence_ledger import EvidenceLedger
 from autonomy.egress_policy import EgressPolicy, scan_context
 from autonomy.sandbox_simulator import DisposableWorktree
-from autonomy.red_team import run_campaign
 from autonomy.proof_work_contract import ProofCarryingWorkContract
 from autonomy.proof_work_verifier import verify_contract
 from autonomy.protocol_conformance import ProtocolConformanceRunner
@@ -532,6 +531,7 @@ class RedTeamObserver:
 
     def observe(self, repo_root: Path) -> Evidence:
         try:
+            from autonomy.red_team import run_campaign
             result = run_campaign(repo_root)
             return Evidence(
                 kind="red-team",
