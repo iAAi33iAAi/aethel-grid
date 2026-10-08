@@ -57,6 +57,9 @@ jobs:
       - name: Build system knowledge graph
         run: python -m autonomy.system_knowledge_graph --repo-root . --output ops/caios/system-knowledge-graph.json
 
+      - name: Build authority-aware directive plan
+        run: python -m autonomy.directive_engine --repo-root . --output ops/caios/directive-plan.json
+
       - name: Upload proof-carrying evidence
         uses: actions/upload-artifact@v4
         with:
@@ -70,3 +73,4 @@ jobs:
             ops/caios/promotion-decision.json
             ops/caios/system-readiness.json
             ops/caios/system-knowledge-graph.json
+            ops/caios/directive-plan.json
