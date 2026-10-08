@@ -346,7 +346,7 @@ class ConstitutionalGate:
         if action.kind in {"run_test", "run_security_scan"} and action.action_id.startswith("model-"):
             reasons.append("model-originated actions cannot supply arbitrary executable commands")
 
-        required_capability = "policy" if action.authority_principal == "caios" else "propose"
+        required_capability = "supervise" if action.authority_principal == "caios" else "propose"
         authorized, authority_reason = self.authority.authorize(
             action.authority_principal,
             required_capability,
@@ -1372,7 +1372,7 @@ class AutonomousRuntime:
             )
             authority_checks = {}
             authority_pass = True
-            for principal, capability in (("caios", "policy"), ("model", "propose")):
+            for principal, capability in (("caios", "supervise"), ("model", "propose")):
                 ok, reason = self.authority.authorize(principal, capability)
                 authority_checks[f"{principal}:{capability}"] = {"authorized": ok, "reason": reason}
                 authority_pass = authority_pass and ok
@@ -1388,6 +1388,29 @@ class AutonomousRuntime:
                     },
                 )
             )
+            if not authority_pass:
+                cert = DecisionCertificate(
+                    cycle=cycle,
+                    selected_action=None,
+                    decision="HALT",
+                    score=0.0,
+                    gaps_before={"authority": 1.0},
+                    evidence=tuple(evidence),
+                    reasons=("CAIOS supervisory authority is unavailable; runtime halts fail-closed",),
+                    action_fingerprint=None,
+                    previous_certificate_digest=(
+                        digest(self.certificates[-1].as_dict()) if self.certificates else None
+                    ),
+                    elapsed_ms=(time.monotonic_ns() - started) // 1_000_000,
+                    observation_digest=snapshot.get("observation_digest"),
+                    council_digest=None,
+                    session_id=self.session_id,
+                    session_anchor_hash=session_anchor.anchor_hash,
+                )
+                self.evidence_ledger.append(cycle, evidence)
+                self.certificates.append(cert)
+                break
+
             if not anchor_ok:
                 cert = DecisionCertificate(
                     cycle=cycle,
