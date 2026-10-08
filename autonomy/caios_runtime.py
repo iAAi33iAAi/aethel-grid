@@ -41,6 +41,7 @@ from integrations.tool_compiler import compile_command
 from federation.security_primitives import SessionAnchor, SessionAnchorRegistry
 from autonomy.context_window import ContextWindow
 from autonomy.agent_reputation import AgentReputationStore
+from autonomy.sandbox_simulator import DisposableWorktree
 
 
 def canonical_json(value: Any) -> bytes:
@@ -988,6 +989,22 @@ class AutonomousRuntime:
                     )
                 ]
 
+            simulation = DisposableWorktree(self.repo_root).run(
+                action.unified_diff,
+                test_command,
+            )
+            if simulation.status != "PASS":
+                return [
+                    Evidence(
+                        kind="patch-simulation",
+                        status="FAIL",
+                        source="autonomy/sandbox_simulator.py",
+                        digest=digest(simulation.as_dict()),
+                        details=simulation.as_dict(),
+                    )
+                ]
+            self.commands_used += 1
+
             check = self.repo_root / ".caios-pending.patch"
             check.write_text(action.unified_diff, encoding="utf-8")
             applied = False
@@ -1025,6 +1042,17 @@ class AutonomousRuntime:
                 if rc == 0:
                     validated = True
                     return [
+                        Evidence(
+                            kind="patch-simulation",
+                            status="PASS",
+                            source="autonomy/sandbox_simulator.py",
+                            digest=digest(simulation.as_dict()),
+                            details={
+                                "validation_returncode": simulation.validation_returncode,
+                                "stdout_tail": simulation.stdout_tail,
+                                "stderr_tail": simulation.stderr_tail,
+                            },
+                        ),
                         Evidence(
                             kind="patch",
                             status="PASS",
