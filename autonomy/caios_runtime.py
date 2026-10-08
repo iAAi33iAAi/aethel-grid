@@ -1334,6 +1334,7 @@ def main(argv: list[str] | None = None) -> int:
                         agent_id=str(item["agent_id"]),
                         endpoint=str(item["endpoint"]),
                         model=str(item["model"]),
+                        model_revision=str(item.get("model_revision", "")),
                         protocol=str(item.get("protocol", "openai-compatible")),
                         agent_version=str(item.get("agent_version", "unspecified")),
                         source_ref=str(item.get("source_ref", "unspecified")),
