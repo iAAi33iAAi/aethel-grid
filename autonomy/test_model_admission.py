@@ -39,7 +39,7 @@ def test_local_model_requires_revision_pin(tmp_path: Path):
     }])
     ok, reasons = ModelRegistry(tmp_path).admit("local-code")
     assert ok is False
-    assert "local-model-source-pin-required" in reasons
+    assert "model-revision-missing" in reasons
 
 
 def test_reviewed_hosted_model_can_be_admitted(tmp_path: Path):
@@ -50,7 +50,8 @@ def test_reviewed_hosted_model_can_be_admitted(tmp_path: Path):
         "weight_license":"N/A",
         "service_terms_status":"REVIEWED",
         "redistribution":"N/A",
-        "production":"ALLOWED_AFTER_REVIEW"
+        "production":"ALLOWED_AFTER_REVIEW",
+        "terms_ref":"operator-reviewed-terms"
     }])
     ok, reasons = ModelRegistry(tmp_path).admit("hosted")
     assert ok is True
