@@ -26,7 +26,9 @@
       "provenance_confidence": 0.95,
       "protocol_versions": {
         "mcp": "2026-07-28"
-      }
+      },
+      "software_version": "0.22.3",
+      "source_ref": "https://github.com/openai/openai-agents-python"
     },
     {
       "id": "codex",
@@ -69,7 +71,9 @@
       "protocol_versions": {
         "acp": "1",
         "mcp": "2026-07-28"
-      }
+      },
+      "software_version": "0.65.0-nightly.20261006",
+      "source_ref": "https://github.com/google-gemini/gemini-cli"
     },
     {
       "id": "qwen-code",
@@ -91,7 +95,9 @@
       "provenance_confidence": 0.95,
       "protocol_versions": {
         "mcp": "2026-07-28"
-      }
+      },
+      "software_version": "0.25.0",
+      "source_ref": "https://github.com/QwenLM/qwen-code"
     },
     {
       "id": "openhands-core",
@@ -115,7 +121,9 @@
       "protocol_versions": {
         "acp": "1",
         "mcp": "2026-07-28"
-      }
+      },
+      "software_version": "0.34.0",
+      "source_ref": "https://github.com/All-Hands-AI/OpenHands"
     },
     {
       "id": "swe-agent",
@@ -174,7 +182,9 @@
       "provenance_confidence": 0.95,
       "protocol_versions": {
         "acp": "1"
-      }
+      },
+      "software_version": "0.83.0",
+      "source_ref": "https://github.com/agentclientprotocol/claude-agent-acp"
     }
   ]
 }
