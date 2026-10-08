@@ -36,6 +36,9 @@ jobs:
       - name: Materialize proof graph
         run: python -m autonomy.proof_graph ops/caios/autonomy-certificates.jsonl --output ops/caios/proof-graph.json
 
+      - name: Build system evidence bundle
+        run: python -m autonomy.evidence_bundle --repo-root . --output ops/caios/evidence-bundle.json
+
       - name: Upload proof-carrying evidence
         uses: actions/upload-artifact@v4
         with:
@@ -43,3 +46,4 @@ jobs:
           path: |
             ops/caios/autonomy-certificates.jsonl
             ops/caios/proof-graph.json
+            ops/caios/evidence-bundle.json
