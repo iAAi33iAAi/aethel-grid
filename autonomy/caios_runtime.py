@@ -719,6 +719,7 @@ class AutonomousRuntime:
                     reversibility=1.0,
                     resource_cost=0.20,
                     command=test_command,
+                    tool_ids=("pytest",) if test_command else (),
                 )
             )
         if gaps["conformance"]:
