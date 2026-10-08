@@ -282,7 +282,21 @@ class ConstitutionalGate:
             policy = json.loads(policy_path.read_text(encoding="utf-8"))
             self.protected_globs = tuple(str(item) for item in policy.get("protected_globs", []))
         except (OSError, json.JSONDecodeError, TypeError):
-            self.protected_globs = (".github/workflows/**", "conformance/**")
+            self.protected_globs = (
+                ".github/workflows/**",
+                "conformance/**",
+                "autonomy/caios_runtime.py",
+                "autonomy/verify_certificates.py",
+                "autonomy/proof_work_contract.py",
+                "autonomy/proof_work_verifier.py",
+                "autonomy/agent_attestation.py",
+                "autonomy/model_admission.py",
+                "autonomy/protocol_admission.py",
+                "integrations/tool_compiler.py",
+                "integrations/tool_registry.py",
+                "federation/security_primitives.py",
+                "federation/node_identity.py",
+            )
 
     def validate(self, action: CandidateAction) -> tuple[bool, list[str]]:
         reasons: list[str] = []
