@@ -1367,7 +1367,35 @@ class AutonomousRuntime:
                         details={"workers": provider_errors},
                     )
                 )
-            action, score, rejected = self.planner.select(candidates, self.gate, council.priority)
+            eligible_candidates = []
+            circuit_events = []
+            for candidate in candidates:
+                allowed, reason = self.circuit.allowed(
+                    snapshot["observation_digest"],
+                    candidate.fingerprint,
+                )
+                if allowed:
+                    eligible_candidates.append(candidate)
+                else:
+                    circuit_events.append({
+                        "action_id": candidate.action_id,
+                        "reason": reason,
+                    })
+            if circuit_events:
+                evidence.append(
+                    Evidence(
+                        kind="circuit-breaker",
+                        status="BLOCKED",
+                        source="autonomy/circuit_breaker.py",
+                        digest=digest(circuit_events),
+                        details={"quarantined": circuit_events},
+                    )
+                )
+            action, score, rejected = self.planner.select(
+                eligible_candidates,
+                self.gate,
+                council.priority,
+            )
             if action is not None:
                 self.telemetry.write(
                     new_event(
