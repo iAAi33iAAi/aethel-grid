@@ -20,11 +20,11 @@ class EndpointSpec:
     agent_id: str
     endpoint: str
     model: str
-    model_revision: str
     protocol: str
-    protocol_version: str
     agent_version: str
     source_ref: str
+    model_revision: str = ""
+    protocol_version: str = "1"
     api_key: str | None = None
     max_proposals: int = 8
     send_source_context: bool = False
