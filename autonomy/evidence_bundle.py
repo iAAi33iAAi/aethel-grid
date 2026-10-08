@@ -28,6 +28,8 @@ DEFAULT_ARTIFACTS = (
     "autonomy/authority_lattice.json",
     "THIRD_PARTY_AUTONOMY_NOTICES.md",
     "ops/caios/autonomy-certificates.jsonl",
+    "ops/caios/session-anchors.jsonl",
+    "ops/caios/federation-manifest-seal.json",
     "ops/caios/proof-graph.json",
     "ops/caios/agent-reputation.jsonl",
 )
