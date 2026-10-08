@@ -91,3 +91,23 @@ def test_certificate_proof_seal_is_self_consistent(tmp_path: Path):
     output = tmp_path / "certificates.jsonl"
     write_certificates([certificate], output)
     assert verify(output)[0] is True
+
+
+def test_proof_graph_contains_certificate_chain():
+    from autonomy.proof_graph import build_proof_graph
+
+    certificate = {
+        "cycle": 1,
+        "proof_digest": "proof",
+        "observation_digest": "obs",
+        "council_digest": "council",
+        "action_fingerprint": "action",
+        "selected_action": "run-tests",
+        "decision": "CONTINUE",
+        "evidence": [
+            {"kind": "test", "status": "PASS", "source": "pytest", "digest": "ev1", "details": {}}
+        ],
+    }
+    graph = build_proof_graph(certificate)
+    assert graph["schema"] == "caios-proof-graph/v1"
+    assert any(edge["relation"] == "supports" for edge in graph["edges"])
