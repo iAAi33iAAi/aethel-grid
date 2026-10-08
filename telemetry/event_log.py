@@ -22,6 +22,6 @@ class TelemetryLog:
 
     def write(self, event: TelemetryEvent) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        row = json.dumps(event.as_dict(), sort_keys=True)
         with self.path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(event.as_dict(), sort_keys=True) + "
-")
+            handle.write(row + "\n")
