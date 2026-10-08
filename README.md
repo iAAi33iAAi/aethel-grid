@@ -50,18 +50,15 @@ The first physical anchor is **Node 001 — Bethel Acres, Oklahoma**.
 
 ---
 
-## What works today?
+## Current repository status
 
 | Component | Status |
 |-----------|--------|
-| Core algebra — closure, merge, topo_order, fold | Implemented |
-| Event model — signed, hashed, canonical JSON | Implemented |
-| Safety Kernel — QUIBIDT 4-gate pipeline | Implemented |
-| Reference Validator — 7-stage pure function | Implemented |
-| Compliance test vectors TV-001 through TV-007 | Implemented |
-| Governance constitution engine | Implemented |
-| Identity registry — AETHEL_ID | Implemented |
-| MANNA economic distribution | Implemented |
+| Bootstrap event algebra in `interop/aethel_service.py` | Implemented |
+| Bootstrap interop API + tests | Implemented |
+| Candidate SPEC-004 TV-001 through TV-007 suite | Implemented as candidate/non-canonical |
+| Canonical SPEC-004 validator + ratified golden vectors | **Not yet established** |
+| Multi-language canonical conformance | Pending canonical specification |
 | Node 001 physical deployment | In progress |
 
 ---
@@ -103,18 +100,11 @@ The reference validator is a pure function. Any implementation in any language t
 ## Repository Structure
 
 ```
-00_core/       Pure mathematics — closure, merge, topo_order, fold
-01_safety/     QUIBIDT Safety Kernel — constitutional firewall
-02_governance/ Governance runtime — constitution engine, policy packs
-03_identity/   AETHEL_ID registry — universal addressing
-04_economics/  MANNA distribution — 84% operations, 15% treasury, 1% community
-05_domains/    Reality-to-event adapters — kiosk, logistics, construction
-06_colony/     AI reasoning agents — propose only, never define truth
-07_observatory/ DAG visualization — unified state projection
-08_physical/   Physical infrastructure — Node 001, Bethel Acres
-sdk/           TypeScript implementation — event model, validator, state reducer
-tests/         Compliance suite — TV-001 through TV-007
-docs/          Protocol specification, architecture, contributing guide
+interop/       Bootstrap AETHEL interop service and tests
+specs/spec-004 Candidate SPEC-004 vectors, schema, and validator
+.github/       CI workflows
+docs/          Protocol and audit documentation
+AETHEL*.pdf    Protocol and deployment reference documents
 ```
 
 ---
