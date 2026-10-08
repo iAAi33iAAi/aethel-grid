@@ -1,0 +1,148 @@
+#!/usr/bin/env python3
+"""
+CAIOS system knowledge graph.
+
+Builds a deterministic graph from repository federation, PFP invariants,
+agent registry, tool registry, and current readiness state.
+
+License: Apache-2.0
+Copyright (c) 2026 iAAi33iAAi
+"""
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+from typing import Any
+
+from autonomy.evidence_bundle import digest
+from autonomy.system_readiness import evaluate as evaluate_readiness
+
+
+def build_graph(repo_root: Path) -> dict[str, Any]:
+    readiness = evaluate_readiness(repo_root)
+    federation_path = repo_root / "federation" / "system_manifest.json"
+    agent_path = repo_root / "autonomy" / "agent_registry.json"
+    tool_path = repo_root / "integrations" / "caios_tool_registry.json"
+    invariant_path = repo_root / "conformance" / "federated_invariant_registry.json"
+
+    federation = json.loads(federation_path.read_text(encoding="utf-8")) if federation_path.is_file() else {}
+    agents = json.loads(agent_path.read_text(encoding="utf-8")) if agent_path.is_file() else {}
+    tools = json.loads(tool_path.read_text(encoding="utf-8")) if tool_path.is_file() else {}
+    invariants = json.loads(invariant_path.read_text(encoding="utf-8")) if invariant_path.is_file() else {}
+
+    nodes = []
+    edges = []
+
+    for repository in federation.get("repositories", []):
+        repo_id = f"repo:{repository['id']}"
+        nodes.append({
+            "id": repo_id,
+            "kind": "repository",
+            "label": repository["id"],
+            "status": repository.get("status"),
+            "role": repository.get("role"),
+        })
+
+    for repository in federation.get("repositories", []):
+        for dependency in repository.get("depends_on", []):
+            edges.append({
+                "source": f"repo:{repository['id']}",
+                "target": f"repo:{dependency}",
+                "relation": "depends-on",
+            })
+
+    for invariant in invariants.get("invariants", []):
+        node_id = f"invariant:{invariant['id']}"
+        nodes.append({
+            "id": node_id,
+            "kind": "invariant",
+            "label": invariant["id"],
+            "domain": invariant["domain"],
+            "priority": invariant["priority"],
+            "declared_status": invariant["declared_status"],
+        })
+        edges.append({
+            "source": node_id,
+            "target": "system:readiness",
+            "relation": "constrains",
+        })
+
+    for agent in agents.get("agents", []):
+        agent_id = f"agent:{agent['id']}"
+        nodes.append({
+            "id": agent_id,
+            "kind": "agent",
+            "label": agent["id"],
+            "family": agent["family"],
+            "protocols": sorted(agent.get("protocols", [])),
+            "capabilities": sorted(agent.get("capabilities", [])),
+            "authority": agent.get("authority"),
+        })
+        edges.append({
+            "source": agent_id,
+            "target": "system:caios",
+            "relation": "advises",
+        })
+
+    for tool in tools.get("tools", []):
+        tool_id = f"tool:{tool['id']}"
+        nodes.append({
+            "id": tool_id,
+            "kind": "tool",
+            "label": tool["id"],
+            "capability": tool.get("capability"),
+            "authority": tool.get("authority"),
+            "license": tool.get("license"),
+        })
+        edges.append({
+            "source": tool_id,
+            "target": "system:caios",
+            "relation": "adapter",
+        })
+
+    nodes.append({
+        "id": "system:caios",
+        "kind": "system",
+        "label": "CAIOS",
+        "mode": "HOLD" if readiness["mode"] == "HOLD" else "READY",
+    })
+    nodes.append({
+        "id": "system:readiness",
+        "kind": "readiness",
+        "label": "CAIOS System Readiness",
+        "mode": readiness["mode"],
+        "readiness": readiness["readiness"],
+        "blockers": readiness["blockers"],
+        "next_inspection_target": readiness["next_inspection_target"],
+    })
+
+    material = {
+        "schema": "caios-system-knowledge-graph/v1",
+        "nodes": sorted(nodes, key=lambda x: x["id"]),
+        "edges": sorted(edges, key=lambda x: (x["source"], x["target"], x["relation"])),
+        "readiness_digest": readiness["readiness_digest"],
+    }
+    return {
+        **material,
+        "graph_digest": digest(material),
+    }
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description="build CAIOS system knowledge graph")
+    parser.add_argument("--repo-root", default=".")
+    parser.add_argument("--output", default="ops/caios/system-knowledge-graph.json")
+    args = parser.parse_args()
+
+    root = Path(args.repo_root).resolve()
+    result = build_graph(root)
+    output = root / args.output
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
