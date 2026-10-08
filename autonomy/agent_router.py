@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+from autonomy.protocol_admission import ProtocolRegistry
+
 
 def canonical_json(value):
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
@@ -35,6 +37,7 @@ class AgentProfile:
     license: str
     sandbox: bool
     provenance_confidence: float
+    protocol_versions: dict[str, str]
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -46,6 +49,7 @@ class AgentProfile:
             "license": self.license,
             "sandbox": self.sandbox,
             "provenance_confidence": self.provenance_confidence,
+            "protocol_versions": dict(sorted(self.protocol_versions.items())),
         }
 
 
@@ -79,6 +83,10 @@ class AgentRegistry:
                 license=item.get("license", "UNKNOWN"),
                 sandbox=bool(item.get("sandbox", False)),
                 provenance_confidence=float(item.get("provenance_confidence", 0.0)),
+                protocol_versions={
+                    str(key): str(value)
+                    for key, value in dict(item.get("protocol_versions", {})).items()
+                },
             )
             for item in raw.get("agents", [])
         }
@@ -134,12 +142,24 @@ class AgentRegistry:
     ) -> list[AgentAssignment]:
         evidence = evidence or {}
         assignments = []
+        protocol_registry = ProtocolRegistry(self.repo_root)
 
         required_protocols = frozenset(required_protocols)
         for profile in self.agents.values():
             if profile.authority != "proposal":
                 continue
             if required_protocols and not (required_protocols & profile.protocols):
+                continue
+
+            admitted_protocols = []
+            for protocol in required_protocols & profile.protocols:
+                version = profile.protocol_versions.get(protocol)
+                if version is None:
+                    continue
+                ok, _ = protocol_registry.admit(protocol, version, allow_draft=False)
+                if ok:
+                    admitted_protocols.append(protocol)
+            if required_protocols and not admitted_protocols:
                 continue
 
             score, reasons = self._score(
@@ -150,6 +170,7 @@ class AgentRegistry:
                 float(evidence.get(profile.agent_id, evidence.get("default", 0.5))),
                 float(evidence.get(f"provenance:{profile.agent_id}", 1.0)),
             )
+            reasons.append("admitted_protocols=" + ",".join(sorted(admitted_protocols)))
             assignments.append(
                 AgentAssignment(
                     agent_id=profile.agent_id,
