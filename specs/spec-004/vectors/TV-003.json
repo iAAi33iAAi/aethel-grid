@@ -5,7 +5,11 @@
   "test_id": "TV-003",
   "name": "Multi-agent quorum signature payload validation",
   "input": {
-    "active_peers": 3,
+    "active_peers": [
+      "node-a",
+      "node-b",
+      "node-c"
+    ],
     "approving_peers": [
       "node-a",
       "node-b"
