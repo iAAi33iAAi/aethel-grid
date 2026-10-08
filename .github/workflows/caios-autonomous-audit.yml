@@ -49,7 +49,7 @@ jobs:
         run: python -m autonomy.proof_graph ops/caios/autonomy-certificates.jsonl --output ops/caios/proof-graph.json
 
       - name: Build unsigned SLSA provenance predicate
-        run: python -m autonomy.slsa_provenance --repo-root . --output ops/caios/slsa-provenance.json
+        run: python -m autonomy.slsa_provenance --repo-root . --subject federation/system_manifest.json --subject docs/PCWC-SPEC-001.md --output ops/caios/slsa-provenance.json
 
       - name: Verify SLSA provenance statement
         run: |
