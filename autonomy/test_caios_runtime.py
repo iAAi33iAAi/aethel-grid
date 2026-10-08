@@ -70,3 +70,24 @@ def test_viability_score_prefers_evidence_and_reversibility():
         evidence_gain=0.6,
     )
     assert planner.score(safe) > planner.score(risky)
+
+
+def test_certificate_proof_seal_is_self_consistent(tmp_path: Path):
+    from autonomy.caios_runtime import DecisionCertificate, Evidence, write_certificates
+    from autonomy.verify_certificates import verify
+
+    certificate = DecisionCertificate(
+        cycle=1,
+        selected_action=None,
+        decision="HALT",
+        score=0.0,
+        gaps_before={"conformance": 1.0},
+        evidence=(Evidence("gate", "BLOCKED", "test", "abc", {}),),
+        reasons=("blocked",),
+        action_fingerprint=None,
+        previous_certificate_digest=None,
+        elapsed_ms=1,
+    )
+    output = tmp_path / "certificates.jsonl"
+    write_certificates([certificate], output)
+    assert verify(output)[0] is True
