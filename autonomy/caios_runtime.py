@@ -37,6 +37,7 @@ from autonomy.agent_router import AgentRegistry
 from autonomy.caios_council import CAIOSCouncil
 from conformance.contract import inspect_contract
 from integrations.remote_interop import RemoteInteropClient
+from integrations.tool_compiler import compile_command
 from federation.security_primitives import SessionAnchor, SessionAnchorRegistry
 from autonomy.context_window import ContextWindow
 from autonomy.agent_reputation import AgentReputationStore
@@ -692,11 +693,11 @@ class AutonomousRuntime:
     def _baseline_candidates(self, gaps: dict[str, float]) -> list[CandidateAction]:
         candidates: list[CandidateAction] = []
         if gaps["verification"]:
-            test_command = (
-                ("python", "-m", "pytest", "-q", "interop")
-                if (self.repo_root / "interop").exists()
-                else ("python", "-m", "pytest", "-q")
-            )
+            if (self.repo_root / "interop").exists():
+                compiled, _ = compile_command(self.repo_root, "pytest", ("interop",))
+            else:
+                compiled, _ = compile_command(self.repo_root, "pytest")
+            test_command = compiled.argv if compiled else ()
             candidates.append(
                 CandidateAction(
                     action_id="run-tests",
@@ -1173,6 +1174,17 @@ class AutonomousRuntime:
                         source="autonomy/agent_attestation.py",
                         digest=digest(self.last_model_admission),
                         details={"proposals": self.last_model_admission},
+                    )
+                )
+            provider_errors = getattr(self.proposal_provider, "last_errors", []) if self.proposal_provider else []
+            if provider_errors:
+                evidence.append(
+                    Evidence(
+                        kind="agent-worker-failure",
+                        status="FAIL",
+                        source="autonomy/multi_agent_provider.py",
+                        digest=digest(provider_errors),
+                        details={"workers": provider_errors},
                     )
                 )
             action, score, rejected = self.planner.select(candidates, self.gate, council.priority)
