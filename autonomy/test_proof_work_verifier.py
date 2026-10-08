@@ -60,6 +60,7 @@ def test_valid_contract_cross_checks_registries(tmp_path: Path):
     contract = ProofCarryingWorkContract(
         work_id="w1",
         intent_fingerprint="a"*64,
+        action_kind="run_test",
         state_before="b"*64,
         state_after=None,
         protocol="acp",
