@@ -47,6 +47,7 @@ from autonomy.agent_reputation import AgentReputationStore
 from autonomy.circuit_breaker import CircuitBreaker
 from autonomy.evidence_ledger import EvidenceLedger
 from autonomy.sandbox_simulator import DisposableWorktree
+from autonomy.red_team import run_campaign
 from autonomy.proof_work_contract import ProofCarryingWorkContract
 from autonomy.proof_work_verifier import verify_contract
 from autonomy.protocol_conformance import ProtocolConformanceRunner
@@ -496,6 +497,29 @@ class RemoteEvidenceObserver:
         return evidence
 
 
+class RedTeamObserver:
+    """Runs a bounded deterministic attack campaign against the gate."""
+
+    def observe(self, repo_root: Path) -> Evidence:
+        try:
+            result = run_campaign(repo_root)
+            return Evidence(
+                kind="red-team",
+                status="PASS" if result["passed"] else "FAIL",
+                source="autonomy/red_team.py",
+                digest=digest(result),
+                details=result,
+            )
+        except Exception as exc:
+            return Evidence(
+                kind="red-team",
+                status="FAIL",
+                source="autonomy/red_team.py",
+                digest=digest(str(exc)),
+                details={"exception": type(exc).__name__, "message": str(exc)},
+            )
+
+
 class ProtocolObserver:
     """Records admitted protocol revisions and available conformance tools."""
 
@@ -706,6 +730,7 @@ class AutonomousRuntime:
         self.agents = AgentObserver()
         self.remote = RemoteEvidenceObserver()
         self.protocols = ProtocolObserver()
+        self.red_team = RedTeamObserver()
         self.council = CAIOSCouncil()
         self.gate = ConstitutionalGate(self.repo_root)
         self.planner = ViabilityPlanner()
@@ -1326,6 +1351,7 @@ class AutonomousRuntime:
             evidence.append(self.agents.observe(self.repo_root))
             evidence.extend(self.remote.observe(self.repo_root))
             evidence.append(self.protocols.observe(self.repo_root))
+            evidence.append(self.red_team.observe(self.repo_root))
             gaps = self._gap_vector(evidence, snapshot)
             council = self.council.deliberate(gaps, evidence)
             council_evidence = Evidence(
