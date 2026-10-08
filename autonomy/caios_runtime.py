@@ -121,6 +121,9 @@ class DecisionCertificate:
             "action_fingerprint": self.action_fingerprint,
             "previous_certificate_digest": self.previous_certificate_digest,
             "elapsed_ms": self.elapsed_ms,
+            "observation_digest": self.observation_digest,
+            "council_digest": self.council_digest,
+            "proof_digest": self.proof_digest,
         }
 
 
