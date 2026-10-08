@@ -42,7 +42,22 @@ def compile_command(
     if not executable:
         return None, "tool-executable-unavailable"
 
-    argv = tuple(spec.command) + tuple(str(item) for item in args)
+    normalized_args = tuple(str(item) for item in args)
+    if spec.argument_policy == "none" and normalized_args:
+        return None, "tool-arguments-not-permitted"
+    if spec.argument_policy == "path-only":
+        for item in normalized_args:
+            if item.startswith("-"):
+                return None, "tool-flag-not-permitted"
+            candidate = (repo_root / item).resolve()
+            try:
+                candidate.relative_to(repo_root.resolve())
+            except ValueError:
+                return None, "tool-argument-escapes-repository"
+    elif spec.argument_policy != "none":
+        return None, "unknown-tool-argument-policy"
+
+    argv = tuple(spec.command) + normalized_args
     if any("\x00" in part for part in argv):
         return None, "command-contains-null-byte"
 
