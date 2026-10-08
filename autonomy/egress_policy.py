@@ -81,12 +81,17 @@ class EgressPolicy:
         )
 
 
-def scan_context(context: Any, policy: EgressPolicy) -> EgressDecision:
+def scan_context(
+    context: Any,
+    policy: EgressPolicy,
+    *,
+    source_context: bool = True,
+) -> EgressDecision:
     if context is None:
-        return policy.inspect("", source_context=False)
+        return policy.inspect("", source_context=source_context)
 
     if isinstance(context, str):
-        return policy.inspect(context, source_context=True)
+        return policy.inspect(context, source_context=source_context)
 
     try:
         payload = json.dumps(context, sort_keys=True, ensure_ascii=False)
@@ -97,4 +102,4 @@ def scan_context(context: Any, policy: EgressPolicy) -> EgressDecision:
             bytes_out=0,
             digest="",
         )
-    return policy.inspect(payload, source_context=True)
+    return policy.inspect(payload, source_context=source_context)
