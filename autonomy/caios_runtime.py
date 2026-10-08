@@ -36,6 +36,7 @@ from autonomy.agent_router import AgentRegistry
 from autonomy.caios_council import CAIOSCouncil
 from conformance.contract import inspect_contract
 from integrations.remote_interop import RemoteInteropClient
+from autonomy.context_window import ContextWindow
 
 
 def canonical_json(value: Any) -> bytes:
@@ -169,7 +170,13 @@ class OpenAICompatibleProposalProvider:
     objects reach the deterministic policy gate.
     """
 
-    def __init__(self, endpoint: str, model: str, api_key: str | None = None) -> None:
+    def __init__(
+        self,
+        endpoint: str,
+        model: str,
+        api_key: str | None = None,
+        send_source_context: bool = False,
+    ) -> None:
         parsed = urllib.parse.urlparse(endpoint)
         if parsed.scheme not in {"https", "http"} or not parsed.netloc:
             raise ValueError("model endpoint must be an absolute HTTP(S) URL")
@@ -178,8 +185,12 @@ class OpenAICompatibleProposalProvider:
         self.endpoint = endpoint
         self.model = model
         self.api_key = api_key
+        self.send_source_context = bool(send_source_context)
 
     def propose(self, snapshot: dict[str, Any]) -> list[dict[str, Any]]:
+        model_snapshot = dict(snapshot)
+        if not self.send_source_context:
+            model_snapshot.pop("source_context", None)
         body = {
             "model": self.model,
             "temperature": 0,
@@ -195,7 +206,7 @@ class OpenAICompatibleProposalProvider:
                 },
                 {
                     "role": "user",
-                    "content": json.dumps(snapshot, sort_keys=True),
+                    "content": json.dumps(model_snapshot, sort_keys=True),
                 },
             ],
         }
@@ -609,7 +620,7 @@ class AutonomousRuntime:
         self,
         repo_root: Path,
         command_runner: SafeCommandRunner | None = None,
-        proposal_provider: OpenAICompatibleProposalProvider | None = None,
+        proposal_provider: Any | None = None,
         max_cycles: int = 5,
         max_commands: int = 20,
     ) -> None:
@@ -782,7 +793,12 @@ class AutonomousRuntime:
         if not self.proposal_provider:
             return []
         try:
-            raw = self.proposal_provider.propose({"snapshot": snapshot, "gaps": gaps})
+            model_input = {
+                "snapshot": snapshot,
+                "gaps": gaps,
+                "source_context": ContextWindow(self.repo_root).build(),
+            }
+            raw = self.proposal_provider.propose(model_input)
         except Exception:
             return []
         candidates: list[CandidateAction] = []
