@@ -1,0 +1,21 @@
+name: AETHEL Grid SPEC-004 Candidate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  spec-004-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate candidate vectors
+        run: python3 specs/spec-004/validate_spec_004.py
