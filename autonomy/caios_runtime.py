@@ -410,16 +410,33 @@ class ViabilityPlanner:
         denominator = 1.0 + 5.0 * action.risk + 2.0 * action.resource_cost
         return numerator / denominator
 
-    def select(self, candidates: list[CandidateAction], gate: ConstitutionalGate) -> tuple[CandidateAction | None, float, list[str]]:
+    def select(
+        self,
+        candidates: list[CandidateAction],
+        gate: ConstitutionalGate,
+        council_priority: dict[str, float] | None = None,
+    ) -> tuple[CandidateAction | None, float, list[str]]:
         best: CandidateAction | None = None
         best_score = float("-inf")
         rejected: list[str] = []
+        gap_for_kind = {
+            "run_test": "verification",
+            "run_security_scan": "security",
+            "verify_conformance": "conformance",
+            "apply_patch": "integration",
+            "observe": "integration",
+            "rebuild_state": "verification",
+            "human_review": "conformance",
+        }
         for candidate in candidates:
             allowed, reasons = gate.validate(candidate)
             if not allowed:
                 rejected.append(f"{candidate.action_id}: " + "; ".join(reasons))
                 continue
-            score = self.score(candidate)
+            base_score = self.score(candidate)
+            gap = gap_for_kind.get(candidate.kind)
+            priority = float((council_priority or {}).get(gap, 0.0)) if gap else 0.0
+            score = base_score * (1.0 + 0.35 * max(0.0, min(1.0, priority)))
             if score > best_score:
                 best = candidate
                 best_score = score
@@ -844,7 +861,7 @@ class AutonomousRuntime:
 
             candidates = self._baseline_candidates(gaps)
             candidates.extend(self._model_candidates(snapshot, gaps))
-            action, score, rejected = self.planner.select(candidates, self.gate)
+            action, score, rejected = self.planner.select(candidates, self.gate, council.priority)
 
             if action is not None and action.kind == "human_review":
                 executable = [c for c in candidates if c.kind != "human_review" and self.gate.validate(c)[0]]
