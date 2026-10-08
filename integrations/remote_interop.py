@@ -98,6 +98,27 @@ class RemoteInteropClient:
         self.bearer_token = bearer_token
         self.timeout_seconds = timeout_seconds
 
+    def _get_json(self, path: str) -> dict[str, Any]:
+        request = urllib.request.Request(
+            self.url + path,
+            headers={"Accept": "application/json"},
+            method="GET",
+        )
+        with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
+            raw = response.read(1024 * 1024 + 1)
+        if len(raw) > 1024 * 1024:
+            raise ValueError("interop response exceeds 1 MiB safety limit")
+        data = json.loads(raw.decode("utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("interop response must be a JSON object")
+        return data
+
+    def health(self) -> dict[str, Any]:
+        return self._get_json("/aethel/health")
+
+    def capabilities(self) -> dict[str, Any]:
+        return self._get_json("/aethel/capabilities")
+
     def evaluate(self, request_id: str, operation: str, payload: dict[str, Any]) -> InteropEvidence:
         body = {
             "request_id": request_id,
