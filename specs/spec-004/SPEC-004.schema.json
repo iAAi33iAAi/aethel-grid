@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aethel.example/specs/SPEC-004/candidate-0.1/schema.json",
+  "title": "AETHEL Grid SPEC-004 Candidate Vector",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "specification_id",
+    "specification_version",
+    "status",
+    "test_id",
+    "name",
+    "input",
+    "expected",
+    "anchor"
+  ],
+  "properties": {
+    "specification_id": { "const": "SPEC-004" },
+    "specification_version": { "const": "candidate-0.1" },
+    "status": { "const": "CANDIDATE_NONCANONICAL" },
+    "test_id": { "type": "string", "pattern": "^TV-00[1-7]$" },
+    "name": { "type": "string", "minLength": 1 },
+    "input": { "type": "object" },
+    "expected": { "type": "object" },
+    "anchor": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}
