@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import fnmatch
 import hashlib
 import json
 import math
@@ -274,6 +275,12 @@ class ConstitutionalGate:
     def __init__(self, repo_root: Path, max_patch_lines: int = 250) -> None:
         self.repo_root = repo_root.resolve()
         self.max_patch_lines = max_patch_lines
+        policy_path = self.repo_root / "autonomy" / "protected_surfaces.json"
+        try:
+            policy = json.loads(policy_path.read_text(encoding="utf-8"))
+            self.protected_globs = tuple(str(item) for item in policy.get("protected_globs", []))
+        except (OSError, json.JSONDecodeError, TypeError):
+            self.protected_globs = (".github/workflows/**", "conformance/**")
 
     def validate(self, action: CandidateAction) -> tuple[bool, list[str]]:
         reasons: list[str] = []
@@ -323,6 +330,8 @@ class ConstitutionalGate:
                     normalized = patch_path[2:] if patch_path.startswith(("a/", "b/")) else patch_path
                     if normalized.startswith(("/", "../")) or "/../" in normalized or normalized.startswith(".git/"):
                         reasons.append("patch path escapes or targets git internals")
+                    if any(fnmatch.fnmatch(normalized, pattern) for pattern in self.protected_globs):
+                        reasons.append("patch targets protected autonomous-control surface")
 
         return not reasons, reasons
 
