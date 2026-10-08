@@ -44,6 +44,7 @@ from autonomy.agent_reputation import AgentReputationStore
 from autonomy.sandbox_simulator import DisposableWorktree
 from autonomy.proof_work_contract import ProofCarryingWorkContract
 from autonomy.proof_work_verifier import verify_contract
+from autonomy.protocol_conformance import ProtocolConformanceRunner
 
 
 def canonical_json(value: Any) -> bytes:
@@ -482,6 +483,30 @@ class RemoteEvidenceObserver:
         return evidence
 
 
+class ProtocolObserver:
+    """Records admitted protocol revisions and available conformance tools."""
+
+    def observe(self, repo_root: Path) -> Evidence:
+        try:
+            runner = ProtocolConformanceRunner(repo_root)
+            plan = runner.plan()
+            return Evidence(
+                kind="protocol-surface",
+                status="PASS",
+                source="autonomy/protocol_conformance.py",
+                digest=digest(plan),
+                details={"protocols": plan},
+            )
+        except Exception as exc:
+            return Evidence(
+                kind="protocol-surface",
+                status="FAIL",
+                source="autonomy/protocol_conformance.py",
+                digest=digest(str(exc)),
+                details={"exception": type(exc).__name__, "message": str(exc)},
+            )
+
+
 class AgentObserver:
     """Reports which registered agent families are eligible for the cycle."""
 
@@ -667,6 +692,7 @@ class AutonomousRuntime:
         self.federation = FederationObserver()
         self.agents = AgentObserver()
         self.remote = RemoteEvidenceObserver()
+        self.protocols = ProtocolObserver()
         self.council = CAIOSCouncil()
         self.gate = ConstitutionalGate(self.repo_root)
         self.planner = ViabilityPlanner()
@@ -1259,6 +1285,7 @@ class AutonomousRuntime:
                 evidence.append(federation_evidence)
             evidence.append(self.agents.observe(self.repo_root))
             evidence.extend(self.remote.observe(self.repo_root))
+            evidence.append(self.protocols.observe(self.repo_root))
             gaps = self._gap_vector(evidence, snapshot)
             council = self.council.deliberate(gaps, evidence)
             council_evidence = Evidence(
