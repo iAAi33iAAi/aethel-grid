@@ -25,3 +25,12 @@ def test_canonical_conformance_remains_blocked():
     result = evaluate("r3", "conformance-status", {})
     assert result["status"] == "BLOCKED"
     assert result["decision"] == "HOLD"
+
+
+def test_missing_parent_fails_closed():
+    result = evaluate("r4", "state-rebuild", {"events": [{"id": "b", "parents": ["missing"], "state": {}}]})
+    assert result["status"] == "FAIL"
+
+def test_health_is_healthy_while_conformance_is_blocked():
+    result = evaluate("health", "conformance-status", {})
+    assert result["status"] == "BLOCKED"
