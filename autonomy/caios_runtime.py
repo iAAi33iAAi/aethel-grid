@@ -385,9 +385,35 @@ class RemoteEvidenceObserver:
                 token_env = str(entry.get("token_env", ""))
                 token = os.getenv(token_env) if token_env else None
                 client = RemoteInteropClient(url, bearer_token=token)
+                operation = str(entry.get("operation", "capabilities"))
+                if operation == "health":
+                    raw = client.health()
+                    evidence.append(
+                        Evidence(
+                            kind="remote-interop-health",
+                            status="PASS",
+                            source=endpoint_id,
+                            digest=digest(raw),
+                            details={"response": raw},
+                        )
+                    )
+                    continue
+                if operation == "capabilities":
+                    raw = client.capabilities()
+                    evidence.append(
+                        Evidence(
+                            kind="remote-interop-capabilities",
+                            status="PASS",
+                            source=endpoint_id,
+                            digest=digest(raw),
+                            details={"response": raw},
+                        )
+                    )
+                    continue
+
                 response = client.evaluate(
                     request_id=f"caios-{int(time.time_ns())}",
-                    operation=str(entry.get("operation", "capabilities")),
+                    operation=operation,
                     payload=dict(entry.get("payload", {})),
                 )
                 evidence.append(
