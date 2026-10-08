@@ -64,23 +64,27 @@ Events
 
 ## Current Status
 
-**Completed:**
+**Implemented in the current repository:**
 
-* Protocol architecture
-* Reference validator
-* Compliance test vectors (TV-001 through TV-007)
-* Governance framework + 5 policy packs
-* Identity framework (AETHEL_ID registry)
-* Economic framework (MANNA distribution)
-* Domain mappings (kiosk, logistics, construction, trucking, utilities)
-* Open-source repository
+* Protocol architecture and event-sourcing model
+* Bootstrap interop service for deterministic state reconstruction
+* Interop test suite
+* Candidate SPEC-004 TV-001 through TV-007 package
+* Governance and economic design documentation
+
+**Not yet established as canonical:**
+
+* Authoritative SPEC-004 golden vectors
+* Canonical cross-language validator
+* Canonical conformance certification
+* Production federation conformance
 
 **Current focus:**
 
-* Conformance testing across TypeScript and Python
-* Protocol specification hardening
+* SPEC-004 semantics hardening and independent ratification
+* Conformance testing across implementations
 * Node 001 pilot deployment planning
-* Community validation
+* External technical review
 
 ---
 
