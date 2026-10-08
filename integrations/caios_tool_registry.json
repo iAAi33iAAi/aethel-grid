@@ -146,6 +146,35 @@
       "authority": "cryptographic",
       "license": "Apache-2.0 OR BSD-3-Clause",
       "scope_note": "optional federation identity adapter"
+    },
+    {
+      "id": "acp-tck",
+      "capability": "agent-protocol-conformance",
+      "authority": "evidence",
+      "license": "Apache-2.0",
+      "command": [
+        "acp-tck"
+      ]
+    },
+    {
+      "id": "a2a-cli",
+      "capability": "agent-to-agent-discovery",
+      "authority": "evidence",
+      "license": "Apache-2.0",
+      "command": [
+        "a2a",
+        "version"
+      ]
+    },
+    {
+      "id": "mcp-cli",
+      "capability": "mcp-protocol-discovery",
+      "authority": "evidence",
+      "license": "MIT-or-current-project-license",
+      "command": [
+        "mcp",
+        "--help"
+      ]
     }
   ]
 }
