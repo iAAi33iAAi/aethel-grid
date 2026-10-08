@@ -58,6 +58,36 @@ jobs:
           ref: main
           path: aethel-grid/federated/World-Tribe-Protocol
 
+      - uses: actions/checkout@v7
+        with:
+          repository: iAAi33iAAi/openclaw-colony
+          ref: main
+          path: aethel-grid/federated/openclaw-colony
+
+      - uses: actions/checkout@v7
+        with:
+          repository: iAAi33iAAi/sports-math-agent-orchestration
+          ref: main
+          path: aethel-grid/federated/sports-math-agent-orchestration
+
+      - uses: actions/checkout@v7
+        with:
+          repository: iAAi33iAAi/calcula-colony
+          ref: main
+          path: aethel-grid/federated/calcula-colony
+
+      - uses: actions/checkout@v7
+        with:
+          repository: iAAi33iAAi/crew-colony
+          ref: main
+          path: aethel-grid/federated/crew-colony
+
+      - uses: actions/checkout@v7
+        with:
+          repository: iAAi33iAAi/clawhub
+          ref: main
+          path: aethel-grid/federated/clawhub
+
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
