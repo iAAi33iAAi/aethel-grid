@@ -80,8 +80,8 @@ class CandidateAction:
     command: tuple[str, ...] = ()
     unified_diff: str = ""
     agent_id: str | None = None
-    protocol: str | None = None
-    protocol_version: str | None = None
+    protocol: str | None = "caios-internal"
+    protocol_version: str | None = "1"
     model_id: str | None = None
     model_revision: str | None = None
     attestation_digest: str | None = None
