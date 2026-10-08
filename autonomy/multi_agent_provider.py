@@ -22,6 +22,7 @@ class EndpointSpec:
     model: str
     model_revision: str
     protocol: str
+    protocol_version: str
     agent_version: str
     source_ref: str
     api_key: str | None = None
@@ -69,6 +70,7 @@ class MultiAgentProposalProvider:
                 {
                     "agent_id": spec.agent_id,
                     "protocol": spec.protocol,
+                    "protocol_version": spec.protocol_version,
                     "model_id": spec.model,
                     "model_revision": spec.model_revision,
                     "agent_version": spec.agent_version,
