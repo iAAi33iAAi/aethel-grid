@@ -37,6 +37,7 @@ from autonomy.caios_council import CAIOSCouncil
 from conformance.contract import inspect_contract
 from integrations.remote_interop import RemoteInteropClient
 from autonomy.context_window import ContextWindow
+from autonomy.agent_reputation import AgentReputationStore
 
 
 def canonical_json(value: Any) -> bytes:
@@ -465,10 +466,14 @@ class AgentObserver:
         try:
             registry = AgentRegistry(repo_root)
             capabilities = ("coding", "testing", "patching") if risk >= 0.55 else ("planning", "reasoning")
+            reputation = AgentReputationStore(
+                repo_root / "ops" / "caios" / "agent-reputation.jsonl"
+            )
             plan = registry.plan_quorum(
                 capabilities,
                 ("acp", "mcp", "openai-compatible"),
                 risk,
+                evidence=reputation.all_scores(),
                 max_agents=3,
             )
             return Evidence(
@@ -640,6 +645,9 @@ class AutonomousRuntime:
         self.commands_used = 0
         self.certificates: list[DecisionCertificate] = []
         self.last_model_admission: list[dict[str, Any]] = []
+        self.reputation = AgentReputationStore(
+            self.repo_root / "ops" / "caios" / "agent-reputation.jsonl"
+        )
 
     def _gap_vector(self, evidence: list[Evidence], snapshot: dict[str, Any]) -> dict[str, float]:
         gaps = {
@@ -1171,6 +1179,31 @@ class AutonomousRuntime:
             if any(e.kind == "test" and e.status == "FAIL" for e in action_evidence):
                 decision = "CONTINUE"
                 reasons.append("failed test evidence increases the verification gap; next cycle may repair")
+
+            if action.agent_id:
+                failed = any(item.status == "FAIL" for item in action_evidence)
+                blocked = any(item.status in {"BLOCKED", "REQUIRED"} for item in action_evidence)
+                has_test = any(item.kind == "test" for item in action_evidence)
+                test_pass = (
+                    any(item.kind == "test" and item.status == "PASS" for item in action_evidence)
+                    if has_test
+                    else None
+                )
+                rollback = any(
+                    item.kind == "patch"
+                    and item.status == "FAIL"
+                    and item.details.get("rollback_returncode") == 0
+                    for item in action_evidence
+                )
+                self.reputation.record(
+                    action.agent_id,
+                    action_kind=action.kind,
+                    outcome="FAIL" if failed else "BLOCKED" if blocked else "PASS",
+                    test_pass=test_pass,
+                    evidence_gain=action.evidence_gain,
+                    risk=action.risk,
+                    rollback=rollback,
+                )
 
             cert = DecisionCertificate(
                 cycle=cycle,
