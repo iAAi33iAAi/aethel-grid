@@ -26,9 +26,13 @@ import shlex
 import subprocess
 import sys
 import time
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any, Iterable
+
+from autonomy.caios_council import CAIOSCouncil
+from conformance.contract import inspect_contract
 
 from autonomy.caios_council import CAIOSCouncil
 from conformance.contract import inspect_contract
@@ -157,6 +161,11 @@ class OpenAICompatibleProposalProvider:
     """
 
     def __init__(self, endpoint: str, model: str, api_key: str | None = None) -> None:
+        parsed = urllib.parse.urlparse(endpoint)
+        if parsed.scheme not in {"https", "http"} or not parsed.netloc:
+            raise ValueError("model endpoint must be an absolute HTTP(S) URL")
+        if parsed.scheme == "http" and parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
+            raise ValueError("non-local model endpoints must use HTTPS")
         self.endpoint = endpoint
         self.model = model
         self.api_key = api_key
@@ -221,6 +230,17 @@ class ConstitutionalGate:
         reasons: list[str] = []
         if action.kind not in self.ALLOWED_KINDS:
             reasons.append(f"action kind '{action.kind}' is not in the allowlist")
+
+        numeric_fields = {
+            "expected_gain": action.expected_gain,
+            "risk": action.risk,
+            "reversibility": action.reversibility,
+            "resource_cost": action.resource_cost,
+            "evidence_gain": action.evidence_gain,
+        }
+        for field, value in numeric_fields.items():
+            if not math.isfinite(value) or not 0.0 <= value <= 1.0:
+                reasons.append(f"{field} must be finite and within [0,1]")
 
         target = (self.repo_root / action.target).resolve()
         try:
