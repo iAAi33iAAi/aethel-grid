@@ -38,6 +38,19 @@ class AgentProfile:
 
 
 @dataclass(frozen=True)
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "agent_id": self.agent_id,
+            "family": self.family,
+            "protocols": sorted(self.protocols),
+            "capabilities": sorted(self.capabilities),
+            "authority": self.authority,
+            "license": self.license,
+            "sandbox": self.sandbox,
+            "provenance_confidence": self.provenance_confidence,
+        }
+
+
 class AgentAssignment:
     agent_id: str
     score: float
