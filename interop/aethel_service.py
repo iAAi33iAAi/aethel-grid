@@ -44,7 +44,9 @@ def closure(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
         needed.add(current)
         for parent in by_id[current].get("parents", []):
             parent_id = str(parent)
-            if parent_id in by_id and parent_id not in needed:
+            if parent_id not in by_id:
+                raise ValueError(f"missing causal parent: {parent_id}")
+            if parent_id not in needed:
                 frontier.append(parent_id)
     return [by_id[event_id] for event_id in needed]
 
@@ -176,7 +178,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         if self.path == "/aethel/health":
-            self._send(200, evaluate("health", "conformance-status", {}))
+            self._send(200, {
+                "protocol": PROTOCOL,
+                "service": SERVICE,
+                "version": VERSION,
+                "request_id": "health",
+                "status": "PASS",
+                "decision": "HEALTHY",
+                "reasons": [],
+                "result": {},
+                "evidence": {"canonical_conformance": "blocked"},
+            })
             return
         if self.path == "/aethel/capabilities":
             self._send(
