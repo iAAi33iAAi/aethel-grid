@@ -17,6 +17,8 @@ from typing import Any
 
 from autonomy.evidence_bundle import digest
 from autonomy.system_readiness import evaluate as evaluate_readiness
+from autonomy.protocol_conformance import ProtocolConformanceRunner
+from autonomy.supply_chain_plan import build_plan as build_supply_chain_plan
 
 
 def build_graph(repo_root: Path) -> dict[str, Any]:
@@ -171,6 +173,41 @@ def build_graph(repo_root: Path) -> dict[str, Any]:
             "source": tool_id,
             "target": "system:caios",
             "relation": "adapter",
+        })
+
+    protocol_plan = ProtocolConformanceRunner(repo_root).plan()
+    for item in protocol_plan:
+        protocol_id = f"protocol:{item['protocol']}"
+        nodes.append({
+            "id": protocol_id,
+            "kind": "protocol",
+            "label": item["protocol"],
+            "revision": item["revision"],
+            "status": item["status"],
+            "conformance": item["conformance"],
+        })
+        edges.append({
+            "source": protocol_id,
+            "target": "system:caios",
+            "relation": "transport-surface",
+        })
+
+    supply_chain = build_supply_chain_plan(repo_root)
+    for check in supply_chain["checks"]:
+        check_id = f"supply:{check['check_id']}"
+        nodes.append({
+            "id": check_id,
+            "kind": "supply-chain-check",
+            "label": check["check_id"],
+            "standard": check["standard"],
+            "tool_id": check["tool_id"],
+            "required": check["required"],
+            "available": check["available"],
+        })
+        edges.append({
+            "source": check_id,
+            "target": f"tool:{check['tool_id']}",
+            "relation": "verified-by",
         })
 
     nodes.append({
