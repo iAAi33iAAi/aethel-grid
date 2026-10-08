@@ -52,8 +52,7 @@ def build_envelope(
         "protocol": PROTOCOL,
         "node_id": identity.node_id,
         "public_key_b64": identity.public_key_b64,
-        "payload_sha256": hashlib.sha256(material).hexdigest()
-        if False else payload_digest(payload),
+        "payload_sha256": payload_digest(payload),
         "payload": payload,
         "signature_b64": sign_envelope(private_key_bytes, material),
     }
