@@ -91,6 +91,19 @@
       "license": "MIT"
     },
     {
+      "id": "acp",
+      "capability": "agent-client-transport",
+      "authority": "adapter",
+      "license": "Apache-2.0",
+      "scope_note": "proposal/agent transport only; never policy authority"
+    },
+    {
+      "id": "acp-tck",
+      "capability": "agent-protocol-conformance",
+      "authority": "evidence",
+      "license": "Apache-2.0"
+    },
+    {
       "id": "temporal",
       "capability": "durable-workflow",
       "authority": "orchestration",
@@ -128,18 +141,11 @@
       "scope_note": "exclude separately licensed enterprise directory"
     },
     {
-      "id": "acp",
-      "capability": "agent-client-transport",
-      "authority": "adapter",
-      "license": "Apache-2.0",
-      "scope_note": "Use ACP as a proposal/agent transport boundary; never treat an ACP agent as policy authority."
-    },
-    {
-      "id": "acp-tck",
-      "capability": "agent-protocol-conformance",
-      "authority": "evidence",
-      "license": "Apache-2.0",
-      "scope_note": "Protocol compatibility evidence only."
+      "id": "cryptography",
+      "capability": "ed25519-identity",
+      "authority": "cryptographic",
+      "license": "Apache-2.0 OR BSD-3-Clause",
+      "scope_note": "optional federation identity adapter"
     }
   ]
 }
