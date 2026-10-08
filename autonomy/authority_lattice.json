@@ -1,0 +1,35 @@
+{
+  "schema": "caios-authority-lattice/v1",
+  "principals": [
+    {
+      "principal_id": "model",
+      "authority": 10,
+      "capabilities": ["propose"],
+      "boundary": "proposal-only"
+    },
+    {
+      "principal_id": "remote-interop",
+      "authority": 20,
+      "capabilities": ["evidence"],
+      "boundary": "typed-aethel-interop-response"
+    },
+    {
+      "principal_id": "caios",
+      "authority": 30,
+      "capabilities": ["observe", "propose", "evidence", "policy"],
+      "boundary": "repository-root-and-declared-federation"
+    },
+    {
+      "principal_id": "safety-kernel",
+      "authority": 40,
+      "capabilities": ["observe", "evidence", "execute"],
+      "boundary": "kernel-defined-execution-surface"
+    },
+    {
+      "principal_id": "human",
+      "authority": 50,
+      "capabilities": ["observe", "propose", "evidence", "policy", "execute", "human-final"],
+      "boundary": "explicit-human-decision"
+    }
+  ]
+}
