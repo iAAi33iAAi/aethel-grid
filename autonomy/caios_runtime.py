@@ -1237,6 +1237,7 @@ class AutonomousRuntime:
         for cycle in range(1, self.max_cycles + 1):
             started = time.monotonic_ns()
             snapshot = self.snapshotter.capture()
+            evidence: list[Evidence] = []
             session_anchor = SessionAnchor.create(
                 self.session_id,
                 cycle,
