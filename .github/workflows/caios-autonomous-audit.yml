@@ -39,6 +39,9 @@ jobs:
       - name: Verify proof-carrying certificate chain
         run: python -m autonomy.verify_certificates ops/caios/autonomy-certificates.jsonl
 
+      - name: Verify ordered evidence ledger
+        run: python -m autonomy.evidence_ledger ops/caios/evidence-ledger.jsonl
+
       - name: Seal federated topology manifest
         run: python -m federation.manifest_seal --manifest federation/system_manifest.json --output ops/caios/federation-manifest-seal.json
 
@@ -70,6 +73,7 @@ jobs:
           path: |
             ops/caios/autonomy-certificates.jsonl
             ops/caios/session-anchors.jsonl
+            ops/caios/evidence-ledger.jsonl
             ops/caios/federation-manifest-seal.json
             ops/caios/proof-graph.json
             ops/caios/evidence-bundle.json
