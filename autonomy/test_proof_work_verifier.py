@@ -83,6 +83,7 @@ def test_high_risk_pass_without_simulation_is_rejected(tmp_path: Path):
     contract = ProofCarryingWorkContract(
         work_id="w2",
         intent_fingerprint="a"*64,
+        action_kind="apply_patch",
         state_before="b"*64,
         state_after="d"*64,
         protocol="acp",
