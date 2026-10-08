@@ -67,22 +67,27 @@ def validate_proposal(
     reasons: list[str] = []
     try:
         registry = AgentRegistry(repo_root)
-        model_registry = ModelRegistry(repo_root)
     except Exception as exc:
-        return False, [f"registry-unavailable:{type(exc).__name__}"], None
-
-    model_admitted, model_reasons = model_registry.admit(model_id)
+        return False, [f"agent-registry-unavailable:{type(exc).__name__}"], None
 
     profile = registry.agents.get(agent_id)
     if profile is None:
-        reasons.append("agent-id-not-registered")
-    else:
-        if profile.authority != "proposal":
-            reasons.append("agent-is-not-proposal-authority")
-        if protocol not in profile.protocols:
-            reasons.append("protocol-not-advertised-by-agent")
-        if profile.provenance_confidence < float(registry.policy.get("minimum_provenance_confidence", 0.90)):
-            reasons.append("agent-provenance-confidence-below-floor")
+        return False, ["agent-id-not-registered"], None
+    if profile.authority != "proposal":
+        return False, ["agent-is-not-proposal-authority"], None
+    if protocol not in profile.protocols:
+        return False, ["protocol-not-advertised-by-agent"], None
+    if profile.provenance_confidence < float(
+        registry.policy.get("minimum_provenance_confidence", 0.90)
+    ):
+        return False, ["agent-provenance-confidence-below-floor"], None
+
+    try:
+        model_registry = ModelRegistry(repo_root)
+    except Exception as exc:
+        return False, [f"model-registry-unavailable:{type(exc).__name__}"], None
+
+    model_admitted, model_reasons = model_registry.admit(model_id)
 
     reasons.extend(model_reasons)
 
