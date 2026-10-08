@@ -4,8 +4,15 @@
 
 CAIOS is a bounded autonomous control loop designed to sit above the existing AETHEL, Safety Kernel, and ALGA_FOLD_KERNEL components.
 
-The key separation is:
+CAIOS is the supervisory control plane. In authority terms, CAIOS sits above the state substrate: it owns policy admission, candidate selection, and the decision to continue, halt, or require human review. AETHEL remains the deterministic constitutional/state substrate; Safety Kernel/ALGA remain execution-integrity boundaries.
 
+The authority chain is:
+
+**Human authority → CAIOS supervisory policy → AETHEL state/conformance → Safety/ALGA execution integrity → protocols/tools → agents/models → world effects**
+
+This is an authority hierarchy, not a software dependency claim. The CAIOS process itself must still boot from trusted code and configured trust roots; it does not grant authority to itself merely by declaring it.
+
+The key separation is:
 **Model → proposes**  
 **AETHEL → supplies deterministic state/history semantics**  
 **ALGA/Safety → gate**  
