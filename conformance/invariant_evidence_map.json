@@ -1,0 +1,46 @@
+{
+  "schema": "caios-invariant-evidence-map/v1",
+  "canonical_claim": false,
+  "entries": {
+    "INV-003": {
+      "implementation": "aethel-grid/interop/aethel_service.py",
+      "state": "present",
+      "basis": "existing bootstrap hash/canonical JSON implementation"
+    },
+    "INV-004": {
+      "implementation": "aethel-grid/interop/aethel_service.py",
+      "state": "present",
+      "basis": "existing lineage hash implementation"
+    },
+    "INV-006": {
+      "implementation": "federation/security_primitives.py:ManifestSealer",
+      "state": "mechanism_present",
+      "basis": "manifest digest seal; immutability over time still requires persistent governance"
+    },
+    "INV-007": {
+      "implementation": "federation/security_primitives.py:sign_audit_record",
+      "state": "mechanism_present",
+      "basis": "Ed25519 signing adapter; authoritative deployment key policy still required"
+    },
+    "INV-013": {
+      "implementation": "federation/security_primitives.py:SessionAnchorRegistry",
+      "state": "mechanism_present",
+      "basis": "anchor must be accepted before runtime action"
+    },
+    "INV-015": {
+      "implementation": "federation/security_primitives.py:SessionAnchorRegistry",
+      "state": "mechanism_present",
+      "basis": "epoch must increase within a session"
+    },
+    "INV-016": {
+      "implementation": "federation/security_primitives.py:SessionAnchorRegistry",
+      "state": "mechanism_present",
+      "basis": "duplicate anchor and nonmonotonic epoch rejected"
+    },
+    "INV-020": {
+      "implementation": "autonomy/model_registry.py",
+      "state": "adjacent_control_only",
+      "basis": "model admission is separate from governance key rotation"
+    }
+  }
+}
