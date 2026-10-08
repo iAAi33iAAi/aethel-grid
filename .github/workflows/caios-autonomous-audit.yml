@@ -39,6 +39,9 @@ jobs:
       - name: Build system evidence bundle
         run: python -m autonomy.evidence_bundle --repo-root . --output ops/caios/evidence-bundle.json
 
+      - name: Evaluate promotion readiness
+        run: python -m autonomy.promotion_gate --repo-root . --output ops/caios/promotion-decision.json
+
       - name: Upload proof-carrying evidence
         uses: actions/upload-artifact@v4
         with:
@@ -47,3 +50,4 @@ jobs:
             ops/caios/autonomy-certificates.jsonl
             ops/caios/proof-graph.json
             ops/caios/evidence-bundle.json
+            ops/caios/promotion-decision.json
