@@ -52,13 +52,8 @@ jobs:
         run: python -m autonomy.slsa_provenance --repo-root . --output ops/caios/slsa-provenance.json
 
       - name: Verify SLSA provenance statement
-        run: python - <<'PY'
-          from pathlib import Path
-          from autonomy.slsa_verifier import verify_file
-          ok, errors = verify_file(Path("ops/caios/slsa-provenance.json"))
-          print({"status": "PASS" if ok else "FAIL", "errors": errors})
-          raise SystemExit(0 if ok else 1)
-          PY
+        run: |
+          python -c "from pathlib import Path; from autonomy.slsa_verifier import verify_file; ok, errors = verify_file(Path('ops/caios/slsa-provenance.json')); print({'status': 'PASS' if ok else 'FAIL', 'errors': errors}); raise SystemExit(0 if ok else 1)"
 
       - name: Build system evidence bundle
         run: python -m autonomy.evidence_bundle --repo-root . --output ops/caios/evidence-bundle.json
