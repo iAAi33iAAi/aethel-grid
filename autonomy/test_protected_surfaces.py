@@ -12,6 +12,18 @@ def write_policy(tmp_path: Path):
         }),
         encoding="utf-8",
     )
+    (tmp_path / "autonomy/authority_lattice.json").write_text(
+        json.dumps({
+            "schema": "caios-authority-lattice/v1",
+            "principals": [{
+                "principal_id": "caios",
+                "authority": 30,
+                "capabilities": ["observe", "propose", "evidence", "policy", "supervise"],
+                "boundary": "repository-root-and-declared-federation",
+            }],
+        }),
+        encoding="utf-8",
+    )
 
 
 def test_autonomous_patch_cannot_change_protected_surface(tmp_path: Path):
