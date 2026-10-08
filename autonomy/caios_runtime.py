@@ -41,6 +41,7 @@ from integrations.tool_compiler import compile_command
 from federation.security_primitives import SessionAnchor, SessionAnchorRegistry
 from autonomy.context_window import ContextWindow
 from autonomy.agent_reputation import AgentReputationStore
+from autonomy.evidence_ledger import EvidenceLedger
 from autonomy.sandbox_simulator import DisposableWorktree
 from autonomy.proof_work_contract import ProofCarryingWorkContract
 from autonomy.proof_work_verifier import verify_contract
@@ -709,6 +710,9 @@ class AutonomousRuntime:
         self.anchors = SessionAnchorRegistry(
             self.repo_root / "ops" / "caios" / "session-anchors.jsonl"
         )
+        self.evidence_ledger = EvidenceLedger(
+            self.repo_root / "ops" / "caios" / "evidence-ledger.jsonl"
+        )
 
     def _gap_vector(self, evidence: list[Evidence], snapshot: dict[str, Any]) -> dict[str, float]:
         gaps = {
@@ -1284,6 +1288,7 @@ class AutonomousRuntime:
                     session_id=self.session_id,
                     session_anchor_hash=session_anchor.anchor_hash,
                 )
+                self.evidence_ledger.append(cycle, evidence)
                 self.certificates.append(cert)
                 break
 
@@ -1431,6 +1436,11 @@ class AutonomousRuntime:
             if contract_evidence.status != "PASS":
                 decision = "HALT"
                 reasons.append("work contract verification failed")
+
+            self.evidence_ledger.append(
+                cycle,
+                evidence + action_evidence,
+            )
 
             cert = DecisionCertificate(
                 cycle=cycle,
