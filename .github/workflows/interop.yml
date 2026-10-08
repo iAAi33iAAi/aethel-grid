@@ -3,6 +3,9 @@ name: AETHEL Grid Interop
 concurrency:
   group: aethel-interop-${{ github.ref }}
   cancel-in-progress: true
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main, aethel/interop-v1]
