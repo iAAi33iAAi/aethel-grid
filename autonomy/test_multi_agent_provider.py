@@ -17,6 +17,7 @@ def test_multi_agent_provider_normalizes_identity():
                 agent_id="a",
                 endpoint="https://example.invalid/a",
                 model="m-a",
+                model_revision="rev-a",
                 protocol="openai-compatible",
                 agent_version="1",
                 source_ref="git:a",
@@ -25,6 +26,7 @@ def test_multi_agent_provider_normalizes_identity():
                 agent_id="b",
                 endpoint="https://example.invalid/b",
                 model="m-b",
+                model_revision="rev-b",
                 protocol="openai-compatible",
                 agent_version="1",
                 source_ref="git:b",
@@ -35,3 +37,4 @@ def test_multi_agent_provider_normalizes_identity():
     rows = provider.propose({"state": "x"})
     assert {row["agent_id"] for row in rows} == {"a", "b"}
     assert all(row["protocol"] == "openai-compatible" for row in rows)
+    assert {row["model_revision"] for row in rows} == {"rev-a", "rev-b"}
