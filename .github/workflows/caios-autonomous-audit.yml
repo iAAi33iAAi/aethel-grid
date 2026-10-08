@@ -33,8 +33,13 @@ jobs:
       - name: Verify proof-carrying certificate chain
         run: python autonomy/verify_certificates.py ops/caios/autonomy-certificates.jsonl
 
-      - name: Upload proof-carrying certificates
+      - name: Materialize proof graph
+        run: python autonomy/proof_graph.py ops/caios/autonomy-certificates.jsonl --output ops/caios/proof-graph.json
+
+      - name: Upload proof-carrying evidence
         uses: actions/upload-artifact@v4
         with:
-          name: caios-autonomy-certificates
-          path: ops/caios/autonomy-certificates.jsonl
+          name: caios-autonomy-evidence
+          path: |
+            ops/caios/autonomy-certificates.jsonl
+            ops/caios/proof-graph.json
