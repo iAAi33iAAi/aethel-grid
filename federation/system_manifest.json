@@ -1,0 +1,62 @@
+{
+  "schema": "caios-federation/v1",
+  "workspace_root": ".",
+  "repositories": [
+    {
+      "id": "aethel-grid",
+      "path": ".",
+      "role": "constitutional-substrate",
+      "weight": 1.0,
+      "depends_on": [],
+      "verification": ["python", "-m", "pytest", "-q", "interop"]
+    },
+    {
+      "id": "safety-kernel",
+      "path": "federated/safety-kernel",
+      "role": "execution-integrity",
+      "weight": 0.95,
+      "depends_on": ["aethel-grid"],
+      "verification": ["python", "-m", "pytest", "-q", "test_sk.py", "test_tamper.py"]
+    },
+    {
+      "id": "project-mono",
+      "path": "federated/project-mono",
+      "role": "change-governance",
+      "weight": 0.95,
+      "depends_on": ["aethel-grid", "safety-kernel"],
+      "verification": ["python", "-m", "pytest", "-q", "tests"]
+    },
+    {
+      "id": "openclaw-governance",
+      "path": "federated/openclaw-governance",
+      "role": "agent-orchestration",
+      "weight": 0.9,
+      "depends_on": ["aethel-grid", "safety-kernel", "project-mono"],
+      "verification": []
+    },
+    {
+      "id": "undermoon",
+      "path": "federated/undermoon",
+      "role": "continuity-layer",
+      "weight": 0.75,
+      "depends_on": ["openclaw-governance"],
+      "verification": []
+    },
+    {
+      "id": "alpha-intelligence-hub",
+      "path": "federated/alpha-intelligence-hub",
+      "role": "intelligence-interface",
+      "weight": 0.7,
+      "depends_on": ["openclaw-governance"],
+      "verification": []
+    },
+    {
+      "id": "World-Tribe-Protocol",
+      "path": "federated/World-Tribe-Protocol",
+      "role": "identity-protocol",
+      "weight": 0.7,
+      "depends_on": ["aethel-grid"],
+      "verification": []
+    }
+  ]
+}
