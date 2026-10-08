@@ -34,9 +34,6 @@ from typing import Any, Iterable
 from autonomy.caios_council import CAIOSCouncil
 from conformance.contract import inspect_contract
 
-from autonomy.caios_council import CAIOSCouncil
-from conformance.contract import inspect_contract
-
 
 def canonical_json(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
