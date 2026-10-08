@@ -92,11 +92,26 @@ def _git_worktree_fingerprint(root: Path) -> str:
     status_rc, status, _ = run_argv(root, ["git", "status", "--porcelain=v1"], timeout=15)
     diff_rc, diff, diff_err = run_argv(root, ["git", "diff", "--binary", "HEAD"], timeout=30)
     untracked = []
+    untracked_details = []
     if status_rc == 0:
         untracked = [
             line[3:] for line in status.splitlines()
             if line.startswith("?? ")
         ]
+        for relative in sorted(untracked):
+            path = root / relative
+            try:
+                data = path.read_bytes()
+                untracked_details.append({
+                    "path": relative,
+                    "size": len(data),
+                    "sha256": hashlib.sha256(data).hexdigest(),
+                })
+            except OSError as exc:
+                untracked_details.append({
+                    "path": relative,
+                    "error": type(exc).__name__,
+                })
     return digest(
         {
             "head": head.strip(),
@@ -105,7 +120,7 @@ def _git_worktree_fingerprint(root: Path) -> str:
             if diff_rc == 0
             else None,
             "diff_error": diff_err[-500:] if diff_rc != 0 else None,
-            "untracked": sorted(untracked),
+            "untracked": untracked_details,
         }
     )
 
