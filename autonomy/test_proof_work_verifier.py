@@ -9,6 +9,10 @@ def fixture_root(tmp_path: Path):
     (tmp_path / "autonomy").mkdir()
     (tmp_path / "integrations").mkdir()
     (tmp_path / "conformance").mkdir()
+    (tmp_path / "conformance/federated_invariant_registry.json").write_text(
+        json.dumps({"invariants":[{"id":"INV-013","priority":"critical","declared_status":"not_implemented","domain":"session","definition":"anchor"}]}),
+        encoding="utf-8",
+    )
 
     (tmp_path / "autonomy/protocol_registry.json").write_text(json.dumps({
         "policy":{"draft_protocol_requires_opt_in":True},
