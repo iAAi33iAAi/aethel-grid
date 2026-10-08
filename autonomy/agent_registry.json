@@ -4,7 +4,8 @@
     "high_risk_threshold": 0.55,
     "high_risk_min_independent_agents": 2,
     "minimum_protocol_confidence": 0.9,
-    "minimum_provenance_confidence": 0.9
+    "minimum_provenance_confidence": 0.9,
+    "high_risk_min_independent_models": 2
   },
   "agents": [
     {
