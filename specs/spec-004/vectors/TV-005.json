@@ -1,0 +1,18 @@
+{
+  "specification_id": "SPEC-004",
+  "specification_version": "candidate-0.1",
+  "status": "CANDIDATE_NONCANONICAL",
+  "test_id": "TV-005",
+  "name": "Boundary NaN/Inf metric injection rejection",
+  "input": {
+    "metrics": {
+      "psi": "NaN",
+      "efficiency": "Infinity"
+    }
+  },
+  "expected": {
+    "status": "REJECT",
+    "reason_code": "NON_FINITE_METRIC"
+  },
+  "anchor": "38ce620e490b669ccf9c2a5276d0d4193a96903bffe37e8dc168503b444d3268"
+}
