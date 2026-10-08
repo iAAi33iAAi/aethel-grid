@@ -44,6 +44,12 @@ jobs:
       - name: Evaluate promotion readiness
         run: python -m autonomy.promotion_gate --repo-root . --output ops/caios/promotion-decision.json
 
+      - name: Build unified system readiness
+        run: python -m autonomy.system_readiness --repo-root . --output ops/caios/system-readiness.json
+
+      - name: Build system knowledge graph
+        run: python -m autonomy.system_knowledge_graph --repo-root . --output ops/caios/system-knowledge-graph.json
+
       - name: Upload proof-carrying evidence
         uses: actions/upload-artifact@v4
         with:
@@ -53,3 +59,5 @@ jobs:
             ops/caios/proof-graph.json
             ops/caios/evidence-bundle.json
             ops/caios/promotion-decision.json
+            ops/caios/system-readiness.json
+            ops/caios/system-knowledge-graph.json
