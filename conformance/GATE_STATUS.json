@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-10-08T12:00:00Z",
+  "generated_at_utc": "2026-10-09T21:31:04.096Z",
   "gate_1": {
     "status": "BLOCKED",
     "reason": "Canonical SPEC-004 v0.3.1 metric law and normative u_metric/decision partition are not present on main; existing TV-001..TV-007 remain candidate/noncanonical."
@@ -28,8 +28,8 @@
     "reason": "No canonical state-checkpoint/Merkle implementation has been ratified from this execution."
   },
   "gate_5": {
-    "status": "NOT_STARTED",
-    "reason": "Portfolio-wide cross-repository CI parity workflow is not yet deployed."
+    "status": "PARTIALLY_CLOSED",
+    "reason": "Manifest-driven portfolio CI parity audit is integrated into the federated workflow and emits per-repository commit and verification evidence. Only 3 of 13 manifest repositories currently define a verification command; the other 10 remain NOT_CONFIGURED. Gate 5 is not closed until every active repository has an explicit verifier and passing evidence."
   },
   "gate_6": {
     "status": "BLOCKED",
