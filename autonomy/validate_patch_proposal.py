@@ -150,17 +150,24 @@ def validate_and_test(
             "reason": "revalidated-patch-missing",
         }
     else:
-        simulation = DisposableWorktree(repo_root).run(patch, VALIDATION_COMMAND)
+        simulation = DisposableWorktree(repo_root).run(
+            patch,
+            VALIDATION_COMMAND,
+            require_network_isolation=True,
+        )
         result = {
             "schema": "caios-patch-validation/v1",
-            "status": "VALIDATED" if simulation.status == "PASS" else "VALIDATION_FAILED",
+            "status": "VALIDATED" if simulation.status == "PASS" and simulation.network_isolated else "VALIDATION_FAILED",
             "base_sha": preflight["base_sha"],
             "proposal_digest": preflight["proposal_digest"],
             "patch_digest": digest(patch),
             "candidate": candidate,
             "sandbox_evidence": simulation.as_dict(),
             "validation_contract": {
-                "runs_in_disposable_git_worktree": True,
+                "runs_in_disposable_standalone_clone": True,
+                "network_isolation_required": True,
+                "network_isolation_established": simulation.network_isolated,
+                "sandbox_mode": "bubblewrap-unshare-net" if simulation.network_isolated else "failed-closed",
                 "model_api_keys_present": bool(model_key_names),
                 "repository_write_token_present": bool(write_token_names),
                 "fixed_validation_command": list(VALIDATION_COMMAND),
