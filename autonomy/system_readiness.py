@@ -40,20 +40,56 @@ STATUS_GAP = {
 
 def load_registry(repo_root: Path) -> dict[str, Any]:
     path = repo_root / "conformance" / "federated_invariant_registry.json"
+    relative_path = str(path.relative_to(repo_root))
     if not path.is_file():
         return {
             "invariants": [],
             "_missing": True,
-            "_path": str(path.relative_to(repo_root)),
+            "_path": relative_path,
         }
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        registry = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {
             "invariants": [],
             "_invalid": True,
-            "_path": str(path.relative_to(repo_root)),
+            "_error": "unreadable-or-invalid-json",
+            "_path": relative_path,
         }
+
+    # Treat registry data as untrusted input. Never allow malformed fields or
+    # unknown scoring enums to crash the readiness report or silently alter it.
+    if not isinstance(registry, dict):
+        valid = False
+    else:
+        valid = isinstance(registry.get("invariants"), list)
+        if valid:
+            for invariant in registry["invariants"]:
+                if not isinstance(invariant, dict):
+                    valid = False
+                    break
+                required = ("id", "domain", "priority", "declared_status", "definition")
+                if any(
+                    not isinstance(invariant.get(key), str) or not invariant[key].strip()
+                    for key in required
+                ):
+                    valid = False
+                    break
+                if invariant["priority"] not in PRIORITY_WEIGHTS:
+                    valid = False
+                    break
+                if invariant["declared_status"] not in STATUS_GAP:
+                    valid = False
+                    break
+
+    if not valid:
+        return {
+            "invariants": [],
+            "_invalid": True,
+            "_error": "registry-shape-or-enum-invalid",
+            "_path": relative_path,
+        }
+    return registry
 
 
 def evaluate(repo_root: Path) -> dict[str, Any]:
