@@ -116,6 +116,9 @@ jobs:
       - name: Install test runner and crypto adapter
         run: python -m pip install "pytest>=8,<9" "cryptography==50.0.2"
 
+      - name: Install project-mono declared test dependencies
+        run: python -m pip install -r aethel-grid/federated/project-mono/requirements.txt
+
       - name: Test federation bridge
         working-directory: aethel-grid
         run: python -m pytest -q federation/test_caios_federation.py
