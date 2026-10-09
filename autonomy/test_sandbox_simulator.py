@@ -1,3 +1,4 @@
+import os
 import shutil
 import socket
 import threading
@@ -131,6 +132,10 @@ def test_disposable_validation_uses_temporary_home(tmp_path: Path):
 
 
 
+@pytest.mark.skipif(
+    os.environ.get("CAIOS_NETWORK_ISOLATED") == "true",
+    reason="Do not recursively create a network namespace from inside the isolated validator",
+)
 @pytest.mark.skipif(
     shutil.which("bwrap") is None,
     reason="Bubblewrap will be installed and preflighted by the autonomous validation workflow",
