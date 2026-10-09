@@ -50,6 +50,8 @@ def seed_repo(root: Path) -> None:
                 "id": "test-endpoint",
                 "endpoint_url": "https://example.invalid/v1/chat/completions",
                 "agent_id": "test-agent",
+                "agent_version": "1.0.0",
+                "source_ref": "git:0123456789abcdef",
                 "protocol": "openai-compatible",
                 "protocol_version": "1.0.0",
                 "model_id": "test-model",
@@ -480,3 +482,19 @@ def test_build_rejects_unregistered_endpoint_before_building_source_context(tmp_
             tmp_path / "out.json",
             max_risk=0.45,
         )
+
+
+
+def test_provider_preflight_rejects_agent_provenance_mismatch(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    config_path = write_agent_config(
+        tmp_path,
+        send_source_context=True,
+    )
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    config["agents"][0]["source_ref"] = "git:unreviewed-source"
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+    setup_preflight_registries(monkeypatch, agents={})
+
+    with pytest.raises(ValueError, match="provider-endpoint-binding-mismatch:test-endpoint:source_ref"):
+        patch_proposal.load_provider(tmp_path, config_path)
