@@ -164,3 +164,26 @@ def test_agent_source_binding_checks_pinned_local_adapter_digest(tmp_path: Path)
     assert "agent-local-source-digest-mismatch" in validate_agent_source_binding(
         tmp_path, profile, agent_version="1.0.0", source_ref="git:adapter-source"
     )
+
+
+
+def test_registered_proposal_adapter_source_pin_matches_checkout():
+    from autonomy.agent_attestation import validate_agent_source_binding
+    from autonomy.agent_router import AgentRegistry
+    from autonomy.protocol_admission import ProtocolRegistry
+
+    repo_root = Path(__file__).resolve().parents[1]
+    profile = AgentRegistry(repo_root).agents["caios-openai-compatible-proposal-adapter"]
+    protocol = ProtocolRegistry(repo_root).get("caios-openai-compatible-proposal-transport")
+
+    assert profile.agent_kind == "model-proposal-adapter"
+    assert profile.external_tool_execution is False
+    assert protocol is not None
+    assert protocol.role == "model-proposal-transport"
+    assert protocol.version == "1.0.0"
+    assert validate_agent_source_binding(
+        repo_root,
+        profile,
+        agent_version=profile.software_version,
+        source_ref=profile.source_ref,
+    ) == []
