@@ -156,3 +156,64 @@ def test_malformed_protected_surface_policies_block_all_autonomous_patches(tmp_p
         assert gate.protected_policy_valid is False
         assert any("protected-surface-policy-unavailable" in reason for reason in reasons)
 
+
+def test_existing_test_files_are_immutable_but_new_tests_may_be_added(tmp_path: Path):
+    write_policy(tmp_path)
+    test_path = tmp_path / "src" / "test_existing.py"
+    test_path.parent.mkdir()
+    test_path.write_text("def test_existing(): pass\n", encoding="utf-8")
+    gate = ConstitutionalGate(tmp_path)
+
+    allowed, reasons = gate.validate(_patch_action(path="src/test_existing.py"))
+    assert allowed is False
+    assert "patch modifies an existing test file" in reasons
+
+    new_test = CandidateAction(
+        action_id="new-test",
+        kind="apply_patch",
+        target="src/test_new.py",
+        rationale="add regression coverage",
+        expected_gain=0.5,
+        risk=0.1,
+        reversibility=1.0,
+        resource_cost=0.1,
+        evidence_gain=0.9,
+        unified_diff="""diff --git a/src/test_new.py b/src/test_new.py
+new file mode 100644
+--- /dev/null
++++ b/src/test_new.py
+@@ -0,0 +1 @@
++def test_new(): pass
+""",
+    )
+    allowed, reasons = gate.validate(new_test)
+    assert allowed is True, reasons
+
+
+def test_build_and_test_configuration_is_protected(tmp_path: Path):
+    write_policy(tmp_path)
+    gate = ConstitutionalGate(tmp_path)
+    for path in (
+        "pyproject.toml",
+        "autonomy/conftest.py",
+        "requirements-dev.txt",
+        "package.json",
+        "Cargo.toml",
+    ):
+        allowed, reasons = gate.validate(_patch_action(path=path))
+        assert allowed is False, path
+        assert "patch targets protected build or test configuration" in reasons, path
+
+
+def test_symlinked_patch_path_cannot_escape_repository(tmp_path: Path):
+    write_policy(tmp_path)
+    outside = tmp_path.parent / f"{tmp_path.name}-outside"
+    outside.mkdir()
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "escape").symlink_to(outside, target_is_directory=True)
+
+    gate = ConstitutionalGate(tmp_path)
+    allowed, reasons = gate.validate(_patch_action(path="src/escape/payload.py"))
+
+    assert allowed is False
+    assert "patch path resolves outside repository root" in reasons

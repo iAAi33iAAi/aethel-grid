@@ -62,6 +62,55 @@ def digest(value: Any) -> str:
     return hashlib.sha256(canonical_json(value)).hexdigest()
 
 
+def _is_test_file_path(path: str) -> bool:
+    candidate = Path(path)
+    basename = candidate.name.lower()
+    test_names = (
+        "test_*.py",
+        "*_test.py",
+        "*.test.py",
+        "*.spec.py",
+        "*.test.js",
+        "*.spec.js",
+        "*.test.ts",
+        "*.spec.ts",
+        "test_*.rs",
+        "*_test.rs",
+        "*_test.go",
+    )
+    return (
+        any(part.lower() in {"test", "tests"} for part in candidate.parts[:-1])
+        or any(fnmatch.fnmatch(basename, pattern) for pattern in test_names)
+    )
+
+
+def _is_build_control_file(path: str) -> bool:
+    name = Path(path).name.lower()
+    fixed_names = {
+        ".gitmodules",
+        "pyproject.toml",
+        "pytest.ini",
+        "tox.ini",
+        "setup.cfg",
+        "setup.py",
+        "conftest.py",
+        "package.json",
+        "package-lock.json",
+        "pnpm-lock.yaml",
+        "yarn.lock",
+        "cargo.toml",
+        "cargo.lock",
+        "uv.lock",
+        "pipfile",
+        "pipfile.lock",
+        "makefile",
+        "justfile",
+        "dockerfile",
+        "docker-compose.yml",
+    }
+    return name in fixed_names or (name.startswith("requirements") and name.endswith(".txt"))
+
+
 @dataclasses.dataclass(frozen=True)
 class Evidence:
     kind: str
@@ -430,8 +479,27 @@ class ConstitutionalGate:
                     normalized = patch_path[2:] if patch_path.startswith(("a/", "b/")) else patch_path
                     if normalized.startswith(("/", "../")) or "/../" in normalized or normalized.startswith(".git/"):
                         reasons.append("patch path escapes or targets git internals")
+                        continue
+
+                    # Lexical checks do not stop a path that crosses an existing
+                    # symlinked directory. Resolve every patch path against the
+                    # checkout and fail closed when it reaches outside the repo.
+                    resolved_patch_path = (self.repo_root / normalized).resolve()
+                    try:
+                        resolved_patch_path.relative_to(self.repo_root)
+                    except ValueError:
+                        reasons.append("patch path resolves outside repository root")
+
                     if any(fnmatch.fnmatch(normalized, pattern) for pattern in self.protected_globs):
                         reasons.append("patch targets protected autonomous-control surface")
+                    if _is_build_control_file(normalized):
+                        reasons.append("patch targets protected build or test configuration")
+                    if (
+                        line.startswith("--- ")
+                        and _is_test_file_path(normalized)
+                        and (self.repo_root / normalized).is_file()
+                    ):
+                        reasons.append("patch modifies an existing test file")
 
         return not reasons, reasons
 
