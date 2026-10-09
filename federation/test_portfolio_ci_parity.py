@@ -234,7 +234,8 @@ def test_gate5_ledger_matches_complete_coverage_evidence():
 
     assert gate5["status"] == "CLOSED"
     assert "verification coverage" in gate5["reason"].lower()
-    assert "not production conformance" in gate5["reason"].lower()
+    assert "does not establish" in gate5["reason"].lower()
+    assert "production conformance" in gate5["reason"].lower()
     assert evidence["workflow_run"] == "https://github.com/iAAi33iAAi/aethel-grid/actions/runs/38004576380"
     assert evidence["audited_commit"] == "52bd0a82e1f5ba8d12cd0ef8c494200f380e0eec"
     assert evidence["status"] == "PASS"
