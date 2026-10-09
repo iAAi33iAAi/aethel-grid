@@ -215,6 +215,18 @@ def test_missing_checkout_fails_instead_of_silently_skipping(tmp_path: Path):
 
 
 
+def test_alpha_scaffold_verifier_is_explicitly_scoped():
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads((root / "federation" / "system_manifest.json").read_text(encoding="utf-8"))
+    alpha = next(row for row in manifest["repositories"] if row["id"] == "alpha-intelligence-hub")
+
+    assert alpha["verification"] == ["python", "-m", "unittest", "discover", "-s", "tests", "-v"]
+    assert alpha["verification_source"] == "https://github.com/iAAi33iAAi/alpha-intelligence-hub/blob/main/.github/workflows/ci.yml"
+    assert "scaffold integrity only" in alpha["verification_scope"]
+    assert "does not initialize/merge repositories" in alpha["verification_scope"]
+    assert "production conformance" in alpha["verification_scope"]
+
+
 def test_safety_kernel_manifest_uses_failure_aware_runner():
     root = Path(__file__).resolve().parents[1]
     manifest = json.loads((root / "federation" / "system_manifest.json").read_text(encoding="utf-8"))
