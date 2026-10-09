@@ -23,6 +23,7 @@ VECTOR_IDS = tuple(f"KC-{index:03d}" for index in range(1, 9))
 IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$")
 DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
 DOMAIN_RE = re.compile(r"^[A-Z][A-Z0-9_]{1,63}$")
+DATETIME_RE = re.compile(r"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$")
 SIGNATURE_RE = re.compile(r"^[A-Za-z0-9+/]{86}==$")
 RECOMMENDATIONS = {"INSPECT", "INVESTIGATE", "REQUEST_HUMAN_REVIEW"}
 
@@ -61,7 +62,7 @@ def has_duplicates(values: list[Any]) -> bool:
 
 
 def has_timezone(value: Any) -> bool:
-    if not isinstance(value, str):
+    if not isinstance(value, str) or not DATETIME_RE.fullmatch(value):
         return False
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -141,7 +142,7 @@ def validate_envelope(envelope: Any) -> list[str]:
             errors.append(f"{field}:too_few_items")
         if any(not isinstance(item, str) or not DIGEST_RE.fullmatch(item) for item in value):
             errors.append(f"{field}:invalid_digest")
-        if len(set(value)) != len(value):
+        if has_duplicates(value):
             errors.append(f"{field}:duplicates")
 
     for field in ("approved_source_ids", "permitted_sensor_ids", "allowed_targets"):
