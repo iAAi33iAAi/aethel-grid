@@ -220,3 +220,113 @@ def test_agent_config_requires_explicit_source_context_opt_in(tmp_path: Path):
 
     with pytest.raises(ValueError, match="explicitly enable send_source_context"):
         patch_proposal.load_provider(tmp_path, config_path)
+
+
+
+def setup_preflight_registries(monkeypatch, *, agents, model_ok=True, protocol_ok=True):
+    class FakeAgentRegistry:
+        def __init__(self, repo_root):
+            self.policy = {"minimum_provenance_confidence": 0.90}
+            self.agents = agents
+
+    class FakeModelRegistry:
+        def __init__(self, repo_root):
+            pass
+
+        def admit(self, model_id, *, model_revision=None):
+            return model_ok, [] if model_ok else ["model-id-not-registered"]
+
+    class FakeProtocolRegistry:
+        def __init__(self, repo_root):
+            pass
+
+        def admit(self, protocol_id, version, *, allow_draft=False):
+            return protocol_ok, [] if protocol_ok else ["protocol-not-registered"]
+
+    monkeypatch.setattr(patch_proposal, "AgentRegistry", FakeAgentRegistry)
+    monkeypatch.setattr(patch_proposal, "ModelRegistry", FakeModelRegistry)
+    monkeypatch.setattr(patch_proposal, "ProtocolRegistry", FakeProtocolRegistry)
+
+
+def endpoint_profile(
+    *,
+    authority="proposal",
+    protocols=("mcp",),
+    capabilities=("coding", "patching"),
+    provenance_confidence=0.99,
+    protocol_versions=None,
+):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        authority=authority,
+        protocols=frozenset(protocols),
+        capabilities=frozenset(capabilities),
+        provenance_confidence=provenance_confidence,
+        protocol_versions=protocol_versions or {"mcp": "2026-07-28"},
+    )
+
+
+def test_provider_preflight_rejects_unregistered_agent_before_returning_provider(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    config_path = write_agent_config(tmp_path, send_source_context=True)
+    setup_preflight_registries(monkeypatch, agents={})
+
+    with pytest.raises(ValueError, match="agent-id-not-registered:test-agent"):
+        patch_proposal.load_provider(tmp_path, config_path)
+
+
+def test_provider_preflight_rejects_protocol_not_advertised_by_agent(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    config_path = write_agent_config(tmp_path, send_source_context=True)
+    profile = endpoint_profile(protocols=("acp",), protocol_versions={"acp": "1"})
+    setup_preflight_registries(monkeypatch, agents={"test-agent": profile})
+
+    with pytest.raises(ValueError, match="agent-protocol-not-registered:test-agent:openai-compatible"):
+        patch_proposal.load_provider(tmp_path, config_path)
+
+
+def test_provider_preflight_rejects_protocol_missing_from_protocol_registry(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    config_path = write_agent_config(tmp_path, send_source_context=True)
+    profile = endpoint_profile(
+        protocols=("openai-compatible",),
+        protocol_versions={"openai-compatible": "1.0.0"},
+    )
+    setup_preflight_registries(monkeypatch, agents={"test-agent": profile}, protocol_ok=False)
+
+    with pytest.raises(ValueError, match="protocol-not-admitted:openai-compatible:1.0.0"):
+        patch_proposal.load_provider(tmp_path, config_path)
+
+
+def test_provider_preflight_rejects_unregistered_model_before_returning_provider(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    config_path = write_agent_config(tmp_path, send_source_context=True)
+    profile = endpoint_profile()
+    setup_preflight_registries(monkeypatch, agents={"test-agent": profile}, model_ok=False)
+
+    with pytest.raises(ValueError, match="model-not-admitted:test-model:model-id-not-registered"):
+        patch_proposal.load_provider(tmp_path, config_path)
+
+
+def test_provider_preflight_rejects_agent_without_patch_capability(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    config_path = write_agent_config(tmp_path, send_source_context=True)
+    profile = endpoint_profile(capabilities=("reasoning", "planning"))
+    setup_preflight_registries(monkeypatch, agents={"test-agent": profile})
+
+    with pytest.raises(ValueError, match="agent-lacks-coding-or-patching-capability:test-agent"):
+        patch_proposal.load_provider(tmp_path, config_path)
+
+
+def test_provider_preflight_rejects_unpinned_agent_protocol_version(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    config_path = write_agent_config(tmp_path, send_source_context=True)
+    profile = endpoint_profile(
+        protocols=("openai-compatible",),
+        protocol_versions={},
+    )
+    setup_preflight_registries(monkeypatch, agents={"test-agent": profile})
+
+    with pytest.raises(ValueError, match="agent-protocol-version-not-pinned:test-agent:openai-compatible"):
+        patch_proposal.load_provider(tmp_path, config_path)
