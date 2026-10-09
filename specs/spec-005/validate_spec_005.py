@@ -212,8 +212,30 @@ def validate_vector(path: Path, schema_validator: Draft202012Validator) -> tuple
     envelope_errors = validate_envelope(envelope)
     manual_valid = len(envelope_errors) == 0
     json_schema_errors = sorted(
-        f"{error.json_path or '
-
+        f"{error.json_path or '$'}:{error.validator}"
+        for error in schema_validator.iter_errors(envelope)
+    )
+    json_schema_valid = len(json_schema_errors) == 0
+    if manual_valid != json_schema_valid:
+        errors.append("validator_drift:manual_vs_json_schema")
+    if expected_valid is not None and manual_valid != expected_valid:
+        details = ",".join(envelope_errors) or "no_manual_errors"
+        errors.append("vector:expected_manual_valid_mismatch:" + details)
+    if expected_valid is not None and json_schema_valid != expected_valid:
+        details = ",".join(json_schema_errors) or "no_json_schema_errors"
+        errors.append("vector:expected_json_schema_valid_mismatch:" + details)
+    if expected_valid is False and manual_valid:
+        errors.append("vector:negative_case_did_not_fail_manual_validation")
+    if expected_valid is False and json_schema_valid:
+        errors.append("vector:negative_case_did_not_fail_json_schema_validation")
+    return not errors, sorted(set(errors)), {
+        "case_id": case_id,
+        "manual_validator_valid": manual_valid,
+        "manual_validator_errors": envelope_errors,
+        "json_schema_valid": json_schema_valid,
+        "json_schema_errors": json_schema_errors,
+        "envelope_sha256": sha256_hex(canonical_json_bytes(envelope)),
+    }
 
 def main() -> int:
     schema_path = ROOT / "SPEC-005.schema.json"
