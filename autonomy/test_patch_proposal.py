@@ -37,6 +37,28 @@ def seed_repo(root: Path) -> None:
         }),
         encoding="utf-8",
     )
+    (autonomy / "provider_endpoint_registry.json").write_text(
+        json.dumps({
+            "schema": "caios-provider-endpoints/v1",
+            "policy": {
+                "unknown_endpoint": "REJECT",
+                "exact_url_match": True,
+                "exact_agent_model_protocol_match": True,
+                "require_approval_ref": True,
+            },
+            "endpoints": [{
+                "id": "test-endpoint",
+                "endpoint_url": "https://example.invalid/v1/chat/completions",
+                "agent_id": "test-agent",
+                "protocol": "openai-compatible",
+                "protocol_version": "1.0.0",
+                "model_id": "test-model",
+                "model_revision": "test-model@sha256:abc",
+                "approval_ref": "test-fixture-only",
+            }],
+        }),
+        encoding="utf-8",
+    )
     (autonomy / "protected_surfaces.json").write_text(
         json.dumps({"protected_globs": ["src/private/**"]}),
         encoding="utf-8",
@@ -176,12 +198,26 @@ def test_select_candidate_rejects_invalid_metrics(tmp_path: Path, monkeypatch):
 
 
 
-def write_agent_config(root: Path, *, send_source_context=False, api_key_env=None, protocol="openai-compatible", protocol_version="1.0.0") -> Path:
+def write_agent_config(
+    root: Path,
+    *,
+    send_source_context=False,
+    api_key_env=None,
+    protocol="openai-compatible",
+    protocol_version="1.0.0",
+    endpoint="https://example.invalid/v1/chat/completions",
+    endpoint_id="test-endpoint",
+    agent_id="test-agent",
+    model="test-model",
+    model_revision="test-model@sha256:abc",
+) -> Path:
     config_path = root / "autonomy" / "agent_endpoints.json"
     row = {
-        "agent_id": "test-agent",
-        "endpoint": "https://example.invalid/v1/chat/completions",
-        "model": "test-model",
+        "endpoint_id": endpoint_id,
+        "agent_id": agent_id,
+        "endpoint": endpoint,
+        "model": model,
+        "model_revision": model_revision,
         "protocol": protocol,
         "protocol_version": protocol_version,
         "agent_version": "1.0.0",
@@ -190,7 +226,10 @@ def write_agent_config(root: Path, *, send_source_context=False, api_key_env=Non
     }
     if api_key_env is not None:
         row["api_key_env"] = api_key_env
-    config_path.write_text(json.dumps({"agents": [row]}), encoding="utf-8")
+    config_path.write_text(
+        json.dumps({"schema": "caios-agent-endpoints/v1", "agents": [row]}),
+        encoding="utf-8",
+    )
     return config_path
 
 
@@ -337,4 +376,54 @@ def test_provider_preflight_rejects_unpinned_agent_protocol_version(tmp_path: Pa
     setup_preflight_registries(monkeypatch, agents={"test-agent": profile})
 
     with pytest.raises(ValueError, match="agent-protocol-version-not-pinned:test-agent:openai-compatible"):
+        patch_proposal.load_provider(tmp_path, config_path)
+
+
+
+def test_provider_preflight_rejects_unregistered_endpoint_id(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    config_path = write_agent_config(
+        tmp_path,
+        send_source_context=True,
+        endpoint_id="unreviewed-endpoint",
+    )
+    setup_preflight_registries(monkeypatch, agents={})
+
+    with pytest.raises(ValueError, match="provider-endpoint-not-registered:unreviewed-endpoint"):
+        patch_proposal.load_provider(tmp_path, config_path)
+
+
+def test_provider_preflight_rejects_url_that_differs_from_reviewed_binding(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    config_path = write_agent_config(
+        tmp_path,
+        send_source_context=True,
+        endpoint="https://attacker.invalid/v1/chat/completions",
+    )
+    setup_preflight_registries(monkeypatch, agents={})
+
+    with pytest.raises(ValueError, match="provider-endpoint-binding-mismatch:test-endpoint:endpoint_url"):
+        patch_proposal.load_provider(tmp_path, config_path)
+
+
+def test_provider_preflight_rejects_embedded_endpoint_credentials(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    config_path = write_agent_config(
+        tmp_path,
+        send_source_context=True,
+        endpoint="https://user:secret@example.invalid/v1/chat/completions",
+    )
+    setup_preflight_registries(monkeypatch, agents={})
+
+    with pytest.raises(ValueError, match="must not include credentials"):
+        patch_proposal.load_provider(tmp_path, config_path)
+
+
+def test_provider_preflight_rejects_missing_endpoint_registry(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    (tmp_path / "autonomy" / "provider_endpoint_registry.json").unlink()
+    config_path = write_agent_config(tmp_path, send_source_context=True)
+    setup_preflight_registries(monkeypatch, agents={})
+
+    with pytest.raises(ValueError, match="provider-endpoint-registry-unavailable"):
         patch_proposal.load_provider(tmp_path, config_path)
