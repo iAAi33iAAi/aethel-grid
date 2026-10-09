@@ -60,7 +60,7 @@ class DisposableWorktree:
         sandbox_tmp = Path(tempfile.mkdtemp(prefix="caios-tmp-"))
         sandbox_home = sandbox_tmp / "caios-home"
         sandbox_home.mkdir()
-        toolchain_mounts: dict[str, str] = {}
+        toolchain_mounts: dict[str, tuple[str, str]] = {}
 
         # Candidate/test code must not inherit ambient secrets, provider keys,
         # GitHub tokens, cloud credentials, proxies, or custom Python paths.
@@ -84,14 +84,25 @@ class DisposableWorktree:
             ("RUSTUP_HOME", host_home / ".rustup", "caios-rustup"),
         ):
             original = Path(os.environ.get(var_name, str(default_path))).resolve()
-            if original.is_dir() and original.is_relative_to(host_home):
-                shadow_path = sandbox_tmp / shadow_name
-                shadow_path.mkdir()
-                toolchain_mounts[var_name] = str(shadow_path)
+            if not original.is_dir() or not original.is_relative_to(host_home):
+                continue
+            shadow_path = sandbox_tmp / shadow_name
+            shadow_path.mkdir()
+            if var_name == "CARGO_HOME":
+                # Only expose executable shims. The broader Cargo home may
+                # include registry credentials/configuration and is not mounted.
+                source = original / "bin"
+                target = shadow_path / "bin"
+                target.mkdir()
+                if source.is_dir():
+                    toolchain_mounts[var_name] = (str(source), str(target))
                 sandbox_env[var_name] = f"/tmp/{shadow_name}"
                 sandbox_env["PATH"] = sandbox_env["PATH"].replace(
-                    str(original / "bin"), f"/tmp/{shadow_name}/bin"
+                    str(source), f"/tmp/{shadow_name}/bin"
                 )
+            else:
+                toolchain_mounts[var_name] = (str(original), str(shadow_path))
+                sandbox_env[var_name] = f"/tmp/{shadow_name}"
 
         def exec_cmd(
             args: tuple[str, ...],
@@ -116,20 +127,14 @@ class DisposableWorktree:
                     "--proc", "/proc",
                     "--dev", "/dev",
                 ]
-                # Expose Rust caches/toolchains read-only under /tmp before the
-                # runner home is hidden. The sandbox never receives the rest of
-                # the runner's home directory or its temporary credential files.
-                for var_name, shadow_path in toolchain_mounts.items():
-                    source = Path(os.environ.get(
-                        var_name,
-                        str(host_home / (".cargo" if var_name == "CARGO_HOME" else ".rustup")),
-                    )).resolve()
-                    shadow_name = Path(shadow_path).name
-                    command_list.extend(["--ro-bind", str(source), f"/tmp/{shadow_name}"])
+                # Expose only the Rust executable shims and rustup toolchains
+                # read-only. Cargo credential/config directories are never mounted.
+                for var_name, (source, target) in toolchain_mounts.items():
+                    command_list.extend(["--ro-bind", source, f"/tmp/{Path(target).relative_to(sandbox_tmp).as_posix()}"])
                 if host_home_str not in {"/", "/tmp", "/var/tmp"}:
                     command_list.extend(["--tmpfs", host_home_str])
-                command_list.extend(["--tmpfs", "/run", "--bind", str(worktree), str(worktree)])
-                command_list.extend(["--chdir", str(worktree)])
+                command_list.extend(["--tmpfs", "/run", "--tmpfs", "/var/tmp"])
+                command_list.extend(["--chdir", "/tmp/workspace"])
                 for key, value in sandbox_env.items():
                     sandbox_value = value
                     if key == "HOME":
@@ -158,7 +163,7 @@ class DisposableWorktree:
                 timeout=60,
                 check=True,
             )
-            patch_path = worktree / ".caios-sim.patch"
+            patch_path = sandbox_tmp / ".caios-sim.patch"
             patch_path.write_text(patch_text, encoding="utf-8")
 
             check_rc, _, check_err = exec_cmd(("git", "apply", "--check", str(patch_path)))
@@ -183,6 +188,9 @@ class DisposableWorktree:
                     worktree=str(worktree),
                 )
 
+            if require_network_isolation:
+                isolated_workspace = sandbox_tmp / "workspace"
+                shutil.copytree(worktree, isolated_workspace, symlinks=True)
             rc, stdout, stderr = exec_cmd(
                 validation_command,
                 isolate_network=require_network_isolation,
