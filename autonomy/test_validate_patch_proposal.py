@@ -114,3 +114,22 @@ def test_validation_runs_in_disposable_worktree_and_records_evidence(tmp_path: P
     assert result["validation_contract"]["model_api_keys_present"] is False
     assert result["validation_contract"]["repository_write_token_present"] is False
     assert json.loads(output_path.read_text(encoding="utf-8"))["status"] == "VALIDATED"
+
+
+
+def test_validation_refuses_to_run_with_model_keys_or_write_token(tmp_path: Path, monkeypatch):
+    root = tmp_path / "repo"
+    root.mkdir()
+    input_path = tmp_path / "candidate.json"
+    output_path = tmp_path / "validation.json"
+    input_path.write_text("{}", encoding="utf-8")
+    monkeypatch.setenv("CAIOS_CODEX_API_KEY", "must-not-be-visible-to-tests")
+    monkeypatch.delenv("CAIOS_AUTOBUILD_TOKEN", raising=False)
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+
+    result = verifier.validate_and_test(root, input_path, output_path)
+
+    assert result["status"] == "BLOCKED"
+    assert result["reason"] == "validation-job-credential-isolation-violated"
+    assert result["model_api_key_environment_names"] == ["CAIOS_CODEX_API_KEY"]
