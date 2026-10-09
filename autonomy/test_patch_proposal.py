@@ -41,7 +41,7 @@ def seed_repo(root: Path) -> None:
     )
 
 
-def patch_proposal(*, risk: float = 0.2, target: str = "src/app.py", kind: str = "apply_patch") -> dict:
+def make_patch_proposal(*, risk: float = 0.2, target: str = "src/app.py", kind: str = "apply_patch") -> dict:
     return {
         "kind": kind,
         "target": target,
@@ -93,7 +93,7 @@ def test_select_candidate_returns_low_risk_patch_without_applying_it(tmp_path: P
     proposal = patch_proposal.select_candidate(
         tmp_path,
         "a" * 40,
-        [patch_proposal.patch_proposal(risk=0.2)],
+        [patch_proposal.make_patch_proposal(risk=0.2)],
         max_risk=0.55,
     )
 
