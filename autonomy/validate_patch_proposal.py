@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -110,6 +111,25 @@ def validate_and_test(
     max_risk: float = 0.55,
 ) -> dict[str, Any]:
     repo_root = repo_root.resolve()
+    model_key_names = sorted(
+        name for name, value in os.environ.items()
+        if name.startswith("CAIOS_") and name.endswith("_API_KEY") and value
+    )
+    write_token_names = sorted(
+        name for name in ("CAIOS_AUTOBUILD_TOKEN", "GH_TOKEN", "GITHUB_TOKEN")
+        if os.environ.get(name)
+    )
+    if model_key_names or write_token_names:
+        result = {
+            "schema": "caios-patch-validation/v1",
+            "status": "BLOCKED",
+            "reason": "validation-job-credential-isolation-violated",
+            "model_api_key_environment_names": model_key_names,
+            "write_token_environment_names": write_token_names,
+        }
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\\n", encoding="utf-8")
+        return result
     artifact = json.loads(input_path.read_text(encoding="utf-8"))
     preflight = validate_artifact(repo_root, artifact, max_risk=max_risk)
     if preflight.get("status") != "READY_FOR_TEST":
@@ -141,8 +161,8 @@ def validate_and_test(
             "sandbox_evidence": simulation.as_dict(),
             "validation_contract": {
                 "runs_in_disposable_git_worktree": True,
-                "model_api_keys_present": False,
-                "repository_write_token_present": False,
+                "model_api_keys_present": bool(model_key_names),
+                "repository_write_token_present": bool(write_token_names),
                 "fixed_validation_command": list(VALIDATION_COMMAND),
             },
         }
