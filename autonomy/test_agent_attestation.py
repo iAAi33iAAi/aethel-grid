@@ -50,7 +50,7 @@ def test_registered_proposal_gets_attestation(tmp_path: Path):
               "sandbox":true,
               "provenance_confidence":1.0,
               "software_version":"2026.10",
-              "source_ref":"git:abc"
+              "source_ref":"git:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
             }
           ]
         }""",
@@ -107,7 +107,7 @@ def test_registered_proposal_gets_attestation(tmp_path: Path):
             "model_id": "coder-model",
             "model_revision": "hosted-reviewed",
             "agent_version": "2026.10",
-            "source_ref": "git:abc",
+            "source_ref": "git:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         },
         "proposal",
     )
@@ -124,7 +124,7 @@ def test_agent_source_binding_rejects_version_and_source_mismatch(tmp_path: Path
 
     profile = SimpleNamespace(
         software_version="1.2.3",
-        source_ref="git:trusted-source",
+        source_ref="git:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         agent_kind="external-agent",
         source_path="",
         source_sha256="",
@@ -132,10 +132,10 @@ def test_agent_source_binding_rejects_version_and_source_mismatch(tmp_path: Path
     )
 
     assert "agent-version-mismatch" in validate_agent_source_binding(
-        tmp_path, profile, agent_version="9.9.9", source_ref="git:trusted-source"
+        tmp_path, profile, agent_version="9.9.9", source_ref="git:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     )
     assert "agent-source-ref-mismatch" in validate_agent_source_binding(
-        tmp_path, profile, agent_version="1.2.3", source_ref="git:untrusted-source"
+        tmp_path, profile, agent_version="1.2.3", source_ref="git:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     )
 
 
@@ -149,7 +149,7 @@ def test_agent_source_binding_checks_pinned_local_adapter_digest(tmp_path: Path)
     expected = hashlib.sha256(source.read_bytes()).hexdigest()
     profile = SimpleNamespace(
         software_version="1.0.0",
-        source_ref="git:adapter-source",
+        source_ref="git:cccccccccccccccccccccccccccccccccccccccc",
         agent_kind="model-proposal-adapter",
         source_path="autonomy/adapter.py",
         source_sha256=expected,
@@ -157,12 +157,12 @@ def test_agent_source_binding_checks_pinned_local_adapter_digest(tmp_path: Path)
     )
 
     assert validate_agent_source_binding(
-        tmp_path, profile, agent_version="1.0.0", source_ref="git:adapter-source"
+        tmp_path, profile, agent_version="1.0.0", source_ref="git:cccccccccccccccccccccccccccccccccccccccc"
     ) == []
 
     source.write_text("tampered adapter\n", encoding="utf-8")
     assert "agent-local-source-digest-mismatch" in validate_agent_source_binding(
-        tmp_path, profile, agent_version="1.0.0", source_ref="git:adapter-source"
+        tmp_path, profile, agent_version="1.0.0", source_ref="git:cccccccccccccccccccccccccccccccccccccccc"
     )
 
 
