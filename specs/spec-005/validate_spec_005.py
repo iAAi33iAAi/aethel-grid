@@ -54,6 +54,12 @@ def is_identifier(value: Any) -> bool:
     return isinstance(value, str) and bool(IDENTIFIER_RE.fullmatch(value))
 
 
+def has_duplicates(values: list[Any]) -> bool:
+    # JSON-based keys make malformed nested JSON values safe to inspect too.
+    keys = [json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False) for value in values]
+    return len(keys) != len(set(keys))
+
+
 def has_timezone(value: Any) -> bool:
     if not isinstance(value, str):
         return False
@@ -72,7 +78,7 @@ def _validate_unique_identifier_array(value: Any, field: str, errors: list[str],
         errors.append(f"{field}:too_few_items")
     if any(not is_identifier(item) for item in value):
         errors.append(f"{field}:invalid_identifier")
-    if len(set(value)) != len(value):
+    if has_duplicates(value):
         errors.append(f"{field}:duplicates")
 
 
@@ -147,15 +153,15 @@ def validate_envelope(envelope: Any) -> list[str]:
     else:
         if len(recommendations) < 1:
             errors.append("allowed_recommendations:too_few_items")
-        if any(item not in RECOMMENDATIONS for item in recommendations):
+        if any(not isinstance(item, str) or item not in RECOMMENDATIONS for item in recommendations):
             errors.append("allowed_recommendations:unsupported_value")
-        if len(set(recommendations)) != len(recommendations):
+        if has_duplicates(recommendations):
             errors.append("allowed_recommendations:duplicates")
 
     prohibited = contract.get("prohibited_actions", [])
     if not isinstance(prohibited, list) or any(not isinstance(item, str) for item in prohibited):
         errors.append("prohibited_actions:invalid_array")
-    elif len(set(prohibited)) != len(prohibited):
+    elif has_duplicates(prohibited):
         errors.append("prohibited_actions:duplicates")
 
     max_age = contract.get("max_telemetry_age_seconds")
