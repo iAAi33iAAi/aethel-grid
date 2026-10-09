@@ -133,8 +133,8 @@ def test_disposable_validation_uses_temporary_home(tmp_path: Path):
 
 
 @pytest.mark.skipif(
-    os.environ.get("CAIOS_NETWORK_ISOLATED") == "true",
-    reason="Do not recursively create a network namespace from inside the isolated validator",
+    os.environ.get("CAIOS_EGRESS_BLOCKED") == "true",
+    reason="Do not recursively create a sandbox from inside the egress-blocked validation process",
 )
 @pytest.mark.skipif(
     shutil.which("bwrap") is None,
@@ -144,7 +144,7 @@ def test_disposable_validation_uses_temporary_home(tmp_path: Path):
     subprocess.run(("git", "--version"), capture_output=True).returncode != 0,
     reason="git is required",
 )
-def test_network_isolated_validation_cannot_reach_host_loopback(tmp_path: Path):
+def test_egress_blocked_validation_cannot_reach_host_loopback(tmp_path: Path):
     repo = tmp_path / "repo"
     repo.mkdir()
     subprocess.run(("git", "init"), cwd=repo, capture_output=True, check=True)
@@ -198,14 +198,14 @@ def test_network_isolated_validation_cannot_reach_host_loopback(tmp_path: Path):
         result = DisposableWorktree(repo).run(
             patch,
             command,
-            require_network_isolation=True,
+            require_egress_block=True,
         )
     finally:
         listener.close()
         thread.join(timeout=3)
 
     assert result.status == "PASS", result.as_dict()
-    assert result.network_isolated is True
+    assert result.egress_blocked is True
     assert reached["value"] is False
 
 
@@ -213,7 +213,7 @@ def test_network_isolated_validation_cannot_reach_host_loopback(tmp_path: Path):
     subprocess.run(("git", "--version"), capture_output=True).returncode != 0,
     reason="git is required",
 )
-def test_network_isolation_fails_closed_if_bubblewrap_is_unavailable(tmp_path: Path, monkeypatch):
+def test_egress_block_fails_closed_if_bubblewrap_is_unavailable(tmp_path: Path, monkeypatch):
     import autonomy.sandbox_simulator as simulator
 
     repo = tmp_path / "repo"
@@ -236,10 +236,10 @@ def test_network_isolation_fails_closed_if_bubblewrap_is_unavailable(tmp_path: P
     result = DisposableWorktree(repo).run(
         patch,
         ("python", "-c", "raise SystemExit(0)"),
-        require_network_isolation=True,
+        require_egress_block=True,
     )
 
     assert result.status == "FAIL"
     assert result.validation_returncode == 127
-    assert "network-isolation-unavailable" in result.stderr_tail
-    assert result.network_isolated is False
+    assert "egress-block-unavailable" in result.stderr_tail
+    assert result.egress_blocked is False
