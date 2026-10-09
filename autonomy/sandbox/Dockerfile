@@ -1,4 +1,6 @@
-FROM rust:bookworm
+FROM mcr.microsoft.com/devcontainers/rust:1-bookworm
+
+USER root
 
 # Install the runtime families required by the fixed validator. Node 24 is
 # provided as a binary by actions/setup-node and copied into the build context
@@ -11,7 +13,9 @@ RUN apt-get update \
        ca-certificates git python3 python3-dev python3-venv python3-pip build-essential \
     && rm -rf /var/lib/apt/lists/* \
     && python3 -m venv /opt/venv \
-    && /opt/venv/bin/pip install --no-cache-dir "pytest>=8,<9" "cryptography==50.0.2"
+    && /opt/venv/bin/pip install --no-cache-dir "pytest>=8,<9" "cryptography==50.0.2" \
+    && node --version \
+    && rustc --version
 
 ENV PATH="/opt/venv/bin:/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin" \
     HOME="/tmp" \
