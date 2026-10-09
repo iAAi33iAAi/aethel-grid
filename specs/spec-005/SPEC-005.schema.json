@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aethel.example/specs/SPEC-005/candidate-0.1/schema.json",
+  "title": "AETHEL Knowledge Contract Signed Envelope",
+  "description": "Candidate/noncanonical structural schema. Cryptographic trust, revocation, runtime identity, and policy are validated separately.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "signer_key_id",
+    "issued_at_utc",
+    "signature_algorithm",
+    "signature_b64"
+  ],
+  "properties": {
+    "contract": {
+      "$ref": "#/$defs/KnowledgeContract"
+    },
+    "signer_key_id": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "issued_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "signature_algorithm": {
+      "const": "Ed25519"
+    },
+    "signature_b64": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+/]{86}==$",
+      "minLength": 88,
+      "maxLength": 88
+    }
+  },
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+    },
+    "Digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "KnowledgeContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_id",
+        "contract_version",
+        "domain",
+        "agent_id",
+        "approved_model_digests",
+        "approved_source_ids",
+        "permitted_sensor_ids",
+        "allowed_targets",
+        "allowed_recommendations",
+        "max_telemetry_age_seconds",
+        "min_evidence_quality_micros",
+        "valid_until_utc",
+        "policy_id"
+      ],
+      "properties": {
+        "contract_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "contract_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "domain": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{1,63}$"
+        },
+        "agent_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "approved_model_digests": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "approved_source_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "permitted_sensor_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "allowed_targets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "allowed_recommendations": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "INSPECT",
+              "INVESTIGATE",
+              "REQUEST_HUMAN_REVIEW"
+            ]
+          }
+        },
+        "prohibited_actions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "max_telemetry_age_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 31536000
+        },
+        "min_evidence_quality_micros": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "valid_until_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revoked": {
+          "type": "boolean"
+        },
+        "policy_id": {
+          "$ref": "#/$defs/Identifier"
+        }
+      }
+    }
+  }
+}
