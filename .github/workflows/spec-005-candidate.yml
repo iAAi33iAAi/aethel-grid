@@ -1,0 +1,21 @@
+name: AETHEL Grid SPEC-005 Candidate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  spec-005-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate candidate Knowledge Contract vectors
+        run: python3 specs/spec-005/validate_spec_005.py
