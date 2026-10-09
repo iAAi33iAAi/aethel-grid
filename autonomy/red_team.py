@@ -242,6 +242,11 @@ def probes() -> tuple[RedTeamProbe, ...]:
         "autonomy/test_evidence_ledger.py",
         "autonomy/test_slsa_verifier.py",
         "autonomy/test_red_team.py",
+        "autonomy/patch_proposal.py",
+        "autonomy/test_patch_proposal.py",
+        "autonomy/validate_patch_proposal.py",
+        "autonomy/test_validate_patch_proposal.py",
+        "autonomy/agent_endpoints.json",
     )
     protected_probes = tuple(
         RedTeamProbe(

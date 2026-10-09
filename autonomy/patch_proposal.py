@@ -1,0 +1,324 @@
+#!/usr/bin/env python3
+"""
+CAIOS proposal-only patch planner.
+
+Queries registered proposal agents and emits at most one low-risk patch artifact.
+It NEVER applies the proposed patch or executes proposed code. A separate,
+secret-free validation job must revalidate and test the artifact before a
+publisher with repository write permission may create a pull request.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+from pathlib import Path
+from typing import Any
+
+from autonomy.agent_attestation import validate_proposal
+from autonomy.agent_router import AgentRegistry
+from autonomy.context_window import ContextWindow
+from autonomy.caios_runtime import CandidateAction, ConstitutionalGate, ViabilityPlanner, digest
+from autonomy.multi_agent_provider import EndpointSpec, MultiAgentProposalProvider
+from conformance.contract import inspect_contract
+
+SCHEMA = "caios-patch-proposal/v1"
+MAX_PATCH_BYTES = 50_000
+ABSOLUTE_RISK_CEILING = 0.55
+
+
+def git(root: Path, *args: str) -> str:
+    proc = subprocess.run(
+        ("git", *args),
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"git {' '.join(args)} failed: {proc.stderr[-1000:]}")
+    return proc.stdout.strip()
+
+
+def load_provider(repo_root: Path, config_path: Path) -> MultiAgentProposalProvider:
+    config_path = config_path.resolve()
+    try:
+        config_path.relative_to(repo_root)
+    except ValueError as exc:
+        raise ValueError("agent configuration must remain inside the repository") from exc
+    raw = json.loads(config_path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict) or not isinstance(raw.get("agents"), list) or not raw["agents"]:
+        raise ValueError("agent configuration must contain a non-empty agents list")
+
+    specs = []
+    for index, item in enumerate(raw["agents"]):
+        if not isinstance(item, dict):
+            raise ValueError(f"agent entry {index} must be an object")
+        required = ("agent_id", "endpoint", "model", "protocol", "agent_version", "source_ref")
+        missing = [key for key in required if not isinstance(item.get(key), str) or not item[key].strip()]
+        if missing:
+            raise ValueError(f"agent entry {index} missing required fields: {','.join(missing)}")
+        api_key_env = item.get("api_key_env")
+        if api_key_env is not None and (not isinstance(api_key_env, str) or not api_key_env.strip()):
+            raise ValueError(f"agent entry {index} api_key_env must be a non-empty string")
+        if api_key_env and (not api_key_env.startswith("CAIOS_") or not api_key_env.endswith("_API_KEY")):
+            raise ValueError(f"agent entry {index} api_key_env must use an approved CAIOS_*_API_KEY name")
+        if api_key_env and not os.environ.get(api_key_env):
+            raise ValueError(f"configured API key environment variable is unset: {api_key_env}")
+        source_context_opt_in = item.get("send_source_context", False)
+        if not isinstance(source_context_opt_in, bool):
+            raise ValueError(f"agent entry {index} send_source_context must be a JSON boolean")
+
+        specs.append(
+            EndpointSpec(
+                agent_id=item["agent_id"],
+                endpoint=item["endpoint"],
+                model=item["model"],
+                protocol=item["protocol"],
+                agent_version=item["agent_version"],
+                source_ref=item["source_ref"],
+                model_revision=str(item.get("model_revision", "")),
+                protocol_version=str(item.get("protocol_version", "1")),
+                api_key=os.environ.get(api_key_env) if api_key_env else None,
+                max_proposals=max(1, min(int(item.get("max_proposals", 8)), 20)),
+                send_source_context=source_context_opt_in,
+            )
+        )
+
+    if not any(spec.send_source_context for spec in specs):
+        raise ValueError(
+            "at least one registered agent must explicitly enable send_source_context for patch planning"
+        )
+    return MultiAgentProposalProvider(tuple(specs))
+
+
+def _number(item: dict[str, Any], key: str, default: float) -> float:
+    value = float(item.get(key, default))
+    if not 0.0 <= value <= 1.0:
+        raise ValueError(f"{key} must be within [0,1]")
+    return value
+
+
+def select_candidate(
+    repo_root: Path,
+    base_sha: str,
+    proposals: list[dict[str, Any]],
+    *,
+    max_risk: float,
+    max_proposals: int = 20,
+) -> dict[str, Any]:
+    registry = AgentRegistry(repo_root)
+    policy_risk = float(registry.policy.get("high_risk_threshold", ABSOLUTE_RISK_CEILING))
+    risk_ceiling = min(max_risk, policy_risk, ABSOLUTE_RISK_CEILING)
+    gate = ConstitutionalGate(repo_root)
+    planner = ViabilityPlanner()
+    eligible: list[tuple[float, str, dict[str, Any]]] = []
+    rejected: list[dict[str, Any]] = []
+
+    for index, item in enumerate(proposals[:max_proposals]):
+        if not isinstance(item, dict):
+            rejected.append({"index": index, "reasons": ["proposal-not-object"]})
+            continue
+        if item.get("kind") != "apply_patch":
+            rejected.append({"index": index, "reasons": ["only-apply_patch proposals are eligible"]})
+            continue
+
+        patch = item.get("unified_diff")
+        if not isinstance(patch, str) or not patch.strip():
+            rejected.append({"index": index, "reasons": ["unified-diff-missing"]})
+            continue
+        if len(patch.encode("utf-8")) > MAX_PATCH_BYTES:
+            rejected.append({"index": index, "reasons": ["patch-exceeds-byte-budget"]})
+            continue
+        if "diff --git " not in patch or "\n--- " not in patch or "\n+++ " not in patch:
+            rejected.append({"index": index, "reasons": ["unified-diff-malformed"]})
+            continue
+
+        proposal_digest = digest(item)
+        admitted, identity_reasons, attestation = validate_proposal(
+            repo_root, item, proposal_digest
+        )
+        if not admitted or attestation is None:
+            rejected.append({
+                "index": index,
+                "proposal_digest": proposal_digest,
+                "reasons": identity_reasons or ["proposal-attestation-unavailable"],
+            })
+            continue
+
+        try:
+            metrics = {
+                "expected_gain": _number(item, "expected_gain", 0.30),
+                "risk": _number(item, "risk", 0.50),
+                "reversibility": _number(item, "reversibility", 0.60),
+                "resource_cost": _number(item, "resource_cost", 0.30),
+                "evidence_gain": _number(item, "evidence_gain", 0.50),
+            }
+        except (TypeError, ValueError) as exc:
+            rejected.append({"index": index, "reasons": [f"invalid-metric:{exc}"]})
+            continue
+
+        if metrics["risk"] >= risk_ceiling:
+            rejected.append({
+                "index": index,
+                "reasons": [f"risk-not-below-autonomous-ceiling:{risk_ceiling}"],
+            })
+            continue
+
+        action = CandidateAction(
+            action_id=f"model-patch-{index}",
+            kind="apply_patch",
+            target=str(item.get("target", ".")),
+            rationale=str(item.get("rationale", "registered agent patch proposal"))[:2000],
+            expected_gain=metrics["expected_gain"],
+            risk=metrics["risk"],
+            reversibility=metrics["reversibility"],
+            resource_cost=metrics["resource_cost"],
+            evidence_gain=metrics["evidence_gain"],
+            unified_diff=patch,
+            agent_id=attestation.agent_id,
+            protocol=attestation.protocol,
+            protocol_version=attestation.protocol_version,
+            model_id=attestation.model_id,
+            model_revision=attestation.model_revision,
+            attestation_digest=attestation.attestation_digest,
+            invariant_ids=tuple(str(v) for v in item.get("invariant_ids", []) if isinstance(v, (str, int))),
+            tool_ids=(),
+            authority_principal="model",
+        )
+        allowed, gate_reasons = gate.validate(action)
+        if not allowed:
+            rejected.append({
+                "index": index,
+                "proposal_digest": proposal_digest,
+                "reasons": gate_reasons,
+            })
+            continue
+
+        score = planner.score(action)
+        row = {
+            "schema": SCHEMA,
+            "status": "PROPOSED",
+            "base_sha": base_sha,
+            "proposal_digest": proposal_digest,
+            "source_proposal": item,
+            "attestation": attestation.as_dict(),
+            "action": {
+                "action_id": action.action_id,
+                "kind": action.kind,
+                "target": action.target,
+                "rationale": action.rationale,
+                **metrics,
+                "agent_id": action.agent_id,
+                "protocol": action.protocol,
+                "protocol_version": action.protocol_version,
+                "model_id": action.model_id,
+                "model_revision": action.model_revision,
+                "attestation_digest": action.attestation_digest,
+                "invariant_ids": list(action.invariant_ids),
+                "authority_principal": action.authority_principal,
+            },
+            "unified_diff": patch,
+            "validation": {
+                "proposal_attestation": "PASS",
+                "constitutional_gate": "PASS",
+                "risk_policy": "LOW_RISK_ONLY",
+                "risk_ceiling": risk_ceiling,
+                "planner_score": round(score, 8),
+                "patch_bytes": len(patch.encode("utf-8")),
+            },
+        }
+        eligible.append((score, proposal_digest, row))
+
+    if not eligible:
+        return {
+            "schema": SCHEMA,
+            "status": "NO_CANDIDATE",
+            "base_sha": base_sha,
+            "reason": "no proposal passed identity, low-risk, patch-shape, and constitutional-gate checks",
+            "rejected": rejected[:50],
+        }
+
+    eligible.sort(key=lambda row: (-row[0], row[1]))
+    selected = eligible[0][2]
+    selected["validation"]["proposals_considered"] = min(len(proposals), max_proposals)
+    selected["validation"]["eligible_candidates"] = len(eligible)
+    selected["validation"]["rejected_candidates"] = len(rejected)
+    selected["rejected"] = rejected[:50]
+    return selected
+
+
+def build(repo_root: Path, config_path: Path, output_path: Path, *, max_risk: float) -> dict[str, Any]:
+    repo_root = repo_root.resolve()
+    if git(repo_root, "status", "--porcelain", "--untracked-files=normal"):
+        raise RuntimeError("working tree must be clean before creating a patch proposal")
+
+    base_sha = git(repo_root, "rev-parse", "HEAD")
+    contract = inspect_contract(repo_root)
+    context = ContextWindow(repo_root).build()
+    input_bundle = {
+        "snapshot": {
+            "head": base_sha,
+            "working_tree_clean": True,
+            "tracked_paths": git(repo_root, "ls-files").splitlines()[:3000],
+        },
+        "gaps": {
+            "canonical_conformance": 0.0 if contract.status == "PASS" else 1.0,
+            "missing_conformance_material": list(contract.missing),
+        },
+        "source_context": context,
+        "instructions": {
+            "task": "propose one small, reversible application patch that adds measurable value or evidence",
+            "constraints": [
+                "return a unified git diff for exactly one low-risk patch",
+                "do not modify protected CAIOS/AETHEL control surfaces or tests",
+                "do not modify specifications, authority, keys, workflows, tool registries, or promotion policy",
+                "do not claim tests have run",
+                "do not include commands or scripts to execute during proposal generation",
+            ],
+        },
+    }
+    provider = load_provider(repo_root, config_path)
+    proposals = provider.propose(input_bundle)
+    return select_candidate(
+        repo_root,
+        base_sha,
+        proposals,
+        max_risk=max_risk,
+    )
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="CAIOS proposal-only low-risk patch planner")
+    parser.add_argument("--repo-root", default=".")
+    parser.add_argument("--config", default="autonomy/agent_endpoints.json")
+    parser.add_argument("--output", default="/tmp/caios-patch-proposal.json")
+    parser.add_argument("--max-risk", type=float, default=ABSOLUTE_RISK_CEILING)
+    args = parser.parse_args(argv)
+
+    root = Path(args.repo_root).resolve()
+    output = Path(args.output)
+    if not output.is_absolute():
+        output = root / output
+    try:
+        result = build(root, Path(args.config) if Path(args.config).is_absolute() else root / args.config, output, max_risk=args.max_risk)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 0
+    except Exception as exc:
+        result = {
+            "schema": SCHEMA,
+            "status": "BLOCKED",
+            "reason": f"{type(exc).__name__}:{str(exc)[:1000]}",
+        }
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
