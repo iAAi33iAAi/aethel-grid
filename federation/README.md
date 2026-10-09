@@ -48,3 +48,20 @@ The snapshot is written to:
 ```
 ops/caios/federation-snapshot.json
 ```
+
+
+## Portfolio CI parity evidence
+
+The CAIOS federated audit also runs the portfolio parity auditor:
+
+    python federation/portfolio_ci_parity.py --manifest federation/system_manifest.json --root . --output ops/caios/portfolio-ci-parity.json
+
+The report identifies each repository's checked-out Git commit and runs only the verifier declared in federation/system_manifest.json. Commands are argument arrays and are not sent through a shell. The audit uses a minimal environment, a temporary home directory, and a bounded timeout. The federation workflow disables persisted checkout credentials before any declared test command can run.
+
+Portfolio status is conservative:
+
+- PASS: every repository has a verifier and each verifier passed at the recorded commit.
+- PARTIAL: configured verifiers passed, but at least one repository has no verifier. PARTIAL is not portfolio-wide conformance.
+- FAILED: a checkout, revision, manifest, command, or verification failed.
+
+At present, only three of the thirteen manifest entries have explicit verification commands. Ten are reported NOT_CONFIGURED; they are not counted as passes. The audit artifact provides current evidence, while Gate 5 remains PARTIALLY_CLOSED until the missing verification plans and their passing results are added.

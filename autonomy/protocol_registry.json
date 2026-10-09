@@ -48,6 +48,16 @@
       "cli": "a2a",
       "conformance": "A2A Protocol TCK / Inspector",
       "draft": false
+    },
+    {
+      "id": "caios-openai-compatible-proposal-transport",
+      "latest_known_revision": "1.0.0",
+      "status": "stable",
+      "transport_role": "model-proposal-transport",
+      "license": "Apache-2.0",
+      "source_url": "https://github.com/iAAi33iAAi/aethel-grid/blob/main/docs/CAIOS-OPENAI-COMPATIBLE-PROPOSAL-TRANSPORT.md",
+      "conformance_tool": "autonomy/test_multi_agent_provider.py",
+      "draft": false
     }
   ]
 }

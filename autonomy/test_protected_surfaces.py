@@ -8,7 +8,7 @@ def write_policy(tmp_path: Path):
     (tmp_path / "autonomy").mkdir()
     (tmp_path / "autonomy/protected_surfaces.json").write_text(
         json.dumps({
-            "protected_globs": ["conformance/**", "autonomy/caios_runtime.py"]
+            "protected_globs": ["conformance/**", "autonomy/caios_runtime.py", "docs/CAIOS-OPENAI-COMPATIBLE-PROPOSAL-TRANSPORT.md", "federation/system_manifest.json", "federation/portfolio_ci_parity.py", "federation/test_portfolio_ci_parity.py"]
         }),
         encoding="utf-8",
     )
@@ -206,6 +206,18 @@ def test_build_and_test_configuration_is_protected(tmp_path: Path):
         assert "patch targets protected build or test configuration" in reasons, path
 
 
+def test_proposal_transport_contract_is_protected(tmp_path: Path):
+    write_policy(tmp_path)
+    gate = ConstitutionalGate(tmp_path)
+
+    allowed, reasons = gate.validate(
+        _patch_action(path="docs/CAIOS-OPENAI-COMPATIBLE-PROPOSAL-TRANSPORT.md")
+    )
+
+    assert allowed is False
+    assert any("protected autonomous-control surface" in reason for reason in reasons)
+
+
 def test_symlinked_patch_path_cannot_escape_repository(tmp_path: Path):
     write_policy(tmp_path)
     outside = tmp_path.parent / f"{tmp_path.name}-outside"
@@ -218,3 +230,17 @@ def test_symlinked_patch_path_cannot_escape_repository(tmp_path: Path):
 
     assert allowed is False
     assert "patch path resolves outside repository root" in reasons
+
+
+
+def test_portfolio_parity_controls_are_protected(tmp_path: Path):
+    write_policy(tmp_path)
+    gate = ConstitutionalGate(tmp_path)
+    for path in (
+        "federation/system_manifest.json",
+        "federation/portfolio_ci_parity.py",
+        "federation/test_portfolio_ci_parity.py",
+    ):
+        allowed, reasons = gate.validate(_patch_action(path=path))
+        assert allowed is False, path
+        assert any("protected autonomous-control surface" in reason for reason in reasons), path

@@ -157,7 +157,14 @@ def test_red_team_observer_executes_campaign_inside_runtime():
     assert evidence.kind == "red-team"
     assert evidence.status == "PASS", evidence.details
     assert evidence.details["probe_count"] == len(red_team_probes())
-    assert evidence.details["probe_count"] >= 48
+    assert evidence.details["probe_count"] >= 52
+    required_probe_ids = {
+        "proposal-transport-contract",
+        "portfolio-manifest",
+        "portfolio-parity-auditor",
+        "portfolio-parity-tests",
+    }
+    assert required_probe_ids.issubset({probe.probe_id for probe in red_team_probes()})
 
 
 def test_missing_authority_lattice_fails_closed(tmp_path: Path):
