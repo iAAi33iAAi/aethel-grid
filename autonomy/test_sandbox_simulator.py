@@ -134,17 +134,17 @@ def test_disposable_validation_uses_temporary_home(tmp_path: Path):
 
 @pytest.mark.skipif(
     os.environ.get("CAIOS_EGRESS_BLOCKED") == "true",
-    reason="Do not recursively create a sandbox from inside the egress-blocked validation process",
+    reason="Do not recursively create a Docker sandbox from inside the egress-blocked validation process",
 )
 @pytest.mark.skipif(
-    shutil.which("bwrap") is None,
-    reason="Bubblewrap will be installed and preflighted by the autonomous validation workflow",
+    shutil.which("docker") is None,
+    reason="Docker is required for network-isolated validation",
 )
 @pytest.mark.skipif(
     subprocess.run(("git", "--version"), capture_output=True).returncode != 0,
     reason="git is required",
 )
-def test_egress_blocked_validation_cannot_reach_host_loopback(tmp_path: Path):
+def test_docker_network_none_validation_cannot_reach_host_loopback(tmp_path: Path):
     repo = tmp_path / "repo"
     repo.mkdir()
     subprocess.run(("git", "init"), cwd=repo, capture_output=True, check=True)
@@ -213,7 +213,7 @@ def test_egress_blocked_validation_cannot_reach_host_loopback(tmp_path: Path):
     subprocess.run(("git", "--version"), capture_output=True).returncode != 0,
     reason="git is required",
 )
-def test_egress_block_fails_closed_if_bubblewrap_is_unavailable(tmp_path: Path, monkeypatch):
+def test_egress_block_fails_closed_if_docker_is_unavailable(tmp_path: Path, monkeypatch):
     import autonomy.sandbox_simulator as simulator
 
     repo = tmp_path / "repo"
@@ -241,5 +241,5 @@ def test_egress_block_fails_closed_if_bubblewrap_is_unavailable(tmp_path: Path, 
 
     assert result.status == "FAIL"
     assert result.validation_returncode == 127
-    assert "egress-block-unavailable" in result.stderr_tail
+    assert "egress-block-unavailable:docker-not-installed" in result.stderr_tail
     assert result.egress_blocked is False
