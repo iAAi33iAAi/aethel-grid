@@ -127,7 +127,13 @@ jobs:
           name: caios-patch-proposal
           path: /tmp/caios-proposal
 
-      - name: Revalidate and test patch in disposable worktree
+      - name: Install network isolation tool
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes bubblewrap
+          bwrap --die-with-parent --unshare-net --ro-bind / / /usr/bin/true
+
+      - name: Revalidate and test patch in disposable worktree with networking disabled
         id: validate
         shell: bash
         run: |
@@ -148,7 +154,8 @@ jobs:
           {
             echo "## CAIOS isolated validation"
             echo "- Status: $status"
-            echo "- Candidate code ran in a disposable worktree."
+            echo "- Candidate code ran in a disposable standalone clone with Bubblewrap networking disabled."
+            echo "- The runner home and temporary credential files were hidden from the candidate process; toolchains were mounted read-only." 
             echo "- No model API keys or repository write token were supplied to the candidate test process."
             echo "- Fixed Python, Rust, TypeScript, and SPEC-004 candidate checks were requested."
           } >> "$GITHUB_STEP_SUMMARY"
