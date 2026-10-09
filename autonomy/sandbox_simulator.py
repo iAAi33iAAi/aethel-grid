@@ -27,6 +27,7 @@ class SimulationResult:
     stdout_tail: str
     stderr_tail: str
     worktree: str
+    network_isolated: bool = False
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -36,6 +37,7 @@ class SimulationResult:
             "stdout_tail": self.stdout_tail,
             "stderr_tail": self.stderr_tail,
             "worktree": self.worktree,
+            "network_isolated": self.network_isolated,
         }
 
 
@@ -48,10 +50,16 @@ class DisposableWorktree:
         self,
         patch_text: str,
         validation_command: tuple[str, ...],
+        *,
+        require_network_isolation: bool = False,
     ) -> SimulationResult:
-        worktree = Path(tempfile.mkdtemp(prefix="caios-sim-"))
-        sandbox_home = Path(tempfile.mkdtemp(prefix="caios-home-"))
+        # Keep the candidate checkout outside HOME and TMPDIR so those locations
+        # can be hidden/replaced inside Bubblewrap without hiding the checkout.
+        worktree = Path(tempfile.mkdtemp(prefix="caios-sim-", dir="/var/tmp"))
         sandbox_tmp = Path(tempfile.mkdtemp(prefix="caios-tmp-"))
+        sandbox_home = sandbox_tmp / "caios-home"
+        sandbox_home.mkdir()
+        toolchain_mounts: dict[str, str] = {}
 
         # Candidate/test code must not inherit ambient secrets, provider keys,
         # GitHub tokens, cloud credentials, proxies, or custom Python paths.
@@ -69,13 +77,64 @@ class DisposableWorktree:
             "GIT_CONFIG_NOSYSTEM": "1",
             "GIT_CONFIG_GLOBAL": "/dev/null",
         }
-        for toolchain_var in ("CARGO_HOME", "RUSTUP_HOME"):
-            if os.environ.get(toolchain_var):
-                sandbox_env[toolchain_var] = os.environ[toolchain_var]
+        host_home = Path.home().resolve()
+        for var_name, default_path, shadow_name in (
+            ("CARGO_HOME", host_home / ".cargo", "caios-cargo"),
+            ("RUSTUP_HOME", host_home / ".rustup", "caios-rustup"),
+        ):
+            original = Path(os.environ.get(var_name, str(default_path))).resolve()
+            if original.is_dir() and original.is_relative_to(host_home):
+                shadow_path = sandbox_tmp / shadow_name
+                shadow_path.mkdir()
+                toolchain_mounts[var_name] = str(shadow_path)
+                sandbox_env[var_name] = f"/tmp/{shadow_name}"
+                sandbox_env["PATH"] = sandbox_env["PATH"].replace(
+                    str(original / "bin"), f"/tmp/{shadow_name}/bin"
+                )
 
-        def exec_cmd(args: tuple[str, ...]) -> tuple[int, str, str]:
+        def exec_cmd(
+            args: tuple[str, ...],
+            *,
+            isolate_network: bool = False,
+        ) -> tuple[int, str, str]:
+            command = args
+            if isolate_network:
+                bwrap = shutil.which("bwrap")
+                if not bwrap:
+                    return 127, "", "network-isolation-unavailable:bwrap-not-installed"
+                host_home_str = str(host_home)
+                command_list = [
+                    bwrap,
+                    "--die-with-parent",
+                    "--unshare-net",
+                    "--unshare-pid",
+                    "--unshare-ipc",
+                    "--unshare-uts",
+                    "--ro-bind", "/", "/",
+                    "--bind", str(sandbox_tmp), "/tmp",
+                    "--proc", "/proc",
+                    "--dev", "/dev",
+                ]
+                # Expose Rust caches/toolchains read-only under /tmp before the
+                # runner home is hidden. The sandbox never receives the rest of
+                # the runner's home directory or its temporary credential files.
+                for var_name, shadow_path in toolchain_mounts.items():
+                    source = Path(os.environ.get(
+                        var_name,
+                        str(host_home / (".cargo" if var_name == "CARGO_HOME" else ".rustup")),
+                    )).resolve()
+                    shadow_name = Path(shadow_path).name
+                    command_list.extend(["--ro-bind", str(source), f"/tmp/{shadow_name}"])
+                if host_home_str not in {"/", "/tmp", "/var/tmp"}:
+                    command_list.extend(["--tmpfs", host_home_str])
+                command_list.extend(["--tmpfs", "/run", "--bind", str(worktree), str(worktree)])
+                command_list.extend(["--chdir", str(worktree)])
+                for key, value in sandbox_env.items():
+                    command_list.extend(["--setenv", key, value])
+                command_list.extend(args)
+                command = tuple(command_list)
             proc = subprocess.run(
-                args,
+                command,
                 cwd=worktree,
                 env=sandbox_env,
                 capture_output=True,
@@ -87,7 +146,7 @@ class DisposableWorktree:
 
         try:
             subprocess.run(
-                ("git", "-C", str(self.repo_root), "worktree", "add", "--detach", str(worktree), "HEAD"),
+                ("git", "clone", "--no-hardlinks", "--quiet", str(self.repo_root), str(worktree)),
                 capture_output=True,
                 text=True,
                 timeout=60,
@@ -118,7 +177,10 @@ class DisposableWorktree:
                     worktree=str(worktree),
                 )
 
-            rc, stdout, stderr = exec_cmd(validation_command)
+            rc, stdout, stderr = exec_cmd(
+                validation_command,
+                isolate_network=require_network_isolation,
+            )
             return SimulationResult(
                 status="PASS" if rc == 0 else "FAIL",
                 patch_check_returncode=check_rc,
@@ -126,6 +188,7 @@ class DisposableWorktree:
                 stdout_tail=stdout[-4000:],
                 stderr_tail=stderr[-4000:],
                 worktree=str(worktree),
+                network_isolated=bool(require_network_isolation and rc == 0),
             )
         except subprocess.TimeoutExpired as exc:
             return SimulationResult(
@@ -146,13 +209,5 @@ class DisposableWorktree:
                 worktree=str(worktree),
             )
         finally:
-            subprocess.run(
-                ("git", "-C", str(self.repo_root), "worktree", "remove", "--force", str(worktree)),
-                capture_output=True,
-                text=True,
-                timeout=60,
-                check=False,
-            )
             shutil.rmtree(worktree, ignore_errors=True)
-            shutil.rmtree(sandbox_home, ignore_errors=True)
             shutil.rmtree(sandbox_tmp, ignore_errors=True)
