@@ -63,8 +63,13 @@ def load_provider(repo_root: Path, config_path: Path) -> MultiAgentProposalProvi
         api_key_env = item.get("api_key_env")
         if api_key_env is not None and (not isinstance(api_key_env, str) or not api_key_env.strip()):
             raise ValueError(f"agent entry {index} api_key_env must be a non-empty string")
+        if api_key_env and (not api_key_env.startswith("CAIOS_") or not api_key_env.endswith("_API_KEY")):
+            raise ValueError(f"agent entry {index} api_key_env must use an approved CAIOS_*_API_KEY name")
         if api_key_env and not os.environ.get(api_key_env):
             raise ValueError(f"configured API key environment variable is unset: {api_key_env}")
+        source_context_opt_in = item.get("send_source_context", False)
+        if not isinstance(source_context_opt_in, bool):
+            raise ValueError(f"agent entry {index} send_source_context must be a JSON boolean")
 
         specs.append(
             EndpointSpec(
@@ -78,7 +83,7 @@ def load_provider(repo_root: Path, config_path: Path) -> MultiAgentProposalProvi
                 protocol_version=str(item.get("protocol_version", "1")),
                 api_key=os.environ.get(api_key_env) if api_key_env else None,
                 max_proposals=max(1, min(int(item.get("max_proposals", 8)), 20)),
-                send_source_context=bool(item.get("send_source_context", False)),
+                send_source_context=source_context_opt_in,
             )
         )
 
