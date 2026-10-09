@@ -243,6 +243,57 @@ def test_docker_network_none_blocks_access_to_bridge_service(tmp_path: Path):
         subprocess.run((docker, "network", "rm", network), capture_output=True, text=True, timeout=20, check=False)
 
 
+
+@pytest.mark.skipif(
+    subprocess.run(("git", "--version"), capture_output=True).returncode != 0,
+    reason="git is required",
+)
+def test_egress_block_fails_closed_if_sandbox_image_is_missing(tmp_path: Path, monkeypatch):
+    import autonomy.sandbox_simulator as simulator
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(("git", "init"), cwd=repo, capture_output=True, check=True)
+    subprocess.run(("git", "config", "user.email", "caios@test"), cwd=repo, check=True)
+    subprocess.run(("git", "config", "user.name", "CAIOS Test"), cwd=repo, check=True)
+    (repo / "value.txt").write_text("one\n", encoding="utf-8")
+    subprocess.run(("git", "add", "."), cwd=repo, check=True)
+    subprocess.run(("git", "commit", "-m", "base"), cwd=repo, capture_output=True, check=True)
+
+    real_which = shutil.which
+    real_run = subprocess.run
+
+    def fake_which(name):
+        return "/usr/bin/docker" if name == "docker" else real_which(name)
+
+    def fake_run(args, *pargs, **kwargs):
+        if isinstance(args, (tuple, list)) and len(args) >= 3 and args[1:3] == ("image", "inspect"):
+            return subprocess.CompletedProcess(args, 1, "", "trusted sandbox image missing")
+        return real_run(args, *pargs, **kwargs)
+
+    monkeypatch.setattr(simulator.shutil, "which", fake_which)
+    monkeypatch.setattr(simulator.subprocess, "run", fake_run)
+    monkeypatch.setenv("CAIOS_SANDBOX_IMAGE", "caios-validation-sandbox:missing-test-image")
+
+    patch = """diff --git a/value.txt b/value.txt
+--- a/value.txt
++++ b/value.txt
+@@ -1 +1 @@
+-one
++two
+"""
+    result = DisposableWorktree(repo).run(
+        patch,
+        ("python", "-c", "raise SystemExit(0)"),
+        require_egress_block=True,
+    )
+
+    assert result.status == "FAIL"
+    assert result.validation_returncode == 127
+    assert "egress-block-unavailable:sandbox-image-not-built" in result.stderr_tail
+    assert result.egress_blocked is False
+
+
 @pytest.mark.skipif(
     subprocess.run(("git", "--version"), capture_output=True).returncode != 0,
     reason="git is required",
