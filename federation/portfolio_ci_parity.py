@@ -98,7 +98,7 @@ def _validate_manifest(raw: Any) -> list[dict[str, Any]]:
         seen_paths.add(normalized)
         if not isinstance(verification, list) or any(not isinstance(token, str) or not token.strip() for token in verification):
             raise ValueError(f"repository {repo_id} verification must be a list of non-empty strings")
-        if verification and verification[0] not in {"python", "python3", "pytest", "cargo", "npm", "node", "go"}:
+        if verification and verification[0] not in {"python", "python3", "pytest", "cargo", "npm", "node", "go", "bun"}:
             raise ValueError(f"repository {repo_id} uses a non-allowlisted verifier executable")
         verification_source = row.get("verification_source")
         if verification_source is not None and (
