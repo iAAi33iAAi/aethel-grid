@@ -172,8 +172,13 @@
       "depends_on": [
         "openclaw-colony"
       ],
-      "verification": [],
-      "integration_mode": "observe-only"
+      "verification": [
+        "bun",
+        "run",
+        "ci:unit"
+      ],
+      "integration_mode": "observe-only",
+      "verification_source": "https://github.com/iAAi33iAAi/clawhub/blob/main/.github/workflows/ci.yml"
     },
     {
       "id": "ALEXARAC",
