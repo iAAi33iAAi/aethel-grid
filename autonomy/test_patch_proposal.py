@@ -57,6 +57,7 @@ def seed_repo(root: Path) -> None:
                 "model_id": "test-model",
                 "model_revision": "test-model@sha256:abc",
                 "approval_ref": "test-fixture-only",
+                "api_key_env": None,
             }],
         }),
         encoding="utf-8",
@@ -497,4 +498,19 @@ def test_provider_preflight_rejects_agent_provenance_mismatch(tmp_path: Path, mo
     setup_preflight_registries(monkeypatch, agents={})
 
     with pytest.raises(ValueError, match="provider-endpoint-binding-mismatch:test-endpoint:source_ref"):
+        patch_proposal.load_provider(tmp_path, config_path)
+
+
+
+def test_provider_preflight_binds_the_api_key_secret_name_to_endpoint(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    monkeypatch.setenv("CAIOS_OTHER_API_KEY", "test-only-secret")
+    config_path = write_agent_config(
+        tmp_path,
+        send_source_context=True,
+        api_key_env="CAIOS_OTHER_API_KEY",
+    )
+    setup_preflight_registries(monkeypatch, agents={})
+
+    with pytest.raises(ValueError, match="provider-endpoint-binding-mismatch:test-endpoint:api_key_env"):
         patch_proposal.load_provider(tmp_path, config_path)
