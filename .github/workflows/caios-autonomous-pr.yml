@@ -115,9 +115,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "24"
-
-      - uses: dtolnay/rust-toolchain@stable
+          node-version: "24.21.0"
 
       - name: Install test dependencies
         run: python -m pip install "pytest>=8,<9" "cryptography==50.0.2"

@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/rust:1-bookworm
+FROM mcr.microsoft.com/devcontainers/rust@sha256:4b356e56d256b8e835c7e08b2aef302cc92b7c459e5705ac36a6e6d090955f00
 
 USER root
 

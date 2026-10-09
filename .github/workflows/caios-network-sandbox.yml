@@ -45,9 +45,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "24"
-
-      - uses: dtolnay/rust-toolchain@stable
+          node-version: "24.21.0"
 
       - name: Verify Docker daemon and build sandbox image
         run: |
