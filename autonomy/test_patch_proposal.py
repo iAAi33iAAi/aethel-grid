@@ -427,3 +427,55 @@ def test_provider_preflight_rejects_missing_endpoint_registry(tmp_path: Path, mo
 
     with pytest.raises(ValueError, match="provider-endpoint-registry-unavailable"):
         patch_proposal.load_provider(tmp_path, config_path)
+
+
+
+def test_provider_preflight_requires_exact_agent_model_and_protocol_binding(tmp_path: Path, monkeypatch):
+    mismatches = [
+        {"agent_id": "another-agent"},
+        {"model": "another-model"},
+        {"model_revision": "test-model@sha256:different"},
+        {"protocol": "acp"},
+        {"protocol_version": "another-version"},
+    ]
+    for index, override in enumerate(mismatches):
+        case_root = tmp_path / str(index)
+        seed_repo(case_root)
+        config_path = write_agent_config(
+            case_root,
+            send_source_context=True,
+            **override,
+        )
+        setup_preflight_registries(monkeypatch, agents={})
+        with pytest.raises(ValueError, match="provider-endpoint-binding-mismatch"):
+            patch_proposal.load_provider(case_root, config_path)
+
+
+def test_build_rejects_unregistered_endpoint_before_building_source_context(tmp_path: Path, monkeypatch):
+    import subprocess
+
+    seed_repo(tmp_path)
+    config_path = write_agent_config(
+        tmp_path,
+        send_source_context=True,
+        endpoint_id="unregistered-before-context",
+    )
+    subprocess.run(("git", "init"), cwd=tmp_path, capture_output=True, check=True)
+    subprocess.run(("git", "config", "user.email", "caios@test"), cwd=tmp_path, check=True)
+    subprocess.run(("git", "config", "user.name", "CAIOS Test"), cwd=tmp_path, check=True)
+    subprocess.run(("git", "add", "."), cwd=tmp_path, capture_output=True, check=True)
+    subprocess.run(("git", "commit", "-m", "fixture"), cwd=tmp_path, capture_output=True, check=True)
+
+    class SourceContextMustNotBeBuilt:
+        def __init__(self, repo_root):
+            raise AssertionError("source context must not be built before endpoint preflight")
+
+    monkeypatch.setattr(patch_proposal, "ContextWindow", SourceContextMustNotBeBuilt)
+
+    with pytest.raises(ValueError, match="provider-endpoint-not-registered:unregistered-before-context"):
+        patch_proposal.build(
+            tmp_path,
+            config_path,
+            tmp_path / "out.json",
+            max_risk=0.45,
+        )
