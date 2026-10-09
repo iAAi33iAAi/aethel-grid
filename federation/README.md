@@ -56,9 +56,9 @@ The manifest-driven parity auditor runs each repository's declared verifier and 
 
 Commands are argument arrays (never routed through a shell), receive a minimal environment and temporary home, and have bounded timeouts. Checkout credentials are not persisted into the repository verification process. These controls reduce accidental authority; they are not a formal sandbox for hostile tests.
 
-The latest passing integrated audit on PR #34 commit `8ace723193acc8262a2aa0b0aa3fc079ce88aad0` reported `PASS` for verification coverage: **13 of 13 verifiers passed, zero were unconfigured, and zero failed**. See [the exact-head audit run](https://github.com/iAAi33iAAi/aethel-grid/actions/runs/38003981219). The source-pin validator additionally requires every declared source URL to be an immutable GitHub blob URL and the URL's repository slug to match the corresponding manifest ID.
+The previous fully passing integrated baseline on PR #34 commit `8ace723193acc8262a2aa0b0aa3fc079ce88aad0` reported `PASS` for verification coverage: **13 of 13 verifiers passed, zero were unconfigured, and zero failed**. See [that exact-head audit run](https://github.com/iAAi33iAAi/aethel-grid/actions/runs/38003981219). The manifest now requires a non-empty `verification_scope` for every repository; the portfolio auditor preserves each scope in its evidence and rejects omitted scope declarations. Source links, where present, must be immutable GitHub blob URLs whose repository slug matches the corresponding manifest ID.
 
-A `PASS` result means every declared command passed at the recorded revision. It does **not** mean every repository contains a complete executable runtime, has been deployed, or is production-conformant. The following scope descriptions are part of the evidence contract and must remain explicit.
+A `PASS` result means every declared command passed at the recorded revision. It does **not** mean every repository contains a complete executable runtime, has been deployed, or is production-conformant. The scope descriptions below are normative metadata for interpreting the evidence, not claims that the unimplemented systems exist.
 
 ### Declared verification scope
 
