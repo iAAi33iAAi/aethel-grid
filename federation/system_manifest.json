@@ -119,8 +119,18 @@
       "depends_on": [
         "openclaw-governance"
       ],
-      "verification": [],
-      "integration_mode": "observe-only"
+      "verification": [
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "integration_mode": "observe-only",
+      "verification_source": "https://github.com/iAAi33iAAi/alpha-intelligence-hub/blob/main/.github/workflows/ci.yml",
+      "verification_scope": "Alpha Intelligence Hub scaffold integrity only: checks the declared Compose service/build-context contract, the fail-fast migration script's shell syntax, and well-formed/consistent Git remote declarations. It does not initialize/merge repositories, build target images, execute the referenced services, or establish production conformance."
     },
     {
       "id": "World-Tribe-Protocol",
