@@ -71,7 +71,7 @@ class ContextWindow:
         try:
             paths = sorted(
                 p for p in self.repo_root.rglob("*")
-                if p.is_file() and ".git" not in p.parts
+                if not p.is_symlink() and p.is_file() and ".git" not in p.parts
             )
         except OSError:
             paths = []
