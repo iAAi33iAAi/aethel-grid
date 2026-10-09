@@ -120,6 +120,7 @@ def _validate_manifest(raw: Any) -> list[dict[str, Any]]:
                 or source_parts[0] != ""
                 or not source_parts[1]
                 or not source_parts[2]
+                or source_parts[2].casefold() != repo_id.casefold()
                 or source_parts[3] != "blob"
                 or len(commit_pin) != 40
                 or any(ch not in "0123456789abcdef" for ch in commit_pin)
@@ -127,7 +128,7 @@ def _validate_manifest(raw: Any) -> list[dict[str, Any]]:
             ):
                 raise ValueError(
                     f"repository {repo_id} verification_source must be an immutable GitHub blob URL "
-                    "pinned to a 40-character commit SHA"
+                    "pinned to a 40-character commit SHA and matching the manifest repository id"
                 )
         verification_scope = row.get("verification_scope")
         if verification_scope is not None and (

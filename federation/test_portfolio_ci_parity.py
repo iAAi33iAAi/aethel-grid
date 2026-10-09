@@ -38,7 +38,7 @@ def test_verification_scope_is_retained_in_evidence(tmp_path: Path):
             "id": "root",
             "path": ".",
             "verification": ["python", "-c", "raise SystemExit(0)"],
-            "verification_source": "https://github.com/example/project/blob/0123456789abcdef0123456789abcdef01234567/tests/test_suite.py",
+            "verification_source": "https://github.com/example/root/blob/0123456789abcdef0123456789abcdef01234567/tests/test_suite.py",
             "verification_scope": scope,
         },
     ])
@@ -117,7 +117,7 @@ def test_parity_pass_requires_every_manifest_repo_verified(tmp_path: Path):
 
 def test_verification_source_is_retained_in_evidence(tmp_path: Path):
     _git_repo(tmp_path)
-    source = "https://github.com/example/project/blob/0123456789abcdef0123456789abcdef01234567/tests/test_suite.py"
+    source = "https://github.com/example/root/blob/0123456789abcdef0123456789abcdef01234567/tests/test_suite.py"
     manifest = _manifest(tmp_path, [
         {
             "id": "root",
@@ -148,6 +148,21 @@ def test_manifest_rejects_non_https_verification_source(tmp_path: Path):
         audit_portfolio(root=tmp_path, manifest_path=manifest)
 
 
+def test_manifest_rejects_source_for_different_repository_id():
+    with pytest.raises(ValueError, match="matching the manifest repository id"):
+        _validate_manifest({
+            "schema": "caios-federation/v1",
+            "repositories": [
+                {
+                    "id": "clawhub",
+                    "path": "clawhub",
+                    "verification": ["bun", "run", "ci:unit"],
+                    "verification_source": "https://github.com/iAAi33iAAi/not-clawhub/blob/0123456789abcdef0123456789abcdef01234567/.github/workflows/ci.yml",
+                }
+            ],
+        })
+
+
 def test_manifest_rejects_mutable_verification_source(tmp_path: Path):
     _git_repo(tmp_path)
     manifest = _manifest(tmp_path, [
@@ -155,7 +170,7 @@ def test_manifest_rejects_mutable_verification_source(tmp_path: Path):
             "id": "root",
             "path": ".",
             "verification": ["python", "-c", "raise SystemExit(0)"],
-            "verification_source": "https://github.com/example/project/blob/main/tests/test_suite.py",
+            "verification_source": "https://github.com/example/root/blob/main/tests/test_suite.py",
         },
     ])
 
@@ -182,13 +197,15 @@ def test_every_declared_manifest_source_is_immutable():
     root = Path(__file__).resolve().parents[1]
     manifest = json.loads((root / "federation" / "system_manifest.json").read_text(encoding="utf-8"))
     rows = _validate_manifest(manifest)
-    sources = [row["verification_source"] for row in rows if row["verification_source"] is not None]
+    source_rows = [row for row in rows if row["verification_source"] is not None]
 
-    assert len(sources) == 10
-    for source in sources:
+    assert len(source_rows) == 10
+    for row in source_rows:
+        source = row["verification_source"]
         parts = urlsplit(source)
         path_parts = parts.path.split("/")
         assert parts.netloc == "github.com"
+        assert path_parts[2].casefold() == row["id"].casefold()
         assert len(path_parts[4]) == 40
         assert path_parts[3] == "blob"
         assert all(ch in "0123456789abcdef" for ch in path_parts[4])
