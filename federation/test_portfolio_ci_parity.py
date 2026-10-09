@@ -118,3 +118,15 @@ def test_missing_checkout_fails_instead_of_silently_skipping(tmp_path: Path):
     missing = next(row for row in report["repositories"] if row["id"] == "missing")
     assert missing["status"] == "MISSING_CHECKOUT"
     assert report["summary"]["missing_or_unversioned"] == 1
+
+
+
+def test_safety_kernel_manifest_uses_failure_aware_runner():
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads((root / "federation" / "system_manifest.json").read_text(encoding="utf-8"))
+    safety_kernel = next(row for row in manifest["repositories"] if row["id"] == "safety-kernel")
+
+    # test_sk.py aggregates its check() failures and exits non-zero from main().
+    # Running it under pytest would collect functions whose check() failures do
+    # not raise assertions and could therefore produce a false-positive PASS.
+    assert safety_kernel["verification"] == ["python", "test_sk.py"]
