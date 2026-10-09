@@ -23,7 +23,7 @@ VECTOR_IDS = tuple(f"KC-{index:03d}" for index in range(1, 9))
 IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$")
 DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
 DOMAIN_RE = re.compile(r"^[A-Z][A-Z0-9_]{1,63}$")
-DATETIME_RE = re.compile(r"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$")
+DATETIME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$")
 SIGNATURE_RE = re.compile(r"^[A-Za-z0-9+/]{86}==$")
 RECOMMENDATIONS = {"INSPECT", "INVESTIGATE", "REQUEST_HUMAN_REVIEW"}
 
@@ -209,7 +209,8 @@ def validate_vector(path: Path) -> tuple[bool, list[str], dict[str, Any]]:
     envelope_errors = validate_envelope(vector.get("envelope"))
     actual_valid = len(envelope_errors) == 0
     if expected_valid is not None and actual_valid != expected_valid:
-        errors.append("vector:expected_schema_valid_mismatch")
+        details = ",".join(envelope_errors) or "no_schema_errors"
+        errors.append("vector:expected_schema_valid_mismatch:" + details)
     if expected_valid is False and not envelope_errors:
         errors.append("vector:negative_case_did_not_fail")
     return not errors, sorted(set(errors)), {
