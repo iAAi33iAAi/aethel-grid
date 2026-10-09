@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from federation.portfolio_ci_parity import SCHEMA, audit_portfolio
+from federation.portfolio_ci_parity import SCHEMA, _validate_manifest, audit_portfolio
 
 
 def _git_repo(path: Path) -> None:
@@ -27,6 +27,33 @@ def _manifest(path: Path, rows: list[dict]) -> Path:
         encoding="utf-8",
     )
     return manifest
+
+
+def test_bun_is_allowlisted_for_toolchain_specific_verifiers():
+    rows = _validate_manifest({
+        "schema": "caios-federation/v1",
+        "repositories": [
+            {
+                "id": "clawhub",
+                "path": "clawhub",
+                "verification": ["bun", "run", "ci:unit"],
+                "verification_source": "https://github.com/iAAi33iAAi/clawhub/blob/main/.github/workflows/ci.yml",
+            }
+        ],
+    })
+
+    assert rows[0]["verification"] == ["bun", "run", "ci:unit"]
+    assert rows[0]["verification_source"].startswith("https://")
+
+
+def test_manifest_rejects_shell_as_verifier_executable():
+    with pytest.raises(ValueError, match="non-allowlisted verifier executable"):
+        _validate_manifest({
+            "schema": "caios-federation/v1",
+            "repositories": [
+                {"id": "bad", "path": "bad", "verification": ["bash", "-c", "true"]}
+            ],
+        })
 
 
 def test_parity_pass_requires_every_manifest_repo_verified(tmp_path: Path):
