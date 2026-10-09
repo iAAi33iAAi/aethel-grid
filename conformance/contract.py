@@ -59,6 +59,9 @@ def _sha256_file(path: Path) -> str:
 
 
 def inspect_contract(repo_root: Path, contract_path: str = "conformance/canonical_contract.json") -> ContractResult:
+    # Normalize once so containment checks work for both absolute and relative
+    # checkout paths supplied by callers.
+    repo_root = repo_root.resolve()
     path = (repo_root / contract_path).resolve()
     if not path.is_file():
         return ContractResult(
@@ -82,13 +85,58 @@ def inspect_contract(repo_root: Path, contract_path: str = "conformance/canonica
             evidence={},
         )
 
+    if not isinstance(contract, dict):
+        return ContractResult(
+            status="FAIL",
+            spec_id="SPEC-004",
+            contract_digest=digest(contract),
+            missing=(),
+            warnings=("contract-root-not-object",),
+            evidence={"path": contract_path},
+        )
+
+    # Parse a valid JSON document as untrusted structured input. A malformed
+    # nested object must produce explicit failure evidence, never an exception.
+    validator_value = contract.get("canonical_validator")
+    if validator_value is not None and not isinstance(validator_value, dict):
+        return ContractResult(
+            status="FAIL",
+            spec_id="SPEC-004",
+            contract_digest=digest(contract),
+            missing=(),
+            warnings=("canonical-validator-not-object",),
+            evidence={"path": contract_path},
+        )
+
+    vectors_value = contract.get("required_vectors")
+    if vectors_value is not None and not isinstance(vectors_value, list):
+        return ContractResult(
+            status="FAIL",
+            spec_id="SPEC-004",
+            contract_digest=digest(contract),
+            missing=(),
+            warnings=("required-vectors-not-list",),
+            evidence={"path": contract_path},
+        )
+
+    policy_value = contract.get("promotion_policy")
+    if policy_value is not None and not isinstance(policy_value, dict):
+        return ContractResult(
+            status="FAIL",
+            spec_id="SPEC-004",
+            contract_digest=digest(contract),
+            missing=(),
+            warnings=("promotion-policy-not-object",),
+            evidence={"path": contract_path},
+        )
+
     missing: list[str] = []
     warnings: list[str] = []
 
     if contract.get("spec_id") != "SPEC-004":
         missing.append("spec-id:SPEC-004")
 
-    validator = contract.get("canonical_validator") or {}
+    validator = validator_value or {}
     validator_path = validator.get("path")
     validator_command = validator.get("command") or []
     validator_hash = validator.get("sha256")
@@ -117,7 +165,7 @@ def inspect_contract(repo_root: Path, contract_path: str = "conformance/canonica
                 if validator_digest != str(validator_hash):
                     missing.append("canonical-validator.sha256-mismatch")
 
-    vectors = contract.get("required_vectors") or []
+    vectors = vectors_value or []
     by_id = {str(v.get("id")): v for v in vectors if isinstance(v, dict)}
     vector_evidence: list[dict[str, Any]] = []
     for vector_id in REQUIRED_VECTOR_IDS:
@@ -173,7 +221,7 @@ def inspect_contract(repo_root: Path, contract_path: str = "conformance/canonica
     if contract.get("audit_preimage_semantics") is None:
         missing.append("audit-preimage-semantics")
 
-    if contract.get("promotion_policy", {}).get("bootstrap_must_never_promote_to_canonical") is not True:
+    if (policy_value or {}).get("bootstrap_must_never_promote_to_canonical") is not True:
         warnings.append("promotion-policy.bootstrap-must-never-promote-to-canonical-not-explicit")
 
     evidence = {
