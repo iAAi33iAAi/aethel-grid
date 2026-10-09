@@ -581,5 +581,5 @@ def test_provider_preflight_rejects_adapter_that_claims_external_tool_execution(
     profile = endpoint_profile(external_tool_execution=True)
     setup_preflight_registries(monkeypatch, agents={"test-agent": profile})
 
-    with pytest.raises(ValueError, match="model-proposal-adapter-must-not-execute-external-tools:test-agent"):
+    with pytest.raises(ValueError, match="agent-identity-binding-failed:test-agent:model-proposal-adapter-must-not-execute-external-tools"):
         patch_proposal.load_provider(tmp_path, config_path)
