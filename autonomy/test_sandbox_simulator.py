@@ -184,9 +184,9 @@ def test_egress_blocked_validation_cannot_reach_host_loopback(tmp_path: Path):
         (
             "import socket,sys\n"
             f"port={port}\n"
-            "s=socket.socket()\n"
-            "s.settimeout(1)\n"
             "try:\n"
+            "    s=socket.socket()\n"
+            "    s.settimeout(1)\n"
             "    s.connect(('127.0.0.1', port))\n"
             "except OSError:\n"
             "    sys.exit(0)\n"
