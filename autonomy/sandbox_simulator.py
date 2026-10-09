@@ -141,6 +141,7 @@ class DisposableWorktree:
                     elif key == "TMPDIR":
                         sandbox_value = "/tmp"
                     command_list.extend(["--setenv", key, sandbox_value])
+                command_list.extend(["--setenv", "CAIOS_NETWORK_ISOLATED", "true"])
                 command_list.extend(args)
                 command = tuple(command_list)
             proc = subprocess.run(
