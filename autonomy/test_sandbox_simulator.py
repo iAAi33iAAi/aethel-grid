@@ -32,7 +32,7 @@ index 43dd47b..9d3f98f 100644
         patch,
         ("python", "-c", "print(open('value.txt').read().strip())"),
     )
-    assert result.status == "PASS"
+    assert result.status == "PASS", result.as_dict()
     assert result.validation_returncode == 0
     assert (repo / "value.txt").read_text(encoding="utf-8") == "one\n"
 
