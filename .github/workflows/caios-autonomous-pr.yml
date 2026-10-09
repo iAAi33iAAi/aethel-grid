@@ -127,7 +127,7 @@ jobs:
           name: caios-patch-proposal
           path: /tmp/caios-proposal
 
-      - name: Install network isolation tool
+      - name: Install Bubblewrap and seccomp library
         run: |
           sudo apt-get update
           sudo apt-get install --yes bubblewrap libseccomp2
@@ -154,8 +154,8 @@ jobs:
           {
             echo "## CAIOS isolated validation"
             echo "- Status: $status"
-            echo "- Candidate code ran in a disposable standalone clone with Bubblewrap seccomp blocked network socket operations."
-            echo "- The runner home and temporary credential files were hidden from the candidate process; toolchains were mounted read-only." 
+            echo "- Candidate code ran in a disposable standalone clone with network socket syscalls denied by seccomp."
+            echo "- The runner home and temporary credential paths were hidden; Rust toolchain executables and files were mounted read-only." 
             echo "- No model API keys or repository write token were supplied to the candidate test process."
             echo "- Fixed Python, Rust, TypeScript, and SPEC-004 candidate checks were requested."
           } >> "$GITHUB_STEP_SUMMARY"
