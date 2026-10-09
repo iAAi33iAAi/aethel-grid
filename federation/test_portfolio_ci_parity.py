@@ -222,9 +222,10 @@ def test_calcula_documentation_verifier_is_explicitly_scoped():
 
     assert calcula["verification"] == ["python", "-m", "unittest", "discover", "-s", "tests", "-v"]
     assert calcula["verification_source"] == "https://github.com/iAAi33iAAi/calcula-colony/blob/main/.github/workflows/ci.yml"
-    assert "documentation-contract verification only" in calcula["verification_scope"]
-    assert "does not verify a calcula engine" in calcula["verification_scope"]
-    assert "empirical/scientific law" in calcula["verification_scope"]
+    scope = calcula["verification_scope"].lower()
+    assert "documentation-contract verification only" in scope
+    assert "does not verify a calcula engine" in scope
+    assert "empirical/scientific law" in scope
 
 
 def test_alpha_scaffold_verifier_is_explicitly_scoped():
