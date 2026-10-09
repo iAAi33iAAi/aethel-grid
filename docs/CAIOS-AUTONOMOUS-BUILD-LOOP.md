@@ -37,6 +37,6 @@ The connected GitHub integration cannot set repository secrets or add a reviewed
 
 ## Validation record
 
-A successful workflow run records the base SHA, proposal digest, patch digest, agent attestation, gate result, fixed validation command, whether the seccomp egress-denial filter was established, and the sandbox test outcome. These records demonstrate what the workflow tested; they do not certify SPEC-004 as canonical or prove the policy itself is correct.
+A successful workflow run records the base SHA, proposal digest, patch digest, agent attestation, gate result, fixed validation command, whether the network-none Docker container was used, and the sandbox test outcome. These records demonstrate what the workflow tested; they do not certify SPEC-004 as canonical or prove the policy itself is correct.
 
 SPEC-004 remains blocked until its authoritative metric and canonical-byte semantics are supplied and independently conformed. The autonomous builder may improve ordinary application code, but it cannot invent the missing law or rewrite the controls that govern its own authority.
