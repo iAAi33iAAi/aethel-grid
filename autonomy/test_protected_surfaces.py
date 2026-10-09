@@ -215,7 +215,7 @@ def test_proposal_transport_contract_is_protected(tmp_path: Path):
     )
 
     assert allowed is False
-    assert "protected autonomous-control surface" in reasons
+    assert any("protected autonomous-control surface" in reason for reason in reasons)
 
 
 def test_symlinked_patch_path_cannot_escape_repository(tmp_path: Path):
