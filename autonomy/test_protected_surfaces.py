@@ -218,3 +218,17 @@ def test_symlinked_patch_path_cannot_escape_repository(tmp_path: Path):
 
     assert allowed is False
     assert "patch path resolves outside repository root" in reasons
+
+
+
+def test_portfolio_parity_controls_are_protected(tmp_path: Path):
+    write_policy(tmp_path)
+    gate = ConstitutionalGate(tmp_path)
+    for path in (
+        "federation/system_manifest.json",
+        "federation/portfolio_ci_parity.py",
+        "federation/test_portfolio_ci_parity.py",
+    ):
+        allowed, reasons = gate.validate(_patch_action(path=path))
+        assert allowed is False, path
+        assert "protected autonomous-control surface" in reasons, path
