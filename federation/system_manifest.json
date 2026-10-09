@@ -198,8 +198,18 @@
       "depends_on": [
         "openclaw-colony"
       ],
-      "verification": [],
-      "integration_mode": "observe-only"
+      "verification": [
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "integration_mode": "observe-only",
+      "verification_source": "https://github.com/iAAi33iAAi/crew-colony/blob/4e935ab6e8d4dd3ed0e79318cf130663ec36edcd/.github/workflows/ci.yml",
+      "verification_scope": "Scaffold and documentation integrity only: checks the files present, accurate disclosure that the executable crew_colony.py runtime and prior claimed suite are absent, arithmetic of the documented 84/15/1 MANNA allocation, and explicit limitations. It does not verify an executable multi-agent runtime or production conformance."
     },
     {
       "id": "clawhub",
@@ -227,8 +237,18 @@
         "alpha-intelligence-hub",
         "World-Tribe-Protocol"
       ],
-      "verification": [],
-      "integration_mode": "observe-only"
+      "verification": [
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "integration_mode": "observe-only",
+      "verification_source": "https://github.com/iAAi33iAAi/ALEXARAC/blob/457a3e0f70748f3250f447e488fe1dab1d65b827/.github/workflows/ci.yml",
+      "verification_scope": "Concept-document and bill-of-materials integrity only: checks current artifact presence, disclosure that no app/backend/runtime is shipped, concept-area presence, the no-fabricated-pricing statement, and procurement engineering/code-review caveats. It does not validate a deployed application, physical engineering, cost estimates, regulations, or real-world performance."
     }
   ]
 }

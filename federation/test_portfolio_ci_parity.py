@@ -215,6 +215,32 @@ def test_missing_checkout_fails_instead_of_silently_skipping(tmp_path: Path):
 
 
 
+def test_crew_colony_verifier_is_explicitly_scoped():
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads((root / "federation" / "system_manifest.json").read_text(encoding="utf-8"))
+    crew = next(row for row in manifest["repositories"] if row["id"] == "crew-colony")
+
+    assert crew["verification"] == ["python", "-m", "unittest", "discover", "-s", "tests", "-v"]
+    assert crew["verification_source"] == "https://github.com/iAAi33iAAi/crew-colony/blob/4e935ab6e8d4dd3ed0e79318cf130663ec36edcd/.github/workflows/ci.yml"
+    scope = crew["verification_scope"].lower()
+    assert "scaffold and documentation integrity only" in scope
+    assert "does not verify an executable multi-agent runtime" in scope
+    assert "production conformance" in scope
+
+
+def test_alexarac_verifier_is_explicitly_scoped():
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads((root / "federation" / "system_manifest.json").read_text(encoding="utf-8"))
+    alex = next(row for row in manifest["repositories"] if row["id"] == "ALEXARAC")
+
+    assert alex["verification"] == ["python", "-m", "unittest", "discover", "-s", "tests", "-v"]
+    assert alex["verification_source"] == "https://github.com/iAAi33iAAi/ALEXARAC/blob/457a3e0f70748f3250f447e488fe1dab1d65b827/.github/workflows/ci.yml"
+    scope = alex["verification_scope"].lower()
+    assert "concept-document and bill-of-materials integrity only" in scope
+    assert "does not validate a deployed application" in scope
+    assert "real-world performance" in scope
+
+
 def test_calcula_documentation_verifier_is_explicitly_scoped():
     root = Path(__file__).resolve().parents[1]
     manifest = json.loads((root / "federation" / "system_manifest.json").read_text(encoding="utf-8"))
