@@ -16,12 +16,12 @@ The loop runs after pushes to main and on weekdays from the default branch. Merg
 
 The workflow intentionally does nothing until its agent configuration exists. This avoids inventing a model endpoint or sending code to a provider that has not been approved.
 
-1. Create autonomy/agent_endpoints.json from autonomy/agent_endpoints.example.json. Use an endpoint you are authorized to call, and match agent_id, model, exact revision, protocol, protocol version and provenance to the repository's agent/model registries.
+1. Create autonomy/agent_endpoints.json from autonomy/agent_endpoints.example.json, but do not enable egress until a separate reviewed record exists in autonomy/provider_endpoint_registry.json. The allowlist is intentionally empty by default. Each record pins the endpoint ID, exact URL, agent ID, protocol/version, model ID/revision, and an approval reference. The configured JSON must match that record exactly; an unregistered URL is rejected before a source-context bundle is built.
 2. For at least one approved coding agent, explicitly set send_source_context to true. The context window has file-type, file-size, total-size and secret-name filters; the outbound egress policy blocks detected credential-like strings and rejects oversized contexts. This is still a deliberate source-code egress decision—review the provider and endpoint before enabling it.
 3. Add the API key as a GitHub Actions repository secret matching the configured api_key_env. The workflow currently passes CAIOS_CODEX_API_KEY, CAIOS_GEMINI_API_KEY, CAIOS_ANTHROPIC_API_KEY, and CAIOS_OPENAI_API_KEY to the proposal step. Never put credentials in the JSON configuration.
 4. Add CAIOS_AUTOBUILD_TOKEN as a fine-grained repository secret with only **Contents: read/write** and **Pull requests: read/write**. It is used only by the final push/PR step. A token is required because pull requests created using the default GITHUB_TOKEN do not ordinarily trigger other workflows; the token permits the normal CI checks to run on the generated pull request.
 
-The connected GitHub integration cannot set repository secrets or create autonomy/agent_endpoints.json without the endpoint, identity, and credential choices above. Until they are supplied, the scheduled workflow reports NOT_CONFIGURED and makes no repository changes.
+The connected GitHub integration cannot set repository secrets or add a reviewed endpoint entry without the endpoint, identity, terms, and credential choices above. The repository endpoint allowlist is empty in the current implementation, so no external provider can receive source context until that entry is reviewed and merged. Until configuration and secrets are supplied, the scheduled workflow reports NOT_CONFIGURED and makes no repository changes.
 
 ## Admission policy
 
