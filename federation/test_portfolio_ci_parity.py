@@ -170,7 +170,7 @@ def test_manifest_rejects_mutable_verification_source(tmp_path: Path):
             "id": "root",
             "path": ".",
             "verification": ["python", "-c", "raise SystemExit(0)"],
-            "verification_source": "https://github.com/example/project/blob/main/tests/test_suite.py",
+            "verification_source": "https://github.com/example/root/blob/main/tests/test_suite.py",
         },
     ])
 
