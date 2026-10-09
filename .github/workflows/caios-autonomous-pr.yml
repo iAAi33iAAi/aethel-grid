@@ -127,13 +127,12 @@ jobs:
           name: caios-patch-proposal
           path: /tmp/caios-proposal
 
-      - name: Install Bubblewrap and seccomp library
+      - name: Build trusted network-none validation image
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes bubblewrap libseccomp2
-          bwrap --die-with-parent --unshare-pid --unshare-ipc --unshare-uts --ro-bind / / /usr/bin/true
+          docker info
+          docker build --pull --tag caios-validation-sandbox:ci autonomy/sandbox
 
-      - name: Revalidate and test patch in disposable worktree with seccomp-denied network socket operations
+      - name: Revalidate and test patch inside network-none container
         id: validate
         shell: bash
         run: |
@@ -154,8 +153,8 @@ jobs:
           {
             echo "## CAIOS isolated validation"
             echo "- Status: $status"
-            echo "- Candidate code ran in a disposable standalone clone with network socket syscalls denied by seccomp."
-            echo "- The runner home and temporary credential paths were hidden; Rust toolchain executables and files were mounted read-only." 
+            echo "- Candidate code ran inside Docker with --network=none, a read-only root, dropped capabilities, and only its disposable clone writable."
+            echo "- The runner home, host temporary paths, and runner sockets were not mounted into the container." 
             echo "- No model API keys or repository write token were supplied to the candidate test process."
             echo "- Fixed Python, Rust, TypeScript, and SPEC-004 candidate checks were requested."
           } >> "$GITHUB_STEP_SUMMARY"
