@@ -241,6 +241,13 @@ class SafeCommandRunner:
         return proc.returncode, proc.stdout, proc.stderr
 
 
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Prevent an approved endpoint from redirecting source context elsewhere."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 class OpenAICompatibleProposalProvider:
     """
     Optional model adapter.
@@ -267,6 +274,7 @@ class OpenAICompatibleProposalProvider:
         self.endpoint = endpoint
         self.model = model
         self.api_key = api_key
+        self.opener = urllib.request.build_opener(_NoRedirectHandler())
         self.send_source_context = bool(send_source_context)
         self.egress_policy = EgressPolicy(
             allow_source_context=self.send_source_context,
@@ -317,7 +325,7 @@ class OpenAICompatibleProposalProvider:
             },
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=45) as response:
+        with self.opener.open(req, timeout=45) as response:
             data = json.loads(response.read().decode("utf-8"))
         if "proposals" in data:
             return list(data["proposals"])
