@@ -264,7 +264,7 @@ def endpoint_profile(
         protocols=frozenset(protocols),
         capabilities=frozenset(capabilities),
         provenance_confidence=provenance_confidence,
-        protocol_versions=protocol_versions or {"mcp": "2026-07-28"},
+        protocol_versions=protocol_versions if protocol_versions is not None else {"mcp": "2026-07-28"},
     )
 
 
