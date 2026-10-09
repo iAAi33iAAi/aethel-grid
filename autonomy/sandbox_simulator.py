@@ -3,8 +3,8 @@
 CAIOS disposable worktree simulator.
 
 A proposed patch is tested against a disposable standalone Git clone before the
-real working tree is mutated. Untrusted candidate validation can require a
-Bubblewrap namespace with no network. The simulator accepts only a trusted
+real working tree is mutated. Untrusted candidate validation can require Bubblewrap filesystem isolation and
+seccomp-denied network socket operations. The simulator accepts only a trusted
 validation command; it never executes a model-supplied shell string.
 
 License: Apache-2.0
@@ -89,7 +89,7 @@ def _export_egress_block_filter(fd: int) -> None:
             "sendto", "recvfrom", "sendmsg", "recvmsg", "shutdown",
         }
         blocked_syscalls = (
-            "connect", "bind", "listen", "accept", "accept4",
+            "connect", "bind", "listen", "accept", "accept4", "socketcall",
             "sendto", "recvfrom", "sendmsg", "recvmsg", "sendmmsg",
             "recvmmsg", "shutdown", "io_uring_setup", "io_uring_enter",
             "io_uring_register", "bpf", "ptrace",
