@@ -13,7 +13,7 @@ The contract is a constraint on a model's proposal space. It does not grant the 
 ## Contents
 
 - SPEC-005.schema.json — JSON Schema Draft 2020-12 for the signed envelope and Knowledge Contract fields.
-- validate_spec_005.py — standard-library structural conformance validator.
+- validate_spec_005.py — structural validator that cross-checks defensive invariants against the actual Draft 2020-12 JSON Schema using the `jsonschema` package.
 - vectors/KC-001.json through KC-008.json — candidate shape and negative-case vectors.
 
 ## Validate
@@ -22,7 +22,7 @@ From the repository root:
 
     python3 specs/spec-005/validate_spec_005.py
 
-A zero exit code means the candidate vectors agree with this repository's structural validator. It does not mean cryptographic signatures were verified or SPEC-005 was canonically ratified. The validator must print:
+A zero exit code means the candidate vectors agree with both the declared JSON Schema and the additional defensive validator, with no detected validator drift. It does not mean cryptographic signatures were verified or SPEC-005 was canonically ratified. The validator must print:
 
     canonical_promotion=BLOCKED_PENDING_EXTERNAL_RATIFICATION
 
