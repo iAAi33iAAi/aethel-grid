@@ -389,6 +389,7 @@ class ConstitutionalGate:
         "autonomy/test_patch_proposal.py",
         "autonomy/validate_patch_proposal.py",
         "autonomy/test_validate_patch_proposal.py",
+        "autonomy/test_multi_agent_provider.py",
         "autonomy/agent_endpoints.json",
         "autonomy/provider_endpoint_registry.json",
         "integrations/tool_compiler.py",
