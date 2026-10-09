@@ -17,12 +17,11 @@ def test_provider_strips_source_context_by_default(monkeypatch):
         captured["request"] = request
         return Response()
 
-    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
-
     provider = OpenAICompatibleProposalProvider(
         "https://example.com/v1/chat/completions",
         "test-model",
     )
+    monkeypatch.setattr(provider.opener, "open", fake_urlopen)
     provider.propose({
         "snapshot": {"head": "abc"},
         "gaps": {"verification": 1.0},
@@ -50,13 +49,12 @@ def test_provider_can_send_opted_in_context(monkeypatch):
         captured["request"] = request
         return Response()
 
-    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
-
     provider = OpenAICompatibleProposalProvider(
         "https://example.com/v1/chat/completions",
         "test-model",
         send_source_context=True,
     )
+    monkeypatch.setattr(provider.opener, "open", fake_urlopen)
     provider.propose({
         "snapshot": {"head": "abc"},
         "gaps": {"verification": 1.0},

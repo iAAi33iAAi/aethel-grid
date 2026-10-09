@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 from autonomy.caios_runtime import CandidateAction, ConstitutionalGate, RedTeamObserver, ViabilityPlanner
+from autonomy.red_team import probes as red_team_probes
 
 
 def _seed_authority(tmp_path: Path) -> None:
@@ -155,7 +156,8 @@ def test_red_team_observer_executes_campaign_inside_runtime():
     evidence = RedTeamObserver().observe(repo_root)
     assert evidence.kind == "red-team"
     assert evidence.status == "PASS", evidence.details
-    assert evidence.details["probe_count"] == 43
+    assert evidence.details["probe_count"] == len(red_team_probes())
+    assert evidence.details["probe_count"] >= 47
 
 
 def test_missing_authority_lattice_fails_closed(tmp_path: Path):
