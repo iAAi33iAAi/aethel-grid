@@ -129,8 +129,12 @@ jobs:
 
       - name: Build trusted network-none validation image
         run: |
+          set -euo pipefail
           docker info
-          docker build --pull --tag caios-validation-sandbox:ci autonomy/sandbox
+          mkdir -p autonomy/sandbox/toolchain
+          cp "$(command -v node)" autonomy/sandbox/toolchain/node
+          chmod 0755 autonomy/sandbox/toolchain/node
+          docker build --tag caios-validation-sandbox:ci autonomy/sandbox
 
       - name: Revalidate and test patch inside network-none container
         id: validate
