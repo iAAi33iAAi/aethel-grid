@@ -155,7 +155,7 @@ def test_red_team_observer_executes_campaign_inside_runtime():
     evidence = RedTeamObserver().observe(repo_root)
     assert evidence.kind == "red-team"
     assert evidence.status == "PASS", evidence.details
-    assert evidence.details["probe_count"] == 11
+    assert evidence.details["probe_count"] == 34
 
 
 def test_missing_authority_lattice_fails_closed(tmp_path: Path):
