@@ -131,9 +131,7 @@ def _validate_manifest(raw: Any) -> list[dict[str, Any]]:
                     "pinned to a 40-character commit SHA and matching the manifest repository id"
                 )
         verification_scope = row.get("verification_scope")
-        if verification_scope is not None and (
-            not isinstance(verification_scope, str) or not verification_scope.strip()
-        ):
+        if not isinstance(verification_scope, str) or not verification_scope.strip():
             raise ValueError(f"repository {repo_id} verification_scope must be a non-empty string")
         clean.append({
             "id": repo_id,

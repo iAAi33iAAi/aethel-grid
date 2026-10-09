@@ -15,7 +15,8 @@
         "-q",
         "interop"
       ],
-      "integration_mode": "local-root"
+      "integration_mode": "local-root",
+      "verification_scope": "The declared python -m pytest -q interop command checks the Python interoperability test suite only. It does not ratify canonical SPEC-004/CPOL behavior, verify all source modules, or establish production deployment."
     },
     {
       "id": "safety-kernel",
@@ -29,7 +30,8 @@
         "python",
         "test_sk.py"
       ],
-      "integration_mode": "observe-only"
+      "integration_mode": "observe-only",
+      "verification_scope": "The python test_sk.py command runs the Safety Kernel CLI, proof-generation, proof-integrity, and tamper-detection checks. It is not formal verification of the host operating system, hardware isolation, or production certification."
     },
     {
       "id": "project-mono",
@@ -47,7 +49,8 @@
         "-q",
         "tests"
       ],
-      "integration_mode": "observe-only"
+      "integration_mode": "observe-only",
+      "verification_scope": "The pytest tests suite checks this repository's declared application tests at the recorded commit. It does not establish live-service availability, successful municipal deployments, or production conformance."
     },
     {
       "id": "openclaw-governance",
@@ -69,7 +72,8 @@
         "-v"
       ],
       "integration_mode": "observe-only",
-      "verification_source": "https://github.com/iAAi33iAAi/openclaw-governance/blob/9e7ea50365c936b189e804a5d31e3bfbd5ed776e/.github/workflows/ci.yml"
+      "verification_source": "https://github.com/iAAi33iAAi/openclaw-governance/blob/9e7ea50365c936b189e804a5d31e3bfbd5ed776e/.github/workflows/ci.yml",
+      "verification_scope": "Five unit tests exercise the sovereignty-flow gate predicates, including human control/ownership, quality conditions, extraction/power-concentration blocking, and singleton compatibility. They do not validate the complete orchestration platform or production deployment."
     },
     {
       "id": "openclaw-colony",
@@ -109,7 +113,8 @@
         "interop"
       ],
       "integration_mode": "observe-only",
-      "verification_source": "https://github.com/iAAi33iAAi/undermoon/blob/3b244212b452e90fbdac3cdfe93a527201570252/.github/workflows/interop.yml"
+      "verification_source": "https://github.com/iAAi33iAAi/undermoon/blob/3b244212b452e90fbdac3cdfe93a527201570252/.github/workflows/interop.yml",
+      "verification_scope": "The verifier runs the repository's CI-declared interop suite only. Passing it does not establish full-system behavior, every external integration, or production deployment."
     },
     {
       "id": "alpha-intelligence-hub",
@@ -148,7 +153,8 @@
         "scripts/test_worldtribe.py"
       ],
       "integration_mode": "observe-only",
-      "verification_source": "https://github.com/iAAi33iAAi/World-Tribe-Protocol/blob/2ff0032a68884af466320efb71570bd9f9b505d7/scripts/test_worldtribe.py"
+      "verification_source": "https://github.com/iAAi33iAAi/World-Tribe-Protocol/blob/2ff0032a68884af466320efb71570bd9f9b505d7/scripts/test_worldtribe.py",
+      "verification_scope": "The verifier runs scripts/test_worldtribe.py contract/sidecar checks. It does not establish a live blockchain deployment, production key management, transaction finality, or external identity trust."
     },
     {
       "id": "sports-math-agent-orchestration",
@@ -167,7 +173,8 @@
         "tests"
       ],
       "integration_mode": "observe-only",
-      "verification_source": "https://github.com/iAAi33iAAi/sports-math-agent-orchestration/blob/6ae0efaedf42f2ce17060fb8f1fb65dc81e819fe/.github/workflows/ci.yml"
+      "verification_source": "https://github.com/iAAi33iAAi/sports-math-agent-orchestration/blob/6ae0efaedf42f2ce17060fb8f1fb65dc81e819fe/.github/workflows/ci.yml",
+      "verification_scope": "The verifier runs the repository's tests suite at the recorded commit. It does not guarantee live-data freshness, deployment behavior, or production decision safety."
     },
     {
       "id": "calcula-colony",
@@ -225,7 +232,8 @@
         "ci:unit"
       ],
       "integration_mode": "observe-only",
-      "verification_source": "https://github.com/iAAi33iAAi/clawhub/blob/5b63d5df6071a91cfd3e5e184bc44e212e977cc9/.github/workflows/ci.yml"
+      "verification_source": "https://github.com/iAAi33iAAi/clawhub/blob/5b63d5df6071a91cfd3e5e184bc44e212e977cc9/.github/workflows/ci.yml",
+      "verification_scope": "The verifier runs ClawHub's ci:unit unit/coverage command with its locked workspace dependencies. It does not prove every third-party skill is secure, establish publishing integrity, or test every runtime integration."
     },
     {
       "id": "ALEXARAC",

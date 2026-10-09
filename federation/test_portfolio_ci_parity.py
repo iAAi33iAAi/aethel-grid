@@ -23,8 +23,16 @@ def _git_repo(path: Path) -> None:
 def _manifest(path: Path, rows: list[dict]) -> Path:
     manifest = path / "federation" / "system_manifest.json"
     manifest.parent.mkdir(parents=True, exist_ok=True)
+    normalized_rows = []
+    for row in rows:
+        normalized = dict(row)
+        normalized.setdefault(
+            "verification_scope",
+            "Test fixture scope only: exercises portfolio-auditor behavior, not repository conformance.",
+        )
+        normalized_rows.append(normalized)
     manifest.write_text(
-        json.dumps({"schema": "caios-federation/v1", "repositories": rows}),
+        json.dumps({"schema": "caios-federation/v1", "repositories": normalized_rows}),
         encoding="utf-8",
     )
     return manifest
@@ -47,6 +55,20 @@ def test_verification_scope_is_retained_in_evidence(tmp_path: Path):
 
     assert report["overall_status"] == "PASS"
     assert report["repositories"][0]["verification_scope"] == scope
+
+
+def test_manifest_rejects_missing_verification_scope():
+    with pytest.raises(ValueError, match="verification_scope must be a non-empty string"):
+        _validate_manifest({
+            "schema": "caios-federation/v1",
+            "repositories": [
+                {
+                    "id": "scope-missing",
+                    "path": "scope-missing",
+                    "verification": ["python", "-c", "pass"],
+                }
+            ],
+        })
 
 
 def test_manifest_rejects_empty_verification_scope():
@@ -73,6 +95,7 @@ def test_bun_is_allowlisted_for_toolchain_specific_verifiers():
                 "path": "clawhub",
                 "verification": ["bun", "run", "ci:unit"],
                 "verification_source": "https://github.com/iAAi33iAAi/clawhub/blob/5b63d5df6071a91cfd3e5e184bc44e212e977cc9/.github/workflows/ci.yml",
+                "verification_scope": "ClawHub unit suite test fixture scope.",
             }
         ],
     })
@@ -191,6 +214,15 @@ def test_manifest_rejects_non_github_verification_source():
                 }
             ],
         })
+
+
+def test_every_manifest_repository_declares_explicit_verification_scope():
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads((root / "federation" / "system_manifest.json").read_text(encoding="utf-8"))
+    rows = _validate_manifest(manifest)
+
+    assert len(rows) == 13
+    assert all(isinstance(row["verification_scope"], str) and row["verification_scope"].strip() for row in rows)
 
 
 def test_every_declared_manifest_source_is_immutable():
