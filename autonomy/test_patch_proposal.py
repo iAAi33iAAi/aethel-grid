@@ -176,13 +176,14 @@ def test_select_candidate_rejects_invalid_metrics(tmp_path: Path, monkeypatch):
 
 
 
-def write_agent_config(root: Path, *, send_source_context=False, api_key_env=None) -> Path:
+def write_agent_config(root: Path, *, send_source_context=False, api_key_env=None, protocol="openai-compatible", protocol_version="1.0.0") -> Path:
     config_path = root / "autonomy" / "agent_endpoints.json"
     row = {
         "agent_id": "test-agent",
         "endpoint": "https://example.invalid/v1/chat/completions",
         "model": "test-model",
-        "protocol": "openai-compatible",
+        "protocol": protocol,
+        "protocol_version": protocol_version,
         "agent_version": "1.0.0",
         "source_ref": "git:0123456789abcdef",
         "send_source_context": send_source_context,
@@ -302,7 +303,10 @@ def test_provider_preflight_rejects_protocol_missing_from_protocol_registry(tmp_
 def test_provider_preflight_rejects_unregistered_model_before_returning_provider(tmp_path: Path, monkeypatch):
     seed_repo(tmp_path)
     config_path = write_agent_config(tmp_path, send_source_context=True)
-    profile = endpoint_profile()
+    profile = endpoint_profile(
+        protocols=("openai-compatible",),
+        protocol_versions={"openai-compatible": "1.0.0"},
+    )
     setup_preflight_registries(monkeypatch, agents={"test-agent": profile}, model_ok=False)
 
     with pytest.raises(ValueError, match="model-not-admitted:test-model:model-id-not-registered"):
@@ -312,7 +316,11 @@ def test_provider_preflight_rejects_unregistered_model_before_returning_provider
 def test_provider_preflight_rejects_agent_without_patch_capability(tmp_path: Path, monkeypatch):
     seed_repo(tmp_path)
     config_path = write_agent_config(tmp_path, send_source_context=True)
-    profile = endpoint_profile(capabilities=("reasoning", "planning"))
+    profile = endpoint_profile(
+        protocols=("openai-compatible",),
+        capabilities=("reasoning", "planning"),
+        protocol_versions={"openai-compatible": "1.0.0"},
+    )
     setup_preflight_registries(monkeypatch, agents={"test-agent": profile})
 
     with pytest.raises(ValueError, match="agent-lacks-coding-or-patching-capability:test-agent"):
