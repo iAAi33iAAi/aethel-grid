@@ -29,6 +29,40 @@ def _manifest(path: Path, rows: list[dict]) -> Path:
     return manifest
 
 
+def test_verification_scope_is_retained_in_evidence(tmp_path: Path):
+    _git_repo(tmp_path)
+    scope = "Interop adapter contract only; not full repository conformance."
+    manifest = _manifest(tmp_path, [
+        {
+            "id": "root",
+            "path": ".",
+            "verification": ["python", "-c", "raise SystemExit(0)"],
+            "verification_source": "https://example.invalid/project/blob/main/tests/test_suite.py",
+            "verification_scope": scope,
+        },
+    ])
+
+    report = audit_portfolio(root=tmp_path, manifest_path=manifest)
+
+    assert report["overall_status"] == "PASS"
+    assert report["repositories"][0]["verification_scope"] == scope
+
+
+def test_manifest_rejects_empty_verification_scope():
+    with pytest.raises(ValueError, match="verification_scope must be a non-empty string"):
+        _validate_manifest({
+            "schema": "caios-federation/v1",
+            "repositories": [
+                {
+                    "id": "bad",
+                    "path": "bad",
+                    "verification": ["python", "-c", "pass"],
+                    "verification_scope": "  ",
+                }
+            ],
+        })
+
+
 def test_bun_is_allowlisted_for_toolchain_specific_verifiers():
     rows = _validate_manifest({
         "schema": "caios-federation/v1",
