@@ -382,6 +382,7 @@ class ConstitutionalGate:
         "autonomy/validate_patch_proposal.py",
         "autonomy/test_validate_patch_proposal.py",
         "autonomy/agent_endpoints.json",
+        "autonomy/provider_endpoint_registry.json",
         "integrations/tool_compiler.py",
         "integrations/tool_registry.py",
         "integrations/caios_tool_registry.json",
