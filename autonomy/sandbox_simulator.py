@@ -2,9 +2,10 @@
 """
 CAIOS disposable worktree simulator.
 
-A proposed patch is tested against a detached git worktree before the real
-working tree is mutated. The simulator accepts only a trusted validation
-command; it never executes a model-supplied shell string.
+A proposed patch is tested against a disposable standalone Git clone before the
+real working tree is mutated. Untrusted candidate validation can require a
+Bubblewrap namespace with no network. The simulator accepts only a trusted
+validation command; it never executes a model-supplied shell string.
 
 License: Apache-2.0
 Copyright (c) 2026 iAAi33iAAi
@@ -130,7 +131,12 @@ class DisposableWorktree:
                 command_list.extend(["--tmpfs", "/run", "--bind", str(worktree), str(worktree)])
                 command_list.extend(["--chdir", str(worktree)])
                 for key, value in sandbox_env.items():
-                    command_list.extend(["--setenv", key, value])
+                    sandbox_value = value
+                    if key == "HOME":
+                        sandbox_value = f"/tmp/{sandbox_home.name}"
+                    elif key == "TMPDIR":
+                        sandbox_value = "/tmp"
+                    command_list.extend(["--setenv", key, sandbox_value])
                 command_list.extend(args)
                 command = tuple(command_list)
             proc = subprocess.run(
