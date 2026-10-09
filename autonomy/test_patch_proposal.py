@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 import autonomy.patch_proposal as patch_proposal
 from autonomy.agent_attestation import ProposalAttestation
 
@@ -171,3 +173,50 @@ def test_select_candidate_rejects_invalid_metrics(tmp_path: Path, monkeypatch):
 
     assert result["status"] == "NO_CANDIDATE"
     assert any("invalid-metric" in reason for row in result["rejected"] for reason in row["reasons"])
+
+
+
+def write_agent_config(root: Path, *, send_source_context=False, api_key_env=None) -> Path:
+    config_path = root / "autonomy" / "agent_endpoints.json"
+    row = {
+        "agent_id": "test-agent",
+        "endpoint": "https://example.invalid/v1/chat/completions",
+        "model": "test-model",
+        "protocol": "openai-compatible",
+        "agent_version": "1.0.0",
+        "source_ref": "git:0123456789abcdef",
+        "send_source_context": send_source_context,
+    }
+    if api_key_env is not None:
+        row["api_key_env"] = api_key_env
+    config_path.write_text(json.dumps({"agents": [row]}), encoding="utf-8")
+    return config_path
+
+
+def test_agent_config_rejects_string_egress_flag(tmp_path: Path):
+    seed_repo(tmp_path)
+    config_path = write_agent_config(tmp_path, send_source_context="false")
+
+    with pytest.raises(ValueError, match="send_source_context must be a JSON boolean"):
+        patch_proposal.load_provider(tmp_path, config_path)
+
+
+def test_agent_config_rejects_unscoped_api_key_environment_name(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    monkeypatch.setenv("PATH", "/usr/bin")
+    config_path = write_agent_config(
+        tmp_path,
+        send_source_context=True,
+        api_key_env="PATH",
+    )
+
+    with pytest.raises(ValueError, match="approved CAIOS_\\*_API_KEY"):
+        patch_proposal.load_provider(tmp_path, config_path)
+
+
+def test_agent_config_requires_explicit_source_context_opt_in(tmp_path: Path):
+    seed_repo(tmp_path)
+    config_path = write_agent_config(tmp_path, send_source_context=False)
+
+    with pytest.raises(ValueError, match="explicitly enable send_source_context"):
+        patch_proposal.load_provider(tmp_path, config_path)
