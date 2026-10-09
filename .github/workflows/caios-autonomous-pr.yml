@@ -1,7 +1,8 @@
 name: CAIOS Bounded Autonomous Patch Loop
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
   schedule:
     - cron: "13 8 * * 1-5"
 
