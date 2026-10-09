@@ -292,30 +292,53 @@ class ConstitutionalGate:
         "human_review",
     }
 
+    MANDATORY_PROTECTED_GLOBS = (
+        ".github/workflows/**",
+        "conformance/**",
+        "autonomy/caios_runtime.py",
+        "autonomy/verify_certificates.py",
+        "autonomy/proof_work_contract.py",
+        "autonomy/proof_work_verifier.py",
+        "autonomy/authority_lattice.py",
+        "autonomy/agent_attestation.py",
+        "autonomy/model_admission.py",
+        "autonomy/protocol_admission.py",
+        "autonomy/protocol_registry.json",
+        "autonomy/agent_registry.json",
+        "autonomy/model_registry.json",
+        "integrations/tool_compiler.py",
+        "integrations/tool_registry.py",
+        "federation/security_primitives.py",
+        "federation/node_identity.py",
+        "federation/signed_envelope.py",
+    )
+
     def __init__(self, repo_root: Path, max_patch_lines: int = 250) -> None:
         self.repo_root = repo_root.resolve()
         self.max_patch_lines = max_patch_lines
         self.authority = AuthorityLattice(self.repo_root)
         policy_path = self.repo_root / "autonomy" / "protected_surfaces.json"
+        self.protected_policy_valid = False
+        configured_globs: tuple[str, ...] = ()
         try:
             policy = json.loads(policy_path.read_text(encoding="utf-8"))
-            self.protected_globs = tuple(str(item) for item in policy.get("protected_globs", []))
-        except (OSError, json.JSONDecodeError, TypeError):
-            self.protected_globs = (
-                ".github/workflows/**",
-                "conformance/**",
-                "autonomy/caios_runtime.py",
-                "autonomy/verify_certificates.py",
-                "autonomy/proof_work_contract.py",
-                "autonomy/proof_work_verifier.py",
-                "autonomy/agent_attestation.py",
-                "autonomy/model_admission.py",
-                "autonomy/protocol_admission.py",
-                "integrations/tool_compiler.py",
-                "integrations/tool_registry.py",
-                "federation/security_primitives.py",
-                "federation/node_identity.py",
-            )
+            globs = policy.get("protected_globs") if isinstance(policy, dict) else None
+            if (
+                not isinstance(globs, list)
+                or not globs
+                or any(not isinstance(item, str) or not item.strip() for item in globs)
+            ):
+                raise ValueError("protected_globs must be a non-empty list of non-empty strings")
+            configured_globs = tuple(globs)
+            self.protected_policy_valid = True
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError):
+            # Preserve baseline protections for inspection, but refuse all
+            # autonomous patches until the configuration can be trusted.
+            self.protected_policy_valid = False
+
+        self.protected_globs = tuple(dict.fromkeys(
+            (*self.MANDATORY_PROTECTED_GLOBS, *configured_globs)
+        ))
 
     def validate(self, action: CandidateAction) -> tuple[bool, list[str]]:
         reasons: list[str] = []
@@ -357,6 +380,10 @@ class ConstitutionalGate:
             )
 
         if action.kind == "apply_patch":
+            if not self.protected_policy_valid:
+                reasons.append(
+                    "protected-surface-policy-unavailable; autonomous patches are denied"
+                )
             if not action.unified_diff:
                 reasons.append("patch action has no unified diff")
             changed_lines = sum(
