@@ -1,4 +1,7 @@
 from pathlib import Path
+import hashlib
+import json
+from types import SimpleNamespace
 
 from autonomy.agent_attestation import validate_proposal
 
@@ -45,10 +48,32 @@ def test_registered_proposal_gets_attestation(tmp_path: Path):
               "authority":"proposal",
               "license":"MIT",
               "sandbox":true,
-              "provenance_confidence":1.0
+              "provenance_confidence":1.0,
+              "software_version":"2026.10",
+              "source_ref":"git:abc"
             }
           ]
         }""",
+        encoding="utf-8",
+    )
+    (tmp_path / "autonomy/protocol_registry.json").write_text(
+        json.dumps({
+            "policy": {
+                "unknown_protocol": "REJECT",
+                "draft_protocol_requires_opt_in": True,
+                "major_version_mismatch": "REJECT",
+                "capabilities_are_advisory": True,
+            },
+            "protocols": [{
+                "id": "acp",
+                "latest_known_revision": "1",
+                "status": "stable",
+                "transport_role": "agent-client",
+                "license": "Apache-2.0",
+                "source_url": "https://github.com/agentclientprotocol/agent-client-protocol",
+                "draft": False,
+            }],
+        }),
         encoding="utf-8",
     )
     (tmp_path / "autonomy/model_registry.json").write_text(
@@ -91,3 +116,51 @@ def test_registered_proposal_gets_attestation(tmp_path: Path):
     assert attestation is not None
     assert attestation.agent_id == "coder"
     assert attestation.attestation_digest
+
+
+
+def test_agent_source_binding_rejects_version_and_source_mismatch(tmp_path: Path):
+    from autonomy.agent_attestation import validate_agent_source_binding
+
+    profile = SimpleNamespace(
+        software_version="1.2.3",
+        source_ref="git:trusted-source",
+        agent_kind="external-agent",
+        source_path="",
+        source_sha256="",
+        external_tool_execution=None,
+    )
+
+    assert "agent-version-mismatch" in validate_agent_source_binding(
+        tmp_path, profile, agent_version="9.9.9", source_ref="git:trusted-source"
+    )
+    assert "agent-source-ref-mismatch" in validate_agent_source_binding(
+        tmp_path, profile, agent_version="1.2.3", source_ref="git:untrusted-source"
+    )
+
+
+def test_agent_source_binding_checks_pinned_local_adapter_digest(tmp_path: Path):
+    from autonomy.agent_attestation import validate_agent_source_binding
+
+    autonomy = tmp_path / "autonomy"
+    autonomy.mkdir()
+    source = autonomy / "adapter.py"
+    source.write_text("approved adapter\n", encoding="utf-8")
+    expected = hashlib.sha256(source.read_bytes()).hexdigest()
+    profile = SimpleNamespace(
+        software_version="1.0.0",
+        source_ref="git:adapter-source",
+        agent_kind="model-proposal-adapter",
+        source_path="autonomy/adapter.py",
+        source_sha256=expected,
+        external_tool_execution=False,
+    )
+
+    assert validate_agent_source_binding(
+        tmp_path, profile, agent_version="1.0.0", source_ref="git:adapter-source"
+    ) == []
+
+    source.write_text("tampered adapter\n", encoding="utf-8")
+    assert "agent-local-source-digest-mismatch" in validate_agent_source_binding(
+        tmp_path, profile, agent_version="1.0.0", source_ref="git:adapter-source"
+    )
