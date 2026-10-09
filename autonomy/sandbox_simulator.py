@@ -11,6 +11,7 @@ Copyright (c) 2026 iAAi33iAAi
 """
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import tempfile
@@ -49,11 +50,36 @@ class DisposableWorktree:
         validation_command: tuple[str, ...],
     ) -> SimulationResult:
         worktree = Path(tempfile.mkdtemp(prefix="caios-sim-"))
+        sandbox_home = worktree / ".caios-home"
+        sandbox_tmp = worktree / ".caios-tmp"
+        sandbox_home.mkdir()
+        sandbox_tmp.mkdir()
+
+        # Candidate/test code must not inherit ambient secrets, provider keys,
+        # GitHub tokens, cloud credentials, proxies, or custom Python paths.
+        # Preserve only tool lookup and the pinned Rust toolchain locations.
+        sandbox_env = {
+            "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+            "HOME": str(sandbox_home),
+            "TMPDIR": str(sandbox_tmp),
+            "LANG": "C.UTF-8",
+            "LC_ALL": "C.UTF-8",
+            "CI": "true",
+            "PYTHONUNBUFFERED": "1",
+            "PYTHONNOUSERSITE": "1",
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_GLOBAL": "/dev/null",
+        }
+        for toolchain_var in ("CARGO_HOME", "RUSTUP_HOME"):
+            if os.environ.get(toolchain_var):
+                sandbox_env[toolchain_var] = os.environ[toolchain_var]
 
         def exec_cmd(args: tuple[str, ...]) -> tuple[int, str, str]:
             proc = subprocess.run(
                 args,
                 cwd=worktree,
+                env=sandbox_env,
                 capture_output=True,
                 text=True,
                 timeout=self.timeout_seconds,
