@@ -64,4 +64,17 @@ Portfolio status is conservative:
 - PARTIAL: configured verifiers passed, but at least one repository has no verifier. PARTIAL is not portfolio-wide conformance.
 - FAILED: a checkout, revision, manifest, command, or verification failed.
 
-The latest passing audit on commit `536067422787de62351227f1b50e55d33c09e05e` configured six of the thirteen manifest entries with explicit verification commands; seven are reported `NOT_CONFIGURED`, and none of the configured verifiers failed. The report records each repository's exact checked-out commit, command, and (where supplied) HTTPS verifier source. See [the audit run](https://github.com/iAAi33iAAi/aethel-grid/actions/runs/37999299149). The portfolio result remains `PARTIAL`, and Gate 5 remains `PARTIALLY_CLOSED` until every active repository has an appropriate verifier and passing evidence. Documentation-only or incomplete repositories must not be counted as proof of executable system conformance.
+The latest successful main-branch audit on commit `241887de807dd5d94df87936ac357a35a7ff6d78` configured nine of thirteen manifest entries with explicit verification commands; four are reported `NOT_CONFIGURED`, and none of the configured verifiers failed. The report records each repository's checked-out commit, command, and source where declared. See [the main-branch audit run](https://github.com/iAAi33iAAi/aethel-grid/actions/runs/38000629663). The overall result remains `PARTIAL`, and Gate 5 remains `PARTIALLY_CLOSED`.
+
+One verifier is deliberately scoped: OpenClaw Colony's `tests/test_caios_interop.py` returned 2 passed and checks only its CAIOS adapter fallback and AETHEL Interop v1 response contract. It does not represent the full Colony test suite, native Rust kernel, or production conformance.
+
+### Remaining unconfigured repositories
+
+| Repository | Verified blocker | Evidence needed before adding a passing verifier |
+|---|---|---|
+| `alpha-intelligence-hub` | The README describes a migration scaffold whose Compose file points to source directories not present in the current tree. Its current CI workflow refers to missing test/source paths. | Restore the assembled tree or provide actual root-level implementations, then make CI run a real build/test command. |
+| `calcula-colony` | The README describes a research/design package with essays, whitepaper, roadmap, attribution, and licenses; no executable engine or tests are present. | Implement the engine and schemas with reproducible tests, or formally classify this entry as a non-executable design artifact. |
+| `crew-colony` | The README says the current tree has only package initializers, README, and license; the claimed runtime and suite are absent. | Add the actual runtime and regression tests before configuring a verifier. Empty test discovery is not acceptable evidence. |
+| `ALEXARAC` | The README explicitly calls this a concept/interface specification and says no application, backend source tree, or web runtime is shipped. | Supply the application/backend implementation and tests, or classify it as a design-only dependency rather than executable software. |
+
+These four repositories remain `NOT_CONFIGURED`; their design documentation is not counted as a software test pass. Gate 5 cannot be declared closed until every active dependency has an appropriate, passing verifier and the evidence scope is stated clearly.
