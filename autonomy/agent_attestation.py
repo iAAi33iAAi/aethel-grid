@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -58,6 +60,31 @@ class ProposalAttestation:
         return digest(self.as_dict())
 
 
+def _has_immutable_source_reference(source_ref: str) -> bool:
+    if re.fullmatch(r"git:[0-9a-f]{40}(?:[0-9a-f]{24})?", source_ref):
+        return True
+    try:
+        parsed = urllib.parse.urlsplit(source_ref)
+    except ValueError:
+        return False
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+    ):
+        return False
+    segments = [part for part in parsed.path.split("/") if part]
+    for index, segment in enumerate(segments[:-1]):
+        if segment in {"blob", "tree", "commit", "commits"} and re.fullmatch(
+            r"[0-9a-f]{40}(?:[0-9a-f]{24})?", segments[index + 1]
+        ):
+            return True
+    return False
+
+
 def validate_agent_source_binding(
     repo_root: Path,
     profile: Any,
@@ -77,8 +104,12 @@ def validate_agent_source_binding(
 
     if not expected_source_ref:
         reasons.append("agent-source-ref-not-pinned-by-registry")
+    elif not _has_immutable_source_reference(expected_source_ref):
+        reasons.append("agent-source-ref-not-immutable")
     elif source_ref != expected_source_ref:
         reasons.append("agent-source-ref-mismatch")
+    elif not _has_immutable_source_reference(source_ref):
+        reasons.append("proposal-source-ref-not-immutable")
 
     source_path = str(getattr(profile, "source_path", "") or "")
     expected_digest = str(getattr(profile, "source_sha256", "") or "")
