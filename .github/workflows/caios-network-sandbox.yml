@@ -43,13 +43,25 @@ jobs:
         with:
           python-version: "3.11"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - uses: dtolnay/rust-toolchain@stable
+
       - name: Verify Docker daemon and build sandbox image
         run: |
+          set -euo pipefail
           docker info
-          docker build --pull --tag caios-validation-sandbox:ci autonomy/sandbox
+          mkdir -p autonomy/sandbox/toolchain
+          cp "$(command -v node)" autonomy/sandbox/toolchain/node
+          chmod 0755 autonomy/sandbox/toolchain/node
+          docker build --tag caios-validation-sandbox:ci autonomy/sandbox
 
       - name: Install host test dependency
         run: python -m pip install "pytest>=8,<9"
 
       - name: Test Docker network-none sandbox
+        env:
+          CAIOS_SANDBOX_IMAGE: caios-validation-sandbox:ci
         run: python -m pytest -q autonomy/test_sandbox_simulator.py
