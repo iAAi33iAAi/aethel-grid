@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-10-09T21:31:04.096Z",
+  "generated_at_utc": "2026-10-09T22:28:09Z",
   "gate_1": {
     "status": "BLOCKED",
     "reason": "Canonical SPEC-004 v0.3.1 metric law and normative u_metric/decision partition are not present on main; existing TV-001..TV-007 remain candidate/noncanonical."
@@ -29,7 +29,16 @@
   },
   "gate_5": {
     "status": "PARTIALLY_CLOSED",
-    "reason": "Manifest-driven portfolio CI parity audit is integrated into the federated workflow and emits per-repository commit and verification evidence. Only 3 of 13 manifest repositories currently define a verification command; the other 10 remain NOT_CONFIGURED. Gate 5 is not closed until every active repository has an explicit verifier and passing evidence."
+    "reason": "Manifest-driven portfolio CI parity audit is integrated into the federated workflow and emits per-repository commit, verification-command, and verifier-source evidence. Latest passing audit on commit 536067422787de62351227f1b50e55d33c09e05e verified 6 of 13 repositories; 7 remain NOT_CONFIGURED and 0 configured verifiers failed. Gate 5 is not closed until all active repositories have an appropriate explicit verifier and passing evidence.",
+    "evidence": {
+      "workflow_run": "https://github.com/iAAi33iAAi/aethel-grid/actions/runs/37999299149",
+      "audited_commit": "536067422787de62351227f1b50e55d33c09e05e",
+      "repositories_total": 13,
+      "verified": 6,
+      "not_configured": 7,
+      "failed": 0,
+      "status": "PARTIAL"
+    }
   },
   "gate_6": {
     "status": "BLOCKED",
