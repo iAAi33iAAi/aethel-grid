@@ -58,8 +58,7 @@ class DisposableWorktree:
         # can be hidden/replaced inside Bubblewrap without hiding the checkout.
         worktree = Path(tempfile.mkdtemp(prefix="caios-sim-", dir="/var/tmp"))
         sandbox_tmp = Path(tempfile.mkdtemp(prefix="caios-tmp-"))
-        sandbox_home = sandbox_tmp / "caios-home"
-        sandbox_home.mkdir()
+        sandbox_home = Path(tempfile.mkdtemp(prefix="caios-home-", dir=str(sandbox_tmp)))
         toolchain_mounts: dict[str, tuple[str, str]] = {}
 
         # Candidate/test code must not inherit ambient secrets, provider keys,
@@ -96,10 +95,10 @@ class DisposableWorktree:
                 target.mkdir()
                 if source.is_dir():
                     toolchain_mounts[var_name] = (str(source), str(target))
-                sandbox_env[var_name] = f"/tmp/{shadow_name}"
-                sandbox_env["PATH"] = sandbox_env["PATH"].replace(
-                    str(source), f"/tmp/{shadow_name}/bin"
-                )
+                    sandbox_env[var_name] = f"/tmp/{shadow_name}"
+                    sandbox_env["PATH"] = sandbox_env["PATH"].replace(
+                        str(source), f"/tmp/{shadow_name}/bin"
+                    )
             else:
                 toolchain_mounts[var_name] = (str(original), str(shadow_path))
                 sandbox_env[var_name] = f"/tmp/{shadow_name}"
