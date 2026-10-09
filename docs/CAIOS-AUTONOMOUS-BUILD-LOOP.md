@@ -7,7 +7,7 @@ This workflow moves CAIOS from scheduled evidence collection toward a bounded so
 The design separates three trust zones.
 
 1. **Proposal job:** trusted code on main sends a bounded context window to registered agents and writes one patch artifact. It has read-only repository permission and never executes the proposed code.
-2. **Validation job:** downloads the patch in a separate job with read-only repository permission and no model API keys. It rechecks the base commit, agent/model admission, risk ceiling, protected paths, and deterministic gate, then applies the patch in a disposable Git worktree and runs the prescribed validation suite.
+2. **Validation job:** downloads the patch in a separate job with read-only repository permission and no model API keys. It rechecks the base commit, agent/model admission, risk ceiling, protected paths, and deterministic gate, then applies the patch in a disposable standalone Git clone and runs the prescribed validation suite in a Bubblewrap namespace with networking disabled, a hidden runner home, read-only system/toolchain mounts, a fresh process view, and only the isolated checkout and temporary workspace writable. If Bubblewrap cannot establish the namespace, validation fails closed and the publisher job is skipped.
 3. **Publisher job:** runs only after validation succeeds. It rechecks that main is still the validated base, applies the already-tested patch, commits it, and opens a pull request. It does **not** run candidate code and it never auto-merges.
 
 The loop runs after pushes to main and on weekdays from the default branch. Merging the one-time agent configuration to main triggers its first configured run; the workflow can also be re-run from a previous main-branch Actions run.
@@ -31,12 +31,12 @@ The connected GitHub integration cannot set repository secrets or add a reviewed
 - The risk score must be below both the agent-registry high-risk threshold and the builder's fixed 0.45 ceiling.
 - The non-removable protected-path baseline excludes the runtime, authority/tool policies, egress rules, sandbox and circuit breaker, evidence/promotion/provenance controls, and guardrail tests.
 - The proposal job does not apply or execute the patch.
-- The validation job independently revalidates the original proposal and tests it in a disposable worktree. No model API key or repository write token is present in that job.
+- The validation job independently revalidates the original proposal and tests it in a standalone clone using Bubblewrap network isolation. It also removes the runner home, temporary credential paths, host process view, and Docker/runner sockets from the candidate namespace. No model API key or repository write token is present in the validation job. This is a constrained hosted-runner namespace—not a claim of a separately provisioned VM or a formally verified sandbox.
 - The publishing job does not execute the patch. A stale base, missing token, failed check, malformed artifact, or denied proposal prevents publication.
 - Pull requests remain subject to normal CI, review, and merge controls. The workflow never auto-merges and never deploys to physical infrastructure.
 
 ## Validation record
 
-A successful workflow run records the base SHA, proposal digest, patch digest, agent attestation, gate result, fixed validation command, and sandbox test outcome. These records demonstrate what the workflow tested; they do not certify SPEC-004 as canonical or prove the policy itself is correct.
+A successful workflow run records the base SHA, proposal digest, patch digest, agent attestation, gate result, fixed validation command, whether the Bubblewrap network-isolation mode was established, and the sandbox test outcome. These records demonstrate what the workflow tested; they do not certify SPEC-004 as canonical or prove the policy itself is correct.
 
 SPEC-004 remains blocked until its authoritative metric and canonical-byte semantics are supplied and independently conformed. The autonomous builder may improve ordinary application code, but it cannot invent the missing law or rewrite the controls that govern its own authority.
