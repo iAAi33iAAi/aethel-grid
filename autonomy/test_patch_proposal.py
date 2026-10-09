@@ -95,7 +95,7 @@ def test_select_candidate_returns_low_risk_patch_without_applying_it(tmp_path: P
     proposal = patch_proposal.select_candidate(
         tmp_path,
         "a" * 40,
-        [patch_proposal.make_patch_proposal(risk=0.2)],
+        [make_patch_proposal(risk=0.2)],
         max_risk=0.55,
     )
 
@@ -114,7 +114,7 @@ def test_select_candidate_rejects_high_risk_patch(tmp_path: Path, monkeypatch):
     result = patch_proposal.select_candidate(
         tmp_path,
         "b" * 40,
-        [patch_proposal.make_patch_proposal(risk=0.55)],
+        [make_patch_proposal(risk=0.55)],
         max_risk=0.55,
     )
 
@@ -129,7 +129,7 @@ def test_select_candidate_rejects_protected_surface_patch(tmp_path: Path, monkey
     result = patch_proposal.select_candidate(
         tmp_path,
         "c" * 40,
-        [patch_proposal.make_patch_proposal(target="conformance/canonical_contract.json")],
+        [make_patch_proposal(target="conformance/canonical_contract.json")],
         max_risk=0.55,
     )
 
@@ -141,8 +141,8 @@ def test_select_candidate_rejects_non_patch_actions_and_malformed_diffs(tmp_path
     seed_repo(tmp_path)
     install_test_attestation(monkeypatch)
 
-    non_patch = patch_proposal.make_patch_proposal(kind="run_test")
-    malformed = patch_proposal.make_patch_proposal()
+    non_patch = make_patch_proposal(kind="run_test")
+    malformed = make_patch_proposal()
     malformed["unified_diff"] = "not a unified diff"
 
     result = patch_proposal.select_candidate(
@@ -161,7 +161,7 @@ def test_select_candidate_rejects_non_patch_actions_and_malformed_diffs(tmp_path
 def test_select_candidate_rejects_invalid_metrics(tmp_path: Path, monkeypatch):
     seed_repo(tmp_path)
     install_test_attestation(monkeypatch)
-    proposal = patch_proposal.make_patch_proposal()
+    proposal = make_patch_proposal()
     proposal["evidence_gain"] = float("nan")
 
     result = patch_proposal.select_candidate(
