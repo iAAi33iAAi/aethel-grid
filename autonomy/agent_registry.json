@@ -186,6 +186,30 @@
       },
       "software_version": "0.83.0",
       "source_ref": "https://github.com/agentclientprotocol/claude-agent-acp"
+    },
+    {
+      "id": "caios-openai-compatible-proposal-adapter",
+      "family": "caios-model-proposal-transport",
+      "protocols": [
+        "caios-openai-compatible-proposal-transport"
+      ],
+      "capabilities": [
+        "coding",
+        "patching"
+      ],
+      "authority": "proposal",
+      "license": "Apache-2.0",
+      "sandbox": true,
+      "provenance_confidence": 1,
+      "protocol_versions": {
+        "caios-openai-compatible-proposal-transport": "1.0.0"
+      },
+      "software_version": "1.0.0",
+      "source_ref": "https://github.com/iAAi33iAAi/aethel-grid/blob/1382fd5a7ff1f97c9235ef4dd4b21358edb1b7c1/autonomy/caios_runtime.py",
+      "agent_kind": "model-proposal-adapter",
+      "source_path": "autonomy/caios_runtime.py",
+      "source_sha256": "9cb58d2f14f491de1c4192db72ae4d7f9dd4e9b5f7a1dec5b06e8cc2b1e4398a",
+      "external_tool_execution": false
     }
   ]
 }
