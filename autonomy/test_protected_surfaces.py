@@ -111,6 +111,8 @@ def test_mandatory_protected_surfaces_cannot_be_removed_by_configuration(tmp_pat
     for path in (
         "conformance/canonical_contract.json",
         "autonomy/protected_surfaces.json",
+        "autonomy/authority_lattice.json",
+        "integrations/caios_tool_registry.json",
     ):
         allowed, reasons = gate.validate(_patch_action(path=path))
         assert allowed is False, path
