@@ -3,9 +3,10 @@
 CAIOS isolated patch verifier.
 
 Consumes a proposal artifact, checks it against the current trusted base,
-revalidates registry attestation and the constitutional gate, and tests it in
-a disposable Git worktree. This job must not receive model API keys or a
-repository write token.
+revalidates registry attestation and the constitutional gate, then tests it in
+a standalone clone using a Bubblewrap network namespace. The runner home and
+host temporary credential paths are hidden and toolchain paths are read-only.
+This job must not receive model API keys or a repository write token.
 """
 from __future__ import annotations
 
