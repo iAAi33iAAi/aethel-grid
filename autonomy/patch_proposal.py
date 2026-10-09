@@ -198,6 +198,7 @@ def select_candidate(
             "status": "PROPOSED",
             "base_sha": base_sha,
             "proposal_digest": proposal_digest,
+            "source_proposal": item,
             "attestation": attestation.as_dict(),
             "action": {
                 "action_id": action.action_id,
