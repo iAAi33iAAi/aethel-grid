@@ -78,6 +78,7 @@ class DisposableWorktree:
             "GIT_CONFIG_GLOBAL": "/dev/null",
         }
         host_home = Path.home().resolve()
+        isolated_env = dict(sandbox_env)
         for var_name, default_path, shadow_name in (
             ("CARGO_HOME", host_home / ".cargo", "caios-cargo"),
             ("RUSTUP_HOME", host_home / ".rustup", "caios-rustup"),
@@ -95,13 +96,15 @@ class DisposableWorktree:
                 target.mkdir()
                 if source.is_dir():
                     toolchain_mounts[var_name] = (str(source), str(target))
-                    sandbox_env[var_name] = f"/tmp/{shadow_name}"
-                    sandbox_env["PATH"] = sandbox_env["PATH"].replace(
+                    sandbox_env[var_name] = str(original)
+                    isolated_env[var_name] = f"/tmp/{shadow_name}"
+                    isolated_env["PATH"] = isolated_env["PATH"].replace(
                         str(source), f"/tmp/{shadow_name}/bin"
                     )
             else:
                 toolchain_mounts[var_name] = (str(original), str(shadow_path))
-                sandbox_env[var_name] = f"/tmp/{shadow_name}"
+                sandbox_env[var_name] = str(original)
+                isolated_env[var_name] = f"/tmp/{shadow_name}"
 
         def exec_cmd(
             args: tuple[str, ...],
@@ -134,7 +137,7 @@ class DisposableWorktree:
                     command_list.extend(["--tmpfs", host_home_str])
                 command_list.extend(["--tmpfs", "/run", "--tmpfs", "/var/tmp"])
                 command_list.extend(["--chdir", "/tmp/workspace"])
-                for key, value in sandbox_env.items():
+                for key, value in isolated_env.items():
                     sandbox_value = value
                     if key == "HOME":
                         sandbox_value = f"/tmp/{sandbox_home.name}"
