@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-10-09T22:41:40Z",
+  "generated_at_utc": "2026-10-09T22:46:50Z",
   "gate_1": {
     "status": "BLOCKED",
     "reason": "Canonical SPEC-004 v0.3.1 metric law and normative u_metric/decision partition are not present on main; existing TV-001..TV-007 remain candidate/noncanonical."
@@ -29,10 +29,10 @@
   },
   "gate_5": {
     "status": "PARTIALLY_CLOSED",
-    "reason": "Manifest-driven portfolio CI parity audit records per-repository commit, verification command, and verifier-source evidence. Latest passing audit on exact candidate commit be274613c11fb94f189b51e090a4b3f54b693316 verified 9 of 13 repositories; 4 remain NOT_CONFIGURED and 0 configured verifiers failed. The OpenClaw Colony entry is explicitly limited to its two CAIOS Interop contract tests, not its full Rust/Python suite or production conformance. Gate 5 remains partially closed until each active repository has an appropriate verifier and passing evidence.",
+    "reason": "Manifest-driven portfolio CI parity audit records per-repository commit, verification command, verifier-source, and scoped-verification evidence. Latest successful main-branch audit on commit 241887de807dd5d94df87936ac357a35a7ff6d78 verified 9 of 13 repositories; 4 remain NOT_CONFIGURED and 0 configured verifiers failed. OpenClaw Colony's configured verifier is explicitly limited to two CAIOS Interop contract tests, not its full suite or production conformance. Gate 5 remains PARTIALLY_CLOSED until each active repository has an appropriate verifier and passing evidence.",
     "evidence": {
-      "workflow_run": "https://github.com/iAAi33iAAi/aethel-grid/actions/runs/38000258359",
-      "audited_commit": "be274613c11fb94f189b51e090a4b3f54b693316",
+      "workflow_run": "https://github.com/iAAi33iAAi/aethel-grid/actions/runs/38000629663",
+      "audited_commit": "241887de807dd5d94df87936ac357a35a7ff6d78",
       "repositories_total": 13,
       "verified": 9,
       "not_configured": 4,
