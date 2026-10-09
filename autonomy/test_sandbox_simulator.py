@@ -167,7 +167,7 @@ def test_docker_network_none_blocks_access_to_bridge_service(tmp_path: Path):
             (
                 docker, "run", "--detach", "--name", server_name,
                 "--network", network,
-                image, "python", "-m", "http.server", "8765", "--bind", "0.0.0.0",
+                image, "python3", "-m", "http.server", "8765", "--bind", "0.0.0.0",
             ),
             capture_output=True,
             text=True,
