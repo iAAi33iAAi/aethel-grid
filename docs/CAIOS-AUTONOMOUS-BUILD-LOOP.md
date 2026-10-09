@@ -31,12 +31,12 @@ The connected GitHub integration cannot set repository secrets or add a reviewed
 - The risk score must be below both the agent-registry high-risk threshold and the builder's fixed 0.45 ceiling.
 - The non-removable protected-path baseline excludes the runtime, authority/tool policies, egress rules, sandbox and circuit breaker, evidence/promotion/provenance controls, and guardrail tests.
 - The proposal job does not apply or execute the patch.
-- The validation job independently revalidates the original proposal and tests it in a standalone clone using Bubblewrap network isolation. It also removes the runner home, temporary credential paths, host process view, and Docker/runner sockets from the candidate namespace. No model API key or repository write token is present in the validation job. This is a constrained hosted-runner namespace—not a claim of a separately provisioned VM or a formally verified sandbox.
+- The validation job independently revalidates the original proposal and tests it in a standalone clone using Bubblewrap/seccomp egress denial. It also removes the runner home, temporary credential paths, host process view, and Docker/runner sockets from the candidate namespace. No model API key or repository write token is present in the validation job. This is a constrained hosted-runner namespace—not a claim of a separately provisioned VM or a formally verified sandbox.
 - The publishing job does not execute the patch. A stale base, missing token, failed check, malformed artifact, or denied proposal prevents publication.
 - Pull requests remain subject to normal CI, review, and merge controls. The workflow never auto-merges and never deploys to physical infrastructure.
 
 ## Validation record
 
-A successful workflow run records the base SHA, proposal digest, patch digest, agent attestation, gate result, fixed validation command, whether the Bubblewrap network-isolation mode was established, and the sandbox test outcome. These records demonstrate what the workflow tested; they do not certify SPEC-004 as canonical or prove the policy itself is correct.
+A successful workflow run records the base SHA, proposal digest, patch digest, agent attestation, gate result, fixed validation command, whether the seccomp egress-denial filter was established, and the sandbox test outcome. These records demonstrate what the workflow tested; they do not certify SPEC-004 as canonical or prove the policy itself is correct.
 
 SPEC-004 remains blocked until its authoritative metric and canonical-byte semantics are supplied and independently conformed. The autonomous builder may improve ordinary application code, but it cannot invent the missing law or rewrite the controls that govern its own authority.
