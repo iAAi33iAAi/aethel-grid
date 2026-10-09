@@ -1,0 +1,10 @@
+{
+  "schema": "caios-provider-endpoints/v1",
+  "policy": {
+    "unknown_endpoint": "REJECT",
+    "exact_url_match": true,
+    "exact_agent_model_protocol_match": true,
+    "require_approval_ref": true
+  },
+  "endpoints": []
+}

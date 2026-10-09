@@ -13,6 +13,7 @@ import argparse
 import json
 import os
 import subprocess
+import urllib.parse
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,7 @@ from conformance.contract import inspect_contract
 SCHEMA = "caios-patch-proposal/v1"
 MAX_PATCH_BYTES = 50_000
 ABSOLUTE_RISK_CEILING = 0.55
+ENDPOINT_REGISTRY_SCHEMA = "caios-provider-endpoints/v1"
 
 
 def git(root: Path, *args: str) -> str:
@@ -44,24 +46,106 @@ def git(root: Path, *args: str) -> str:
     return proc.stdout.strip()
 
 
+def _validate_endpoint_url(endpoint_url: str) -> None:
+    parsed = urllib.parse.urlsplit(endpoint_url)
+    if parsed.scheme not in {"https", "http"} or not parsed.hostname:
+        raise ValueError("provider endpoint must be an absolute HTTP(S) URL")
+    if parsed.scheme == "http" and parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
+        raise ValueError("non-local provider endpoints must use HTTPS")
+    if parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ValueError("provider endpoint must not include credentials, query parameters, or a fragment")
+
+
+def load_endpoint_bindings(repo_root: Path) -> dict[str, dict[str, str]]:
+    path = repo_root / "autonomy" / "provider_endpoint_registry.json"
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"provider-endpoint-registry-unavailable:{type(exc).__name__}") from exc
+
+    if not isinstance(raw, dict) or raw.get("schema") != ENDPOINT_REGISTRY_SCHEMA:
+        raise ValueError("provider-endpoint-registry-schema-invalid")
+    policy = raw.get("policy")
+    endpoints = raw.get("endpoints")
+    if not isinstance(policy, dict) or policy.get("unknown_endpoint") != "REJECT":
+        raise ValueError("provider-endpoint-registry-policy-invalid")
+    if policy.get("exact_url_match") is not True or policy.get("exact_agent_model_protocol_match") is not True:
+        raise ValueError("provider-endpoint-registry-must-require-exact-matches")
+    if policy.get("require_approval_ref") is not True:
+        raise ValueError("provider-endpoint-registry-must-require-approval-reference")
+    if not isinstance(endpoints, list):
+        raise ValueError("provider-endpoint-registry-endpoints-must-be-a-list")
+
+    required_fields = (
+        "id", "endpoint_url", "agent_id", "agent_version", "source_ref",
+        "protocol", "protocol_version", "model_id", "model_revision", "approval_ref",
+    )
+    bindings: dict[str, dict[str, Any]] = {}
+    for index, endpoint in enumerate(endpoints):
+        if not isinstance(endpoint, dict):
+            raise ValueError(f"provider-endpoint-entry-{index}-must-be-an-object")
+        missing = [
+            key for key in required_fields
+            if not isinstance(endpoint.get(key), str) or not endpoint[key].strip()
+        ]
+        if "api_key_env" not in endpoint:
+            missing.append("api_key_env")
+        if missing:
+            raise ValueError(
+                f"provider-endpoint-entry-{index}-missing-fields:{','.join(missing)}"
+            )
+        endpoint_api_key_env = endpoint["api_key_env"]
+        if endpoint_api_key_env is not None and (
+            not isinstance(endpoint_api_key_env, str)
+            or not endpoint_api_key_env.startswith("CAIOS_")
+            or not endpoint_api_key_env.endswith("_API_KEY")
+        ):
+            raise ValueError(f"provider-endpoint-api-key-environment-invalid:{endpoint.get('id', index)}")
+        endpoint_id = endpoint["id"]
+        if endpoint_id in bindings:
+            raise ValueError(f"provider-endpoint-id-duplicate:{endpoint_id}")
+        _validate_endpoint_url(endpoint["endpoint_url"])
+        bindings[endpoint_id] = {key: endpoint[key] for key in required_fields}
+        bindings[endpoint_id]["api_key_env"] = endpoint_api_key_env
+    return bindings
+
+
 def load_provider(repo_root: Path, config_path: Path) -> MultiAgentProposalProvider:
+    repo_root = repo_root.resolve()
     config_path = config_path.resolve()
     try:
         config_path.relative_to(repo_root)
     except ValueError as exc:
         raise ValueError("agent configuration must remain inside the repository") from exc
     raw = json.loads(config_path.read_text(encoding="utf-8"))
-    if not isinstance(raw, dict) or not isinstance(raw.get("agents"), list) or not raw["agents"]:
-        raise ValueError("agent configuration must contain a non-empty agents list")
+    if (
+        not isinstance(raw, dict)
+        or raw.get("schema") != "caios-agent-endpoints/v1"
+        or not isinstance(raw.get("agents"), list)
+        or not raw["agents"]
+    ):
+        raise ValueError("agent configuration must use caios-agent-endpoints/v1 and contain a non-empty agents list")
+    endpoint_bindings = load_endpoint_bindings(repo_root)
 
     specs = []
     for index, item in enumerate(raw["agents"]):
         if not isinstance(item, dict):
             raise ValueError(f"agent entry {index} must be an object")
-        required = ("agent_id", "endpoint", "model", "protocol", "agent_version", "source_ref")
+        required = (
+            "endpoint_id", "agent_id", "endpoint", "model", "model_revision",
+            "protocol", "protocol_version", "agent_version", "source_ref",
+        )
         missing = [key for key in required if not isinstance(item.get(key), str) or not item[key].strip()]
         if missing:
             raise ValueError(f"agent entry {index} missing required fields: {','.join(missing)}")
+
+        # Reject unpinned destinations and identity mismatches before any
+        # source context is constructed or sent to the configured endpoint.
+        endpoint_id = item["endpoint_id"]
+        binding = endpoint_bindings.get(endpoint_id)
+        if binding is None:
+            raise ValueError(f"provider-endpoint-not-registered:{endpoint_id}")
+        _validate_endpoint_url(item["endpoint"])
         api_key_env = item.get("api_key_env")
         if api_key_env is not None and (not isinstance(api_key_env, str) or not api_key_env.strip()):
             raise ValueError(f"agent entry {index} api_key_env must be a non-empty string")
@@ -69,6 +153,22 @@ def load_provider(repo_root: Path, config_path: Path) -> MultiAgentProposalProvi
             raise ValueError(f"agent entry {index} api_key_env must use an approved CAIOS_*_API_KEY name")
         if api_key_env and not os.environ.get(api_key_env):
             raise ValueError(f"configured API key environment variable is unset: {api_key_env}")
+        config_to_binding = {
+            "endpoint_url": item["endpoint"],
+            "agent_id": item["agent_id"],
+            "agent_version": item["agent_version"],
+            "source_ref": item["source_ref"],
+            "protocol": item["protocol"],
+            "protocol_version": item["protocol_version"],
+            "model_id": item["model"],
+            "model_revision": item["model_revision"],
+            "api_key_env": api_key_env,
+        }
+        for binding_key, configured_value in config_to_binding.items():
+            if binding[binding_key] != configured_value:
+                raise ValueError(
+                    f"provider-endpoint-binding-mismatch:{endpoint_id}:{binding_key}"
+                )
         source_context_opt_in = item.get("send_source_context", False)
         if not isinstance(source_context_opt_in, bool):
             raise ValueError(f"agent entry {index} send_source_context must be a JSON boolean")
@@ -81,8 +181,8 @@ def load_provider(repo_root: Path, config_path: Path) -> MultiAgentProposalProvi
                 protocol=item["protocol"],
                 agent_version=item["agent_version"],
                 source_ref=item["source_ref"],
-                model_revision=str(item.get("model_revision", "")),
-                protocol_version=str(item.get("protocol_version", "1")),
+                model_revision=item["model_revision"],
+                protocol_version=item["protocol_version"],
                 api_key=os.environ.get(api_key_env) if api_key_env else None,
                 max_proposals=max(1, min(int(item.get("max_proposals", 8)), 20)),
                 send_source_context=source_context_opt_in,
@@ -304,6 +404,9 @@ def build(repo_root: Path, config_path: Path, output_path: Path, *, max_risk: fl
         raise RuntimeError("working tree must be clean before creating a patch proposal")
 
     base_sha = git(repo_root, "rev-parse", "HEAD")
+    # Perform destination, identity, protocol and model preflight before
+    # constructing the source-context bundle that may be sent to a provider.
+    provider = load_provider(repo_root, config_path)
     contract = inspect_contract(repo_root)
     context = ContextWindow(repo_root).build()
     input_bundle = {
@@ -328,7 +431,6 @@ def build(repo_root: Path, config_path: Path, output_path: Path, *, max_risk: fl
             ],
         },
     }
-    provider = load_provider(repo_root, config_path)
     proposals = provider.propose(input_bundle)
     return select_candidate(
         repo_root,
