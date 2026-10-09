@@ -64,17 +64,18 @@ Portfolio status is conservative:
 - PARTIAL: configured verifiers passed, but at least one repository has no verifier. PARTIAL is not portfolio-wide conformance.
 - FAILED: a checkout, revision, manifest, command, or verification failed.
 
-The latest successful main-branch audit on commit `241887de807dd5d94df87936ac357a35a7ff6d78` configured nine of thirteen manifest entries with explicit verification commands; four are reported `NOT_CONFIGURED`, and none of the configured verifiers failed. The report records each repository's checked-out commit, command, and source where declared. See [the main-branch audit run](https://github.com/iAAi33iAAi/aethel-grid/actions/runs/38000629663). The overall result remains `PARTIAL`, and Gate 5 remains `PARTIALLY_CLOSED`.
+The latest passing integrated audit on PR #32 candidate commit `40afbfbb61f85131298afd5bd3df911a4503e032` reported `PASS` for verification coverage: all 13 manifest repositories had an explicit verifier, all 13 passed, and zero verifiers were missing or failed. See [the exact-candidate audit run](https://github.com/iAAi33iAAi/aethel-grid/actions/runs/38002331255). The audit records each checked-out repository commit, executed command, result, and declared verifier source. Source URLs in the manifest are pinned to immutable Git commit SHAs so a later branch update cannot silently change which workflow or test file is being cited.
 
-One verifier is deliberately scoped: OpenClaw Colony's `tests/test_caios_interop.py` returned 2 passed and checks only its CAIOS adapter fallback and AETHEL Interop v1 response contract. It does not represent the full Colony test suite, native Rust kernel, or production conformance.
+**Interpretation boundary:** `PASS` means every declared verifier passed at the recorded revision. It does not imply that every repository ships a complete runtime or is production-conformant. Scope-limited verifiers check the actual current deliverable and explicitly document what remains unimplemented.
 
-### Remaining unconfigured repositories
+### Explicitly scoped verification
 
-| Repository | Verified blocker | Evidence needed before adding a passing verifier |
+| Repository | What the passing verifier establishes | What it does not establish |
 |---|---|---|
-| `alpha-intelligence-hub` | The README describes a migration scaffold whose Compose file points to source directories not present in the current tree. Its current CI workflow refers to missing test/source paths. | Restore the assembled tree or provide actual root-level implementations, then make CI run a real build/test command. |
-| `calcula-colony` | The README describes a research/design package with essays, whitepaper, roadmap, attribution, and licenses; no executable engine or tests are present. | Implement the engine and schemas with reproducible tests, or formally classify this entry as a non-executable design artifact. |
-| `crew-colony` | The README says the current tree has only package initializers, README, and license; the claimed runtime and suite are absent. | Add the actual runtime and regression tests before configuring a verifier. Empty test discovery is not acceptable evidence. |
-| `ALEXARAC` | The README explicitly calls this a concept/interface specification and says no application, backend source tree, or web runtime is shipped. | Supply the application/backend implementation and tests, or classify it as a design-only dependency rather than executable software. |
+| `openclaw-colony` | Two CAIOS Interop adapter/response-contract tests pass. | Full Colony suite, native Rust kernel, or production conformance. |
+| `alpha-intelligence-hub` | Four tests verify the existing scaffold, migration-script syntax, Compose target declarations, and remote definitions. | Repository migration execution, working target services, image builds, or deployment readiness. |
+| `calcula-colony` | Five tests verify design-document integrity, evaluation-weight arithmetic, attribution, and historical-status disclosure. | Executable engine, runtime, payment protocol, or empirical/scientific law. |
+| `crew-colony` | Five tests verify the documentation scaffold and MANNA allocation arithmetic. | Executable multi-agent runtime or agent behavior. |
+| `ALEXARAC` | Six tests verify concept artifacts, BOM disclosures, and procurement/engineering caveats. | A deployed application, physical engineering, prices, regulatory approval, or field performance. |
 
-These four repositories remain `NOT_CONFIGURED`; their design documentation is not counted as a software test pass. Gate 5 cannot be declared closed until every active dependency has an appropriate, passing verifier and the evidence scope is stated clearly.
+These limits are evidence, not hidden exceptions. A future implementation changes the repository's scope only when source code and its own repeatable verification are added.

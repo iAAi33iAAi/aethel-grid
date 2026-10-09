@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -37,7 +38,7 @@ def test_verification_scope_is_retained_in_evidence(tmp_path: Path):
             "id": "root",
             "path": ".",
             "verification": ["python", "-c", "raise SystemExit(0)"],
-            "verification_source": "https://example.invalid/project/blob/main/tests/test_suite.py",
+            "verification_source": "https://github.com/example/project/blob/0123456789abcdef0123456789abcdef01234567/tests/test_suite.py",
             "verification_scope": scope,
         },
     ])
@@ -71,7 +72,7 @@ def test_bun_is_allowlisted_for_toolchain_specific_verifiers():
                 "id": "clawhub",
                 "path": "clawhub",
                 "verification": ["bun", "run", "ci:unit"],
-                "verification_source": "https://github.com/iAAi33iAAi/clawhub/blob/main/.github/workflows/ci.yml",
+                "verification_source": "https://github.com/iAAi33iAAi/clawhub/blob/5b63d5df6071a91cfd3e5e184bc44e212e977cc9/.github/workflows/ci.yml",
             }
         ],
     })
@@ -116,7 +117,7 @@ def test_parity_pass_requires_every_manifest_repo_verified(tmp_path: Path):
 
 def test_verification_source_is_retained_in_evidence(tmp_path: Path):
     _git_repo(tmp_path)
-    source = "https://example.invalid/project/blob/main/tests/test_suite.py"
+    source = "https://github.com/example/project/blob/0123456789abcdef0123456789abcdef01234567/tests/test_suite.py"
     manifest = _manifest(tmp_path, [
         {
             "id": "root",
@@ -145,6 +146,52 @@ def test_manifest_rejects_non_https_verification_source(tmp_path: Path):
 
     with pytest.raises(ValueError, match="verification_source must be an HTTPS URL"):
         audit_portfolio(root=tmp_path, manifest_path=manifest)
+
+
+def test_manifest_rejects_mutable_verification_source(tmp_path: Path):
+    _git_repo(tmp_path)
+    manifest = _manifest(tmp_path, [
+        {
+            "id": "root",
+            "path": ".",
+            "verification": ["python", "-c", "raise SystemExit(0)"],
+            "verification_source": "https://github.com/example/project/blob/main/tests/test_suite.py",
+        },
+    ])
+
+    with pytest.raises(ValueError, match="immutable GitHub blob URL"):
+        audit_portfolio(root=tmp_path, manifest_path=manifest)
+
+
+def test_manifest_rejects_non_github_verification_source():
+    with pytest.raises(ValueError, match="immutable GitHub blob URL"):
+        _validate_manifest({
+            "schema": "caios-federation/v1",
+            "repositories": [
+                {
+                    "id": "not-github",
+                    "path": "repo",
+                    "verification": ["python", "-c", "pass"],
+                    "verification_source": "https://example.invalid/project/blob/0123456789abcdef0123456789abcdef01234567/tests/test.py",
+                }
+            ],
+        })
+
+
+def test_every_declared_manifest_source_is_immutable():
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads((root / "federation" / "system_manifest.json").read_text(encoding="utf-8"))
+    rows = _validate_manifest(manifest)
+    sources = [row["verification_source"] for row in rows if row["verification_source"] is not None]
+
+    assert len(sources) == 10
+    for source in sources:
+        parts = urlsplit(source)
+        path_parts = parts.path.split("/")
+        assert parts.netloc == "github.com"
+        assert len(path_parts[4]) == 40
+        assert path_parts[3] == "blob"
+        assert all(ch in "0123456789abcdef" for ch in path_parts[4])
 
 
 def test_missing_verification_plan_is_partial_not_pass(tmp_path: Path):
@@ -247,7 +294,7 @@ def test_calcula_documentation_verifier_is_explicitly_scoped():
     calcula = next(row for row in manifest["repositories"] if row["id"] == "calcula-colony")
 
     assert calcula["verification"] == ["python", "-m", "unittest", "discover", "-s", "tests", "-v"]
-    assert calcula["verification_source"] == "https://github.com/iAAi33iAAi/calcula-colony/blob/main/.github/workflows/ci.yml"
+    assert calcula["verification_source"] == "https://github.com/iAAi33iAAi/calcula-colony/blob/614b6e675ecb7a75752c9842fcc4c3e6f4179ba5/.github/workflows/ci.yml"
     scope = calcula["verification_scope"].lower()
     assert "documentation-contract verification only" in scope
     assert "does not verify a calcula engine" in scope
@@ -260,7 +307,7 @@ def test_alpha_scaffold_verifier_is_explicitly_scoped():
     alpha = next(row for row in manifest["repositories"] if row["id"] == "alpha-intelligence-hub")
 
     assert alpha["verification"] == ["python", "-m", "unittest", "discover", "-s", "tests", "-v"]
-    assert alpha["verification_source"] == "https://github.com/iAAi33iAAi/alpha-intelligence-hub/blob/main/.github/workflows/ci.yml"
+    assert alpha["verification_source"] == "https://github.com/iAAi33iAAi/alpha-intelligence-hub/blob/736c765829e3588ab6c71e57bc3dc145d9c22241/.github/workflows/ci.yml"
     assert "scaffold integrity only" in alpha["verification_scope"]
     assert "does not initialize/merge repositories" in alpha["verification_scope"]
     assert "production conformance" in alpha["verification_scope"]
