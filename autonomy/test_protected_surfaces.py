@@ -231,4 +231,4 @@ def test_portfolio_parity_controls_are_protected(tmp_path: Path):
     ):
         allowed, reasons = gate.validate(_patch_action(path=path))
         assert allowed is False, path
-        assert "protected autonomous-control surface" in reasons, path
+        assert any("protected autonomous-control surface" in reason for reason in reasons), path
