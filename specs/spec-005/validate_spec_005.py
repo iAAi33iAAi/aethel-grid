@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate candidate SPEC-005 envelope-shape vectors using only the Python standard library.
+"""Validate SPEC-005 candidate envelopes against JSON Schema and defensive invariants.
 
 This validator does not verify Ed25519 signatures or certify a contract as trusted.
 """
@@ -14,6 +14,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from jsonschema import Draft202012Validator, FormatChecker
 
 ROOT = Path(__file__).resolve().parent
 SPEC_ID = "SPEC-005"
@@ -179,7 +181,7 @@ def validate_envelope(envelope: Any) -> list[str]:
     return sorted(set(errors))
 
 
-def validate_vector(path: Path) -> tuple[bool, list[str], dict[str, Any]]:
+def validate_vector(path: Path, schema_validator: Draft202012Validator) -> tuple[bool, list[str], dict[str, Any]]:
     try:
         vector = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -206,18 +208,88 @@ def validate_vector(path: Path) -> tuple[bool, list[str], dict[str, Any]]:
     if not isinstance(expected, dict) or expected.get("cryptographic_verification") != "NOT_EVALUATED":
         errors.append("vector:must_not_claim_crypto_verification")
 
-    envelope_errors = validate_envelope(vector.get("envelope"))
-    actual_valid = len(envelope_errors) == 0
-    if expected_valid is not None and actual_valid != expected_valid:
-        details = ",".join(envelope_errors) or "no_schema_errors"
-        errors.append("vector:expected_schema_valid_mismatch:" + details)
-    if expected_valid is False and not envelope_errors:
-        errors.append("vector:negative_case_did_not_fail")
+    envelope = vector.get("envelope")
+    envelope_errors = validate_envelope(envelope)
+    manual_valid = len(envelope_errors) == 0
+    json_schema_errors = sorted(
+        f"{error.json_path or '
+
+
+def main() -> int:
+    schema_path = ROOT / "SPEC-005.schema.json"
+    try:
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"FAIL schema_read:{type(exc).__name__}")
+        return 2
+    if schema.get("$schema") != "https://json-schema.org/draft/2020-12/schema":
+        print("FAIL schema_draft")
+        return 2
+    if schema.get("$id") != "https://aethel.example/specs/SPEC-005/candidate-0.1/schema.json":
+        print("FAIL schema_id")
+        return 2
+    try:
+        Draft202012Validator.check_schema(schema)
+        schema_validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    except Exception as exc:
+        print(f"FAIL schema_invalid:{type(exc).__name__}")
+        return 2
+
+    failures = 0
+    seen: set[str] = set()
+    for case_id in VECTOR_IDS:
+        path = ROOT / "vectors" / f"{case_id}.json"
+        ok, errors, evidence = validate_vector(path, schema_validator)
+        if evidence.get("case_id") != case_id:
+            ok = False
+            errors = sorted(set(errors + [f"expected_case_id:{case_id}"]))
+        if evidence.get("case_id"):
+            seen.add(evidence["case_id"])
+        label = "PASS" if ok else "FAIL"
+        print(f"{label} {case_id} " + (",".join(errors) if errors else "schema_expectation_matched"))
+        if not ok:
+            failures += 1
+
+    result = {
+        "spec_id": SPEC_ID,
+        "status": STATUS,
+        "schema_sha256": sha256_hex(canonical_json_bytes(schema)),
+        "vector_count": len(VECTOR_IDS),
+        "failure_count": failures,
+        "missing_vectors": sorted(set(VECTOR_IDS) - seen),
+        "canonical_promotion": "BLOCKED_PENDING_EXTERNAL_RATIFICATION",
+        "json_schema_cross_validation": "PERFORMED",
+        "cryptographic_verification": "NOT_PERFORMED_BY_THIS_VALIDATOR",
+    }
+    print(json.dumps(result, sort_keys=True))
+    return 1 if failures else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+}:{error.validator}"
+        for error in schema_validator.iter_errors(envelope)
+    )
+    json_schema_valid = len(json_schema_errors) == 0
+    if manual_valid != json_schema_valid:
+        errors.append("validator_drift:manual_vs_json_schema")
+    if expected_valid is not None and manual_valid != expected_valid:
+        details = ",".join(envelope_errors) or "no_manual_errors"
+        errors.append("vector:expected_manual_valid_mismatch:" + details)
+    if expected_valid is not None and json_schema_valid != expected_valid:
+        details = ",".join(json_schema_errors) or "no_json_schema_errors"
+        errors.append("vector:expected_json_schema_valid_mismatch:" + details)
+    if expected_valid is False and manual_valid:
+        errors.append("vector:negative_case_did_not_fail_manual_validation")
+    if expected_valid is False and json_schema_valid:
+        errors.append("vector:negative_case_did_not_fail_json_schema_validation")
     return not errors, sorted(set(errors)), {
         "case_id": case_id,
-        "schema_valid_actual": actual_valid,
-        "schema_errors": envelope_errors,
-        "envelope_sha256": sha256_hex(canonical_json_bytes(vector.get("envelope"))),
+        "manual_validator_valid": manual_valid,
+        "manual_validator_errors": envelope_errors,
+        "json_schema_valid": json_schema_valid,
+        "json_schema_errors": json_schema_errors,
+        "envelope_sha256": sha256_hex(canonical_json_bytes(envelope)),
     }
 
 
