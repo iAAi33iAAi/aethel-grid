@@ -8,7 +8,7 @@ def write_policy(tmp_path: Path):
     (tmp_path / "autonomy").mkdir()
     (tmp_path / "autonomy/protected_surfaces.json").write_text(
         json.dumps({
-            "protected_globs": ["conformance/**", "autonomy/caios_runtime.py"]
+            "protected_globs": ["conformance/**", "autonomy/caios_runtime.py", "docs/CAIOS-OPENAI-COMPATIBLE-PROPOSAL-TRANSPORT.md"]
         }),
         encoding="utf-8",
     )
