@@ -121,7 +121,7 @@ def test_disposable_validation_uses_temporary_home(tmp_path: Path):
         (
             "python",
             "-c",
-            "import os; from pathlib import Path; raise SystemExit(0 if Path.home().name == '.caios-home' else 1)",
+            "import os; from pathlib import Path; raise SystemExit(0 if Path.home().name.startswith('caios-home-') else 1)",
         ),
     )
     assert result.status == "PASS"
