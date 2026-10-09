@@ -51,7 +51,7 @@ def seed_repo(root: Path) -> None:
                 "endpoint_url": "https://example.invalid/v1/chat/completions",
                 "agent_id": "test-agent",
                 "agent_version": "1.0.0",
-                "source_ref": "git:0123456789abcdef",
+                "source_ref": "git:0123456789012345678901234567890123456789",
                 "protocol": "caios-openai-compatible-proposal-transport",
                 "protocol_version": "1.0.0",
                 "model_id": "test-model",
@@ -96,7 +96,7 @@ def make_patch_proposal(*, risk: float = 0.2, target: str = "src/app.py", kind: 
         "model_id": "test-model",
         "model_revision": "test-model@sha256:abc",
         "agent_version": "1.0.0",
-        "source_ref": "git:0123456789abcdef",
+        "source_ref": "git:0123456789012345678901234567890123456789",
     }
 
 
@@ -109,7 +109,7 @@ def install_test_attestation(monkeypatch) -> None:
             model_id="test-model",
             model_revision="test-model@sha256:abc",
             agent_version="1.0.0",
-            source_ref="git:0123456789abcdef",
+            source_ref="git:0123456789012345678901234567890123456789",
             proposal_digest=proposal_digest,
         )
         return True, [], attestation
@@ -228,7 +228,7 @@ def write_agent_config(
         "protocol": protocol,
         "protocol_version": protocol_version,
         "agent_version": "1.0.0",
-        "source_ref": "git:0123456789abcdef",
+        "source_ref": "git:0123456789012345678901234567890123456789",
         "send_source_context": send_source_context,
     }
     if api_key_env is not None:
@@ -312,7 +312,7 @@ def endpoint_profile(
     provenance_confidence=0.99,
     protocol_versions=None,
     software_version="1.0.0",
-    source_ref="git:0123456789abcdef",
+    source_ref="git:0123456789012345678901234567890123456789",
     agent_kind="model-proposal-adapter",
     source_path="autonomy/caios_runtime.py",
     source_sha256="57a550fa4fe91d4a7ccc49852764e569abaa826c863082089ab8368d14a8e444",
