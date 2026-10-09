@@ -1,9 +1,10 @@
 FROM rust:bookworm
 
-# Install the exact runtime families required by the fixed validator. Candidate
-# code is never executed during this image build; only this protected Dockerfile
-# and public package repositories are involved.
-COPY --from=node:24-bookworm-slim /usr/local/ /usr/local/
+# Install the runtime families required by the fixed validator. Node 24 is
+# provided as a binary by actions/setup-node and copied into the build context
+# by the trusted workflow; this avoids a second Docker Hub image pull.
+COPY toolchain/node /usr/local/bin/node
+RUN chmod 0755 /usr/local/bin/node
 
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
