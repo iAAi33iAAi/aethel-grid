@@ -56,8 +56,8 @@ class DisposableWorktree:
         *,
         require_egress_block: bool = False,
     ) -> SimulationResult:
-        # Keep the candidate checkout outside HOME and TMPDIR so those locations
-        # can be hidden/replaced inside Bubblewrap without hiding the checkout.
+        # Keep the candidate clone in a dedicated host temp path. Strict validation
+        # mounts only this clone into Docker; other host directories are not mounted.
         worktree = Path(tempfile.mkdtemp(prefix="caios-sim-", dir="/var/tmp"))
         sandbox_tmp = Path(tempfile.mkdtemp(prefix="caios-tmp-"))
         sandbox_home = Path(tempfile.mkdtemp(prefix="caios-home-", dir=str(sandbox_tmp)))
@@ -92,6 +92,15 @@ class DisposableWorktree:
                     "CAIOS_SANDBOX_IMAGE",
                     "caios-validation-sandbox:ci",
                 )
+                image_check = subprocess.run(
+                    (docker, "image", "inspect", image),
+                    capture_output=True,
+                    text=True,
+                    timeout=20,
+                    check=False,
+                )
+                if image_check.returncode != 0:
+                    return 127, "", "egress-block-unavailable:sandbox-image-not-built"
                 command = [
                     docker, "run", "--rm",
                     "--network=none",
