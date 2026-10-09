@@ -80,7 +80,7 @@ def load_endpoint_bindings(repo_root: Path) -> dict[str, dict[str, str]]:
         "id", "endpoint_url", "agent_id", "agent_version", "source_ref",
         "protocol", "protocol_version", "model_id", "model_revision", "approval_ref",
     )
-    bindings: dict[str, dict[str, str]] = {}
+    bindings: dict[str, dict[str, Any]] = {}
     for index, endpoint in enumerate(endpoints):
         if not isinstance(endpoint, dict):
             raise ValueError(f"provider-endpoint-entry-{index}-must-be-an-object")
@@ -88,15 +88,25 @@ def load_endpoint_bindings(repo_root: Path) -> dict[str, dict[str, str]]:
             key for key in required_fields
             if not isinstance(endpoint.get(key), str) or not endpoint[key].strip()
         ]
+        if "api_key_env" not in endpoint:
+            missing.append("api_key_env")
         if missing:
             raise ValueError(
                 f"provider-endpoint-entry-{index}-missing-fields:{','.join(missing)}"
             )
+        endpoint_api_key_env = endpoint["api_key_env"]
+        if endpoint_api_key_env is not None and (
+            not isinstance(endpoint_api_key_env, str)
+            or not endpoint_api_key_env.startswith("CAIOS_")
+            or not endpoint_api_key_env.endswith("_API_KEY")
+        ):
+            raise ValueError(f"provider-endpoint-api-key-environment-invalid:{endpoint.get('id', index)}")
         endpoint_id = endpoint["id"]
         if endpoint_id in bindings:
             raise ValueError(f"provider-endpoint-id-duplicate:{endpoint_id}")
         _validate_endpoint_url(endpoint["endpoint_url"])
         bindings[endpoint_id] = {key: endpoint[key] for key in required_fields}
+        bindings[endpoint_id]["api_key_env"] = endpoint_api_key_env
     return bindings
 
 
@@ -136,6 +146,13 @@ def load_provider(repo_root: Path, config_path: Path) -> MultiAgentProposalProvi
         if binding is None:
             raise ValueError(f"provider-endpoint-not-registered:{endpoint_id}")
         _validate_endpoint_url(item["endpoint"])
+        api_key_env = item.get("api_key_env")
+        if api_key_env is not None and (not isinstance(api_key_env, str) or not api_key_env.strip()):
+            raise ValueError(f"agent entry {index} api_key_env must be a non-empty string")
+        if api_key_env and (not api_key_env.startswith("CAIOS_") or not api_key_env.endswith("_API_KEY")):
+            raise ValueError(f"agent entry {index} api_key_env must use an approved CAIOS_*_API_KEY name")
+        if api_key_env and not os.environ.get(api_key_env):
+            raise ValueError(f"configured API key environment variable is unset: {api_key_env}")
         config_to_binding = {
             "endpoint_url": item["endpoint"],
             "agent_id": item["agent_id"],
@@ -145,19 +162,13 @@ def load_provider(repo_root: Path, config_path: Path) -> MultiAgentProposalProvi
             "protocol_version": item["protocol_version"],
             "model_id": item["model"],
             "model_revision": item["model_revision"],
+            "api_key_env": api_key_env,
         }
         for binding_key, configured_value in config_to_binding.items():
             if binding[binding_key] != configured_value:
                 raise ValueError(
                     f"provider-endpoint-binding-mismatch:{endpoint_id}:{binding_key}"
                 )
-        api_key_env = item.get("api_key_env")
-        if api_key_env is not None and (not isinstance(api_key_env, str) or not api_key_env.strip()):
-            raise ValueError(f"agent entry {index} api_key_env must be a non-empty string")
-        if api_key_env and (not api_key_env.startswith("CAIOS_") or not api_key_env.endswith("_API_KEY")):
-            raise ValueError(f"agent entry {index} api_key_env must use an approved CAIOS_*_API_KEY name")
-        if api_key_env and not os.environ.get(api_key_env):
-            raise ValueError(f"configured API key environment variable is unset: {api_key_env}")
         source_context_opt_in = item.get("send_source_context", False)
         if not isinstance(source_context_opt_in, bool):
             raise ValueError(f"agent entry {index} send_source_context must be a JSON boolean")
