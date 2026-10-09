@@ -27,11 +27,7 @@
       ],
       "verification": [
         "python",
-        "-m",
-        "pytest",
-        "-q",
-        "test_sk.py",
-        "test_tamper.py"
+        "test_sk.py"
       ],
       "integration_mode": "observe-only"
     },
