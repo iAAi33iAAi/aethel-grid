@@ -187,3 +187,26 @@ def test_registered_proposal_adapter_source_pin_matches_checkout():
         agent_version=profile.software_version,
         source_ref=profile.source_ref,
     ) == []
+
+
+
+def test_mutable_repository_url_is_not_an_immutable_agent_source_pin():
+    from autonomy.agent_attestation import validate_agent_source_binding
+
+    profile = SimpleNamespace(
+        software_version="1.2.3",
+        source_ref="https://github.com/example/agent",
+        agent_kind="external-agent",
+        source_path="",
+        source_sha256="",
+        external_tool_execution=None,
+    )
+
+    reasons = validate_agent_source_binding(
+        Path("."),
+        profile,
+        agent_version="1.2.3",
+        source_ref="https://github.com/example/agent",
+    )
+
+    assert "agent-source-ref-not-immutable" in reasons
