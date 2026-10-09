@@ -440,6 +440,7 @@ def test_provider_preflight_requires_exact_agent_model_and_protocol_binding(tmp_
     ]
     for index, override in enumerate(mismatches):
         case_root = tmp_path / str(index)
+        case_root.mkdir(parents=True)
         seed_repo(case_root)
         config_path = write_agent_config(
             case_root,
