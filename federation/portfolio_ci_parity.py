@@ -100,12 +100,20 @@ def _validate_manifest(raw: Any) -> list[dict[str, Any]]:
             raise ValueError(f"repository {repo_id} verification must be a list of non-empty strings")
         if verification and verification[0] not in {"python", "python3", "pytest", "cargo", "npm", "node", "go"}:
             raise ValueError(f"repository {repo_id} uses a non-allowlisted verifier executable")
+        verification_source = row.get("verification_source")
+        if verification_source is not None and (
+            not isinstance(verification_source, str)
+            or not verification_source.startswith("https://")
+            or any(ch.isspace() for ch in verification_source)
+        ):
+            raise ValueError(f"repository {repo_id} verification_source must be an HTTPS URL")
         clean.append({
             "id": repo_id,
             "path": normalized,
             "role": str(row.get("role", "unspecified")),
             "integration_mode": str(row.get("integration_mode", "unspecified")),
             "verification": list(verification),
+            "verification_source": verification_source,
         })
     return clean
 
@@ -145,6 +153,7 @@ def audit_portfolio(
             "role": repo["role"],
             "integration_mode": repo["integration_mode"],
             "verification_command": repo["verification"],
+            "verification_source": repo["verification_source"],
             "revision": None,
             "status": None,
             "verification": None,

@@ -53,6 +53,39 @@ def test_parity_pass_requires_every_manifest_repo_verified(tmp_path: Path):
     assert all(row["verification"]["returncode"] == 0 for row in report["repositories"])
 
 
+def test_verification_source_is_retained_in_evidence(tmp_path: Path):
+    _git_repo(tmp_path)
+    source = "https://example.invalid/project/blob/main/tests/test_suite.py"
+    manifest = _manifest(tmp_path, [
+        {
+            "id": "root",
+            "path": ".",
+            "verification": ["python", "-c", "raise SystemExit(0)"],
+            "verification_source": source,
+        },
+    ])
+
+    report = audit_portfolio(root=tmp_path, manifest_path=manifest)
+
+    assert report["overall_status"] == "PASS"
+    assert report["repositories"][0]["verification_source"] == source
+
+
+def test_manifest_rejects_non_https_verification_source(tmp_path: Path):
+    _git_repo(tmp_path)
+    manifest = _manifest(tmp_path, [
+        {
+            "id": "root",
+            "path": ".",
+            "verification": ["python", "-c", "raise SystemExit(0)"],
+            "verification_source": "file:///tmp/untrusted-tests.py",
+        },
+    ])
+
+    with pytest.raises(ValueError, match="verification_source must be an HTTPS URL"):
+        audit_portfolio(root=tmp_path, manifest_path=manifest)
+
+
 def test_missing_verification_plan_is_partial_not_pass(tmp_path: Path):
     _git_repo(tmp_path)
     _git_repo(tmp_path / "unconfigured")

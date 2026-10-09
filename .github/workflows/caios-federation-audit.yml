@@ -119,6 +119,12 @@ jobs:
       - name: Install project-mono declared test dependencies
         run: python -m pip install -r aethel-grid/federated/project-mono/requirements.txt "pytest-asyncio>=0.23,<2"
 
+      - name: Install additional portfolio test dependencies
+        run: |
+          python -m pip install "eth-tester[py-evm]"
+          python -m pip install -r aethel-grid/federated/World-Tribe-Protocol/requirements.txt
+          python -m pip install -r aethel-grid/federated/sports-math-agent-orchestration/requirements.txt
+
       - name: Test federation bridge
         working-directory: aethel-grid
         run: python -m pytest -q federation/test_caios_federation.py

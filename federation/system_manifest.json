@@ -84,8 +84,15 @@
       "depends_on": [
         "openclaw-governance"
       ],
-      "verification": [],
-      "integration_mode": "observe-only"
+      "verification": [
+        "python",
+        "-m",
+        "pytest",
+        "-q",
+        "interop"
+      ],
+      "integration_mode": "observe-only",
+      "verification_source": "https://github.com/iAAi33iAAi/undermoon/blob/main/.github/workflows/interop.yml"
     },
     {
       "id": "alpha-intelligence-hub",
@@ -106,8 +113,15 @@
       "depends_on": [
         "aethel-grid"
       ],
-      "verification": [],
-      "integration_mode": "observe-only"
+      "verification": [
+        "python",
+        "-m",
+        "pytest",
+        "-q",
+        "scripts/test_worldtribe.py"
+      ],
+      "integration_mode": "observe-only",
+      "verification_source": "https://github.com/iAAi33iAAi/World-Tribe-Protocol/blob/main/scripts/test_worldtribe.py"
     },
     {
       "id": "sports-math-agent-orchestration",
@@ -118,8 +132,15 @@
         "aethel-grid",
         "openclaw-colony"
       ],
-      "verification": [],
-      "integration_mode": "observe-only"
+      "verification": [
+        "python",
+        "-m",
+        "pytest",
+        "-q",
+        "tests"
+      ],
+      "integration_mode": "observe-only",
+      "verification_source": "https://github.com/iAAi33iAAi/sports-math-agent-orchestration/blob/main/.github/workflows/ci.yml"
     },
     {
       "id": "calcula-colony",
