@@ -1,0 +1,57 @@
+name: CAIOS Network-Isolated Sandbox
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "autonomy/sandbox_simulator.py"
+      - "autonomy/test_sandbox_simulator.py"
+      - "autonomy/validate_patch_proposal.py"
+      - ".github/workflows/caios-autonomous-pr.yml"
+      - ".github/workflows/caios-network-sandbox.yml"
+  pull_request:
+    paths:
+      - "autonomy/sandbox_simulator.py"
+      - "autonomy/test_sandbox_simulator.py"
+      - "autonomy/validate_patch_proposal.py"
+      - ".github/workflows/caios-autonomous-pr.yml"
+      - ".github/workflows/caios-network-sandbox.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: caios-network-sandbox-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sandbox:
+    name: Verify network isolation and fail-closed behavior
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Bubblewrap
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes bubblewrap
+
+      - name: Require network namespace support
+        run: |
+          bwrap --die-with-parent --unshare-net --unshare-pid --ro-bind / / /usr/bin/true
+
+      - name: Install test dependency
+        run: python -m pip install "pytest>=8,<9"
+
+      - name: Test disposable sandbox
+        run: python -m pytest -q autonomy/test_sandbox_simulator.py
