@@ -182,10 +182,16 @@ def test_network_isolated_validation_cannot_reach_host_loopback(tmp_path: Path):
         "python",
         "-c",
         (
-            "import socket,sys; s=socket.socket(); s.settimeout(1); "
-            f"port={port}; "
-            "try_connect=True; "
-            "exec('try:\\n s.connect((\\'127.0.0.1\\', port))\\nexcept OSError:\\n sys.exit(0)\\nelse:\\n sys.exit(9)')"
+            "import socket,sys\n"
+            f"port={port}\n"
+            "s=socket.socket()\n"
+            "s.settimeout(1)\n"
+            "try:\n"
+            "    s.connect(('127.0.0.1', port))\n"
+            "except OSError:\n"
+            "    sys.exit(0)\n"
+            "else:\n"
+            "    sys.exit(9)\n"
         ),
     )
     try:
