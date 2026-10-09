@@ -21,6 +21,8 @@ from autonomy.agent_router import AgentRegistry
 from autonomy.context_window import ContextWindow
 from autonomy.caios_runtime import CandidateAction, ConstitutionalGate, ViabilityPlanner, digest
 from autonomy.multi_agent_provider import EndpointSpec, MultiAgentProposalProvider
+from autonomy.model_admission import ModelRegistry
+from autonomy.protocol_admission import ProtocolRegistry
 from conformance.contract import inspect_contract
 
 SCHEMA = "caios-patch-proposal/v1"
@@ -91,6 +93,52 @@ def load_provider(repo_root: Path, config_path: Path) -> MultiAgentProposalProvi
         raise ValueError(
             "at least one registered agent must explicitly enable send_source_context for patch planning"
         )
+
+    # Complete all repository-owned identity, protocol, capability, and model
+    # admission checks before returning a provider that can send source context.
+    # A configuration entry is never allowed to establish its own authority.
+    try:
+        agent_registry = AgentRegistry(repo_root)
+        model_registry = ModelRegistry(repo_root)
+        protocol_registry = ProtocolRegistry(repo_root)
+    except Exception as exc:
+        raise ValueError(f"proposal admission registries unavailable: {type(exc).__name__}") from exc
+
+    minimum_provenance = float(
+        agent_registry.policy.get("minimum_provenance_confidence", 0.90)
+    )
+    for spec in specs:
+        profile = agent_registry.agents.get(spec.agent_id)
+        if profile is None:
+            raise ValueError(f"agent-id-not-registered:{spec.agent_id}")
+        if profile.authority != "proposal":
+            raise ValueError(f"agent-is-not-proposal-authority:{spec.agent_id}")
+        if profile.provenance_confidence < minimum_provenance:
+            raise ValueError(f"agent-provenance-confidence-below-floor:{spec.agent_id}")
+        if not {"coding", "patching"}.issubset(profile.capabilities):
+            raise ValueError(f"agent-lacks-coding-or-patching-capability:{spec.agent_id}")
+        if spec.protocol not in profile.protocols:
+            raise ValueError(f"agent-protocol-not-registered:{spec.agent_id}:{spec.protocol}")
+        expected_protocol_version = profile.protocol_versions.get(spec.protocol)
+        if not expected_protocol_version:
+            raise ValueError(f"agent-protocol-version-not-pinned:{spec.agent_id}:{spec.protocol}")
+        if spec.protocol_version != expected_protocol_version:
+            raise ValueError(f"agent-protocol-version-mismatch:{spec.agent_id}:{spec.protocol}")
+        protocol_ok, protocol_reasons = protocol_registry.admit(
+            spec.protocol, spec.protocol_version, allow_draft=False
+        )
+        if not protocol_ok:
+            raise ValueError(
+                f"protocol-not-admitted:{spec.protocol}:{spec.protocol_version}:"
+                + ",".join(protocol_reasons)
+            )
+        model_ok, model_reasons = model_registry.admit(
+            spec.model, model_revision=spec.model_revision or None
+        )
+        if not model_ok:
+            raise ValueError(
+                f"model-not-admitted:{spec.model}:" + ",".join(model_reasons)
+            )
     return MultiAgentProposalProvider(tuple(specs))
 
 
