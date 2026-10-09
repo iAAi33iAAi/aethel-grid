@@ -50,10 +50,8 @@ class DisposableWorktree:
         validation_command: tuple[str, ...],
     ) -> SimulationResult:
         worktree = Path(tempfile.mkdtemp(prefix="caios-sim-"))
-        sandbox_home = worktree / ".caios-home"
-        sandbox_tmp = worktree / ".caios-tmp"
-        sandbox_home.mkdir()
-        sandbox_tmp.mkdir()
+        sandbox_home = Path(tempfile.mkdtemp(prefix="caios-home-"))
+        sandbox_tmp = Path(tempfile.mkdtemp(prefix="caios-tmp-"))
 
         # Candidate/test code must not inherit ambient secrets, provider keys,
         # GitHub tokens, cloud credentials, proxies, or custom Python paths.
@@ -156,3 +154,5 @@ class DisposableWorktree:
                 check=False,
             )
             shutil.rmtree(worktree, ignore_errors=True)
+            shutil.rmtree(sandbox_home, ignore_errors=True)
+            shutil.rmtree(sandbox_tmp, ignore_errors=True)
