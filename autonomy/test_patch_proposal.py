@@ -542,3 +542,44 @@ def test_provider_preflight_binds_the_api_key_secret_name_to_endpoint(tmp_path: 
 
     with pytest.raises(ValueError, match="provider-endpoint-binding-mismatch:test-endpoint:api_key_env"):
         patch_proposal.load_provider(tmp_path, config_path)
+
+
+
+def test_provider_preflight_rejects_agent_source_ref_claim_not_in_registry(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    config_path = write_agent_config(tmp_path, send_source_context=True)
+    profile = endpoint_profile(source_ref="git:unreviewed-source")
+    setup_preflight_registries(monkeypatch, agents={"test-agent": profile})
+
+    with pytest.raises(ValueError, match="agent-identity-binding-failed:test-agent:agent-source-ref-mismatch"):
+        patch_proposal.load_provider(tmp_path, config_path)
+
+
+def test_provider_preflight_rejects_agent_software_version_not_pinned(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    config_path = write_agent_config(tmp_path, send_source_context=True)
+    profile = endpoint_profile(software_version="")
+    setup_preflight_registries(monkeypatch, agents={"test-agent": profile})
+
+    with pytest.raises(ValueError, match="agent-version-not-pinned-by-registry"):
+        patch_proposal.load_provider(tmp_path, config_path)
+
+
+def test_provider_preflight_rejects_http_transport_claimed_as_external_agent(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    config_path = write_agent_config(tmp_path, send_source_context=True)
+    profile = endpoint_profile(agent_kind="external-agent")
+    setup_preflight_registries(monkeypatch, agents={"test-agent": profile})
+
+    with pytest.raises(ValueError, match="model-proposal-transport-requires-adapter-identity:test-agent"):
+        patch_proposal.load_provider(tmp_path, config_path)
+
+
+def test_provider_preflight_rejects_adapter_that_claims_external_tool_execution(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    config_path = write_agent_config(tmp_path, send_source_context=True)
+    profile = endpoint_profile(external_tool_execution=True)
+    setup_preflight_registries(monkeypatch, agents={"test-agent": profile})
+
+    with pytest.raises(ValueError, match="model-proposal-adapter-must-not-execute-external-tools:test-agent"):
+        patch_proposal.load_provider(tmp_path, config_path)
