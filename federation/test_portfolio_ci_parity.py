@@ -215,6 +215,19 @@ def test_missing_checkout_fails_instead_of_silently_skipping(tmp_path: Path):
 
 
 
+def test_calcula_documentation_verifier_is_explicitly_scoped():
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads((root / "federation" / "system_manifest.json").read_text(encoding="utf-8"))
+    calcula = next(row for row in manifest["repositories"] if row["id"] == "calcula-colony")
+
+    assert calcula["verification"] == ["python", "-m", "unittest", "discover", "-s", "tests", "-v"]
+    assert calcula["verification_source"] == "https://github.com/iAAi33iAAi/calcula-colony/blob/main/.github/workflows/ci.yml"
+    scope = calcula["verification_scope"].lower()
+    assert "documentation-contract verification only" in scope
+    assert "does not verify a calcula engine" in scope
+    assert "empirical/scientific law" in scope
+
+
 def test_alpha_scaffold_verifier_is_explicitly_scoped():
     root = Path(__file__).resolve().parents[1]
     manifest = json.loads((root / "federation" / "system_manifest.json").read_text(encoding="utf-8"))

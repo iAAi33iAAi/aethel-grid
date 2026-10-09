@@ -177,8 +177,18 @@
       "depends_on": [
         "openclaw-colony"
       ],
-      "verification": [],
-      "integration_mode": "observe-only"
+      "verification": [
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "integration_mode": "observe-only",
+      "verification_source": "https://github.com/iAAi33iAAi/calcula-colony/blob/main/.github/workflows/ci.yml",
+      "verification_scope": "Documentation-contract verification only: checks required design documents and license, truthful disclosure that no executable engine is present, the arithmetic sum of the six proposed evaluation weights, historical roadmap status labeling, and OpenClaw attribution. It does not verify a CALCULA engine, runtime, payment protocol, or empirical/scientific law."
     },
     {
       "id": "crew-colony",
