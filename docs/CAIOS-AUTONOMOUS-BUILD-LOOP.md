@@ -10,7 +10,7 @@ The design separates three trust zones.
 2. **Validation job:** downloads the patch in a separate job with read-only repository permission and no model API keys. It rechecks the base commit, agent/model admission, risk ceiling, protected paths, and deterministic gate, then applies the patch in a disposable Git worktree and runs the prescribed validation suite.
 3. **Publisher job:** runs only after validation succeeds. It rechecks that main is still the validated base, applies the already-tested patch, commits it, and opens a pull request. It does **not** run candidate code and it never auto-merges.
 
-The loop is scheduled on weekdays and can also be started manually through **Actions → CAIOS Bounded Autonomous Patch Loop → Run workflow**.
+The loop runs after pushes to main and on weekdays from the default branch. Merging the one-time agent configuration to main triggers its first configured run; the workflow can also be re-run from a previous main-branch Actions run.
 
 ## One-time activation requirements
 
