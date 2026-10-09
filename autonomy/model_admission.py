@@ -77,6 +77,17 @@ class ModelRegistry:
                 elif profile.revision and profile.revision != model_revision:
                     reasons.append("model-revision-mismatch")
 
+        # The production declaration is normative: a caller-provided revision
+        # string is not evidence of a pin unless the repository registry anchors
+        # the exact approved revision and the request matches it.
+        if "REQUIRES_EXACT_REVISION_PIN" in profile.production:
+            if not profile.revision:
+                reasons.append("registry-model-revision-not-pinned")
+            elif not model_revision:
+                reasons.append("model-revision-missing")
+            elif profile.revision != model_revision:
+                reasons.append("model-revision-mismatch")
+
         if "REQUIRES_MODEL_LICENSE_REVIEW" in profile.production:
             reasons.append("model-license-review-required")
 
