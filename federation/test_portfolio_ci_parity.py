@@ -117,7 +117,7 @@ def test_parity_pass_requires_every_manifest_repo_verified(tmp_path: Path):
 
 def test_verification_source_is_retained_in_evidence(tmp_path: Path):
     _git_repo(tmp_path)
-    source = "https://example.invalid/project/blob/main/tests/test_suite.py"
+    source = "https://github.com/example/project/blob/0123456789abcdef0123456789abcdef01234567/tests/test_suite.py"
     manifest = _manifest(tmp_path, [
         {
             "id": "root",
