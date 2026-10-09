@@ -4,7 +4,7 @@ CAIOS isolated patch verifier.
 
 Consumes a proposal artifact, checks it against the current trusted base,
 revalidates registry attestation and the constitutional gate, then tests it in
-a standalone clone using a Bubblewrap network namespace. The runner home and
+a standalone clone using a Bubblewrap network socket egress filter. The runner home and
 host temporary credential paths are hidden and toolchain paths are read-only.
 This job must not receive model API keys or a repository write token.
 """
@@ -154,11 +154,11 @@ def validate_and_test(
         simulation = DisposableWorktree(repo_root).run(
             patch,
             VALIDATION_COMMAND,
-            require_network_isolation=True,
+            require_egress_block=True,
         )
         result = {
             "schema": "caios-patch-validation/v1",
-            "status": "VALIDATED" if simulation.status == "PASS" and simulation.network_isolated else "VALIDATION_FAILED",
+            "status": "VALIDATED" if simulation.status == "PASS" and simulation.egress_blocked else "VALIDATION_FAILED",
             "base_sha": preflight["base_sha"],
             "proposal_digest": preflight["proposal_digest"],
             "patch_digest": digest(patch),
@@ -166,9 +166,9 @@ def validate_and_test(
             "sandbox_evidence": simulation.as_dict(),
             "validation_contract": {
                 "runs_in_disposable_standalone_clone": True,
-                "network_isolation_required": True,
-                "network_isolation_established": simulation.network_isolated,
-                "sandbox_mode": "bubblewrap-unshare-net" if simulation.network_isolated else "failed-closed",
+                "egress_block_required": True,
+                "egress_block_established": simulation.egress_blocked,
+                "sandbox_mode": "bubblewrap-seccomp-socket-deny" if simulation.egress_blocked else "failed-closed",
                 "model_api_keys_present": bool(model_key_names),
                 "repository_write_token_present": bool(write_token_names),
                 "fixed_validation_command": list(VALIDATION_COMMAND),
