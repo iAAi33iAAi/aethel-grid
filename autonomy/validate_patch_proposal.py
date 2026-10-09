@@ -3,9 +3,11 @@
 CAIOS isolated patch verifier.
 
 Consumes a proposal artifact, checks it against the current trusted base,
-revalidates registry attestation and the constitutional gate, and tests it in
-a disposable Git worktree. This job must not receive model API keys or a
-repository write token.
+revalidates registry attestation and the constitutional gate, then tests it in
+a standalone clone inside a Docker container with network mode none, a read-only
+container root, no Linux capabilities, and only the clone and bounded temporary
+directories writable. The host runner's home and sockets are not mounted.
+This job must not receive model API keys or a repository write token.
 """
 from __future__ import annotations
 
@@ -150,17 +152,24 @@ def validate_and_test(
             "reason": "revalidated-patch-missing",
         }
     else:
-        simulation = DisposableWorktree(repo_root).run(patch, VALIDATION_COMMAND)
+        simulation = DisposableWorktree(repo_root).run(
+            patch,
+            VALIDATION_COMMAND,
+            require_egress_block=True,
+        )
         result = {
             "schema": "caios-patch-validation/v1",
-            "status": "VALIDATED" if simulation.status == "PASS" else "VALIDATION_FAILED",
+            "status": "VALIDATED" if simulation.status == "PASS" and simulation.egress_blocked else "VALIDATION_FAILED",
             "base_sha": preflight["base_sha"],
             "proposal_digest": preflight["proposal_digest"],
             "patch_digest": digest(patch),
             "candidate": candidate,
             "sandbox_evidence": simulation.as_dict(),
             "validation_contract": {
-                "runs_in_disposable_git_worktree": True,
+                "runs_in_disposable_standalone_clone": True,
+                "egress_block_required": True,
+                "egress_block_established": simulation.egress_blocked,
+                "sandbox_mode": "docker-network-none-no-capabilities-read-only-root" if simulation.egress_blocked else "failed-closed",
                 "model_api_keys_present": bool(model_key_names),
                 "repository_write_token_present": bool(write_token_names),
                 "fixed_validation_command": list(VALIDATION_COMMAND),

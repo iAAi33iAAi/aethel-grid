@@ -199,6 +199,7 @@ def test_build_and_test_configuration_is_protected(tmp_path: Path):
         "requirements-dev.txt",
         "package.json",
         "Cargo.toml",
+        "autonomy/sandbox/Dockerfile",
     ):
         allowed, reasons = gate.validate(_patch_action(path=path))
         assert allowed is False, path

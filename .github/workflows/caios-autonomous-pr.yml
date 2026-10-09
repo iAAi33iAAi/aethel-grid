@@ -127,7 +127,16 @@ jobs:
           name: caios-patch-proposal
           path: /tmp/caios-proposal
 
-      - name: Revalidate and test patch in disposable worktree
+      - name: Build trusted network-none validation image
+        run: |
+          set -euo pipefail
+          docker info
+          mkdir -p autonomy/sandbox/toolchain
+          cp "$(command -v node)" autonomy/sandbox/toolchain/node
+          chmod 0755 autonomy/sandbox/toolchain/node
+          docker build --tag caios-validation-sandbox:ci autonomy/sandbox
+
+      - name: Revalidate and test patch inside network-none container
         id: validate
         shell: bash
         run: |
@@ -148,7 +157,8 @@ jobs:
           {
             echo "## CAIOS isolated validation"
             echo "- Status: $status"
-            echo "- Candidate code ran in a disposable worktree."
+            echo "- Candidate code ran inside Docker with --network=none, a read-only root, dropped capabilities, and only its disposable clone writable."
+            echo "- The runner home, host temporary paths, and runner sockets were not mounted into the container." 
             echo "- No model API keys or repository write token were supplied to the candidate test process."
             echo "- Fixed Python, Rust, TypeScript, and SPEC-004 candidate checks were requested."
           } >> "$GITHUB_STEP_SUMMARY"

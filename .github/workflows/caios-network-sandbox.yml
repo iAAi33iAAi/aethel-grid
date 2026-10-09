@@ -1,0 +1,67 @@
+name: CAIOS Docker Network-None Sandbox
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "autonomy/sandbox_simulator.py"
+      - "autonomy/test_sandbox_simulator.py"
+      - "autonomy/validate_patch_proposal.py"
+      - "autonomy/sandbox/Dockerfile"
+      - ".github/workflows/caios-autonomous-pr.yml"
+      - ".github/workflows/caios-network-sandbox.yml"
+  pull_request:
+    paths:
+      - "autonomy/sandbox_simulator.py"
+      - "autonomy/test_sandbox_simulator.py"
+      - "autonomy/validate_patch_proposal.py"
+      - "autonomy/sandbox/Dockerfile"
+      - ".github/workflows/caios-autonomous-pr.yml"
+      - ".github/workflows/caios-network-sandbox.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: caios-network-sandbox-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sandbox:
+    name: Verify network-none isolation and fail-closed behavior
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Verify Docker daemon and build sandbox image
+        run: |
+          set -euo pipefail
+          docker info
+          mkdir -p autonomy/sandbox/toolchain
+          cp "$(command -v node)" autonomy/sandbox/toolchain/node
+          chmod 0755 autonomy/sandbox/toolchain/node
+          docker build --tag caios-validation-sandbox:ci autonomy/sandbox
+
+      - name: Install host test dependency
+        run: python -m pip install "pytest>=8,<9"
+
+      - name: Test Docker network-none sandbox
+        env:
+          CAIOS_SANDBOX_IMAGE: caios-validation-sandbox:ci
+        run: python -m pytest -q autonomy/test_sandbox_simulator.py
