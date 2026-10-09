@@ -233,6 +233,8 @@ def test_gate5_ledger_matches_complete_coverage_evidence():
     ]
 
     assert gate5["status"] == "CLOSED"
+    assert all(row["verification"] for row in rows)
+    assert all(row["verification_scope"].strip() for row in rows)
     assert "verification coverage" in gate5["reason"].lower()
     assert "does not establish" in gate5["reason"].lower()
     assert "production conformance" in gate5["reason"].lower()
