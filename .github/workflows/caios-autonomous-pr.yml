@@ -22,7 +22,7 @@ jobs:
       contents: read
     outputs:
       configured: ${{ steps.config.outputs.configured }}
-      status: ${{ steps.planner.outputs.status }}
+      status: ${{ steps.planner.outputs.status || steps.config.outputs.status }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,6 +41,7 @@ jobs:
         run: |
           if [ ! -f autonomy/agent_endpoints.json ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "status=NOT_CONFIGURED" >> "$GITHUB_OUTPUT"
             {
               echo "## CAIOS autonomous patch loop"
               echo "No patch was proposed because autonomy/agent_endpoints.json is not configured."
@@ -188,6 +189,7 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
+          import hashlib
           import json
           from pathlib import Path
           row = json.loads(Path("/tmp/caios-validated/caios-patch-validation.json").read_text(encoding="utf-8"))
@@ -198,7 +200,21 @@ jobs:
               raise SystemExit("validated candidate payload missing")
           if candidate.get("base_sha") != row.get("base_sha"):
               raise SystemExit("candidate and validation base SHA differ")
-          Path("/tmp/caios-validated.patch").write_text(candidate["unified_diff"], encoding="utf-8")
+          if candidate.get("proposal_digest") != row.get("proposal_digest"):
+              raise SystemExit("candidate and validation proposal digests differ")
+          proposal = candidate.get("source_proposal")
+          if not isinstance(proposal, dict):
+              raise SystemExit("source proposal missing from validation artifact")
+          canonical_proposal = json.dumps(proposal, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+          if hashlib.sha256(canonical_proposal).hexdigest() != row.get("proposal_digest"):
+              raise SystemExit("source proposal digest mismatch in publisher")
+          patch = candidate.get("unified_diff")
+          canonical_patch = json.dumps(patch, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+          if hashlib.sha256(canonical_patch).hexdigest() != row.get("patch_digest"):
+              raise SystemExit("patch digest mismatch in publisher")
+          if not isinstance(patch, str) or not patch:
+              raise SystemExit("validated patch is empty")
+          Path("/tmp/caios-validated.patch").write_text(patch, encoding="utf-8")
           Path("/tmp/caios-validated.meta.json").write_text(json.dumps({
               "base_sha": row["base_sha"],
               "proposal_digest": row["proposal_digest"],
