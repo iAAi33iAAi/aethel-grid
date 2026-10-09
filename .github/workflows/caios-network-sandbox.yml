@@ -12,6 +12,7 @@ on:
       - ".github/workflows/caios-network-sandbox.yml"
   pull_request:
     paths:
+      - "autonomy/**"
       - "autonomy/sandbox_simulator.py"
       - "autonomy/test_sandbox_simulator.py"
       - "autonomy/validate_patch_proposal.py"

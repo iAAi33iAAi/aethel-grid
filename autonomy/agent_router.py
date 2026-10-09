@@ -38,6 +38,12 @@ class AgentProfile:
     sandbox: bool
     provenance_confidence: float
     protocol_versions: dict[str, str]
+    software_version: str = ""
+    source_ref: str = ""
+    agent_kind: str = "external-agent"
+    source_path: str = ""
+    source_sha256: str = ""
+    external_tool_execution: bool | None = None
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -50,6 +56,12 @@ class AgentProfile:
             "sandbox": self.sandbox,
             "provenance_confidence": self.provenance_confidence,
             "protocol_versions": dict(sorted(self.protocol_versions.items())),
+            "software_version": self.software_version,
+            "source_ref": self.source_ref,
+            "agent_kind": self.agent_kind,
+            "source_path": self.source_path,
+            "source_sha256": self.source_sha256,
+            "external_tool_execution": self.external_tool_execution,
         }
 
 
@@ -88,6 +100,16 @@ class AgentRegistry:
                     str(key): str(value)
                     for key, value in dict(item.get("protocol_versions", {})).items()
                 },
+                software_version=str(item.get("software_version", "")),
+                source_ref=str(item.get("source_ref", "")),
+                agent_kind=str(item.get("agent_kind", "external-agent")),
+                source_path=str(item.get("source_path", "")),
+                source_sha256=str(item.get("source_sha256", "")),
+                external_tool_execution=(
+                    bool(item["external_tool_execution"])
+                    if "external_tool_execution" in item
+                    else None
+                ),
             )
             for item in raw.get("agents", [])
         }

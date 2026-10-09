@@ -22,6 +22,7 @@
     "integrations/tool_registry.py",
     "federation/security_primitives.py",
     "federation/node_identity.py",
-    "federation/signed_envelope.py"
+    "federation/signed_envelope.py",
+    "docs/CAIOS-OPENAI-COMPATIBLE-PROPOSAL-TRANSPORT.md"
   ]
 }
