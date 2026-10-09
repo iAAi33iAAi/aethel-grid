@@ -128,7 +128,7 @@ def validate_and_test(
             "write_token_environment_names": write_token_names,
         }
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\\n", encoding="utf-8")
+        output_path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         return result
     artifact = json.loads(input_path.read_text(encoding="utf-8"))
     preflight = validate_artifact(repo_root, artifact, max_risk=max_risk)
