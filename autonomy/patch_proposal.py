@@ -17,7 +17,7 @@ import urllib.parse
 from pathlib import Path
 from typing import Any
 
-from autonomy.agent_attestation import validate_proposal
+from autonomy.agent_attestation import validate_agent_source_binding, validate_proposal
 from autonomy.agent_router import AgentRegistry
 from autonomy.context_window import ContextWindow
 from autonomy.caios_runtime import CandidateAction, ConstitutionalGate, ViabilityPlanner, digest
@@ -215,6 +215,18 @@ def load_provider(repo_root: Path, config_path: Path) -> MultiAgentProposalProvi
             raise ValueError(f"agent-is-not-proposal-authority:{spec.agent_id}")
         if profile.provenance_confidence < minimum_provenance:
             raise ValueError(f"agent-provenance-confidence-below-floor:{spec.agent_id}")
+
+        source_binding_reasons = validate_agent_source_binding(
+            repo_root,
+            profile,
+            agent_version=spec.agent_version,
+            source_ref=spec.source_ref,
+        )
+        if source_binding_reasons:
+            raise ValueError(
+                f"agent-identity-binding-failed:{spec.agent_id}:"
+                + ",".join(source_binding_reasons)
+            )
         if not {"coding", "patching"}.issubset(profile.capabilities):
             raise ValueError(f"agent-lacks-coding-or-patching-capability:{spec.agent_id}")
         if spec.protocol not in profile.protocols:
@@ -231,6 +243,22 @@ def load_provider(repo_root: Path, config_path: Path) -> MultiAgentProposalProvi
             raise ValueError(
                 f"protocol-not-admitted:{spec.protocol}:{spec.protocol_version}:"
                 + ",".join(protocol_reasons)
+            )
+        protocol_profile = protocol_registry.get(spec.protocol)
+        if protocol_profile is None:
+            raise ValueError(f"protocol-not-registered:{spec.protocol}")
+        if protocol_profile.role == "model-proposal-transport":
+            if profile.agent_kind != "model-proposal-adapter":
+                raise ValueError(
+                    f"model-proposal-transport-requires-adapter-identity:{spec.agent_id}"
+                )
+            if profile.external_tool_execution is not False:
+                raise ValueError(
+                    f"model-proposal-adapter-must-not-execute-external-tools:{spec.agent_id}"
+                )
+        elif profile.agent_kind == "model-proposal-adapter":
+            raise ValueError(
+                f"model-proposal-adapter-cannot-claim-agent-execution-protocol:{spec.protocol}"
             )
         model_ok, model_reasons = model_registry.admit(
             spec.model, model_revision=spec.model_revision or None
