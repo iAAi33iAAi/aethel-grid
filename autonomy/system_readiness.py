@@ -120,7 +120,7 @@ def evaluate(repo_root: Path) -> dict[str, Any]:
     tools_ok = tools.is_file()
 
     readiness = {
-        "causal_runtime": 1.0,
+        "causal_runtime": 1.0 if operational else 0.0,
         "proof_integrity": 1.0 if proof_ok else 0.0,
         "proof_graph": 1.0 if proof_graph.is_file() else 0.0,
         "canonical_conformance": 1.0 if contract.status == "PASS" else 0.0,
