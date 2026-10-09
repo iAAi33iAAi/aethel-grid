@@ -157,7 +157,7 @@ def test_red_team_observer_executes_campaign_inside_runtime():
     assert evidence.kind == "red-team"
     assert evidence.status == "PASS", evidence.details
     assert evidence.details["probe_count"] == len(red_team_probes())
-    assert evidence.details["probe_count"] >= 48
+    assert evidence.details["probe_count"] >= 51
 
 
 def test_missing_authority_lattice_fails_closed(tmp_path: Path):
