@@ -69,7 +69,7 @@
         "-v"
       ],
       "integration_mode": "observe-only",
-      "verification_source": "https://github.com/iAAi33iAAi/openclaw-governance/blob/main/.github/workflows/ci.yml"
+      "verification_source": "https://github.com/iAAi33iAAi/openclaw-governance/blob/9e7ea50365c936b189e804a5d31e3bfbd5ed776e/.github/workflows/ci.yml"
     },
     {
       "id": "openclaw-colony",
@@ -90,7 +90,7 @@
         "tests/test_caios_interop.py"
       ],
       "integration_mode": "observe-only",
-      "verification_source": "https://github.com/iAAi33iAAi/openclaw-colony/blob/main/tests/test_caios_interop.py",
+      "verification_source": "https://github.com/iAAi33iAAi/openclaw-colony/blob/23ee53f5f5744d3b17c2ff94a8f88a3d04d6422a/tests/test_caios_interop.py",
       "verification_scope": "CAIOS Interop adapter and AETHEL Interop v1 response contract only; not the full OpenClaw Colony suite, Rust kernel, or production conformance."
     },
     {
@@ -109,7 +109,7 @@
         "interop"
       ],
       "integration_mode": "observe-only",
-      "verification_source": "https://github.com/iAAi33iAAi/undermoon/blob/main/.github/workflows/interop.yml"
+      "verification_source": "https://github.com/iAAi33iAAi/undermoon/blob/3b244212b452e90fbdac3cdfe93a527201570252/.github/workflows/interop.yml"
     },
     {
       "id": "alpha-intelligence-hub",
@@ -129,7 +129,7 @@
         "-v"
       ],
       "integration_mode": "observe-only",
-      "verification_source": "https://github.com/iAAi33iAAi/alpha-intelligence-hub/blob/main/.github/workflows/ci.yml",
+      "verification_source": "https://github.com/iAAi33iAAi/alpha-intelligence-hub/blob/736c765829e3588ab6c71e57bc3dc145d9c22241/.github/workflows/ci.yml",
       "verification_scope": "Alpha Intelligence Hub scaffold integrity only: checks the declared Compose service/build-context contract, the fail-fast migration script's shell syntax, and well-formed/consistent Git remote declarations. It does not initialize/merge repositories, build target images, execute the referenced services, or establish production conformance."
     },
     {
@@ -148,7 +148,7 @@
         "scripts/test_worldtribe.py"
       ],
       "integration_mode": "observe-only",
-      "verification_source": "https://github.com/iAAi33iAAi/World-Tribe-Protocol/blob/main/scripts/test_worldtribe.py"
+      "verification_source": "https://github.com/iAAi33iAAi/World-Tribe-Protocol/blob/2ff0032a68884af466320efb71570bd9f9b505d7/scripts/test_worldtribe.py"
     },
     {
       "id": "sports-math-agent-orchestration",
@@ -167,7 +167,7 @@
         "tests"
       ],
       "integration_mode": "observe-only",
-      "verification_source": "https://github.com/iAAi33iAAi/sports-math-agent-orchestration/blob/main/.github/workflows/ci.yml"
+      "verification_source": "https://github.com/iAAi33iAAi/sports-math-agent-orchestration/blob/6ae0efaedf42f2ce17060fb8f1fb65dc81e819fe/.github/workflows/ci.yml"
     },
     {
       "id": "calcula-colony",
@@ -187,7 +187,7 @@
         "-v"
       ],
       "integration_mode": "observe-only",
-      "verification_source": "https://github.com/iAAi33iAAi/calcula-colony/blob/main/.github/workflows/ci.yml",
+      "verification_source": "https://github.com/iAAi33iAAi/calcula-colony/blob/614b6e675ecb7a75752c9842fcc4c3e6f4179ba5/.github/workflows/ci.yml",
       "verification_scope": "Documentation-contract verification only: checks required design documents and license, truthful disclosure that no executable engine is present, the arithmetic sum of the six proposed evaluation weights, historical roadmap status labeling, and OpenClaw attribution. It does not verify a CALCULA engine, runtime, payment protocol, or empirical/scientific law."
     },
     {
@@ -225,7 +225,7 @@
         "ci:unit"
       ],
       "integration_mode": "observe-only",
-      "verification_source": "https://github.com/iAAi33iAAi/clawhub/blob/main/.github/workflows/ci.yml"
+      "verification_source": "https://github.com/iAAi33iAAi/clawhub/blob/5b63d5df6071a91cfd3e5e184bc44e212e977cc9/.github/workflows/ci.yml"
     },
     {
       "id": "ALEXARAC",
