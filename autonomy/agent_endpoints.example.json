@@ -2,17 +2,17 @@
   "schema": "caios-agent-endpoints/v1",
   "agents": [
     {
-      "agent_id": "codex",
+      "endpoint_id": "REQUIRES_REVIEWED_ENDPOINT_REGISTRY_ENTRY",
+      "agent_id": "caios-openai-compatible-proposal-adapter",
       "endpoint": "https://YOUR-ENDPOINT/v1/chat/completions",
       "model": "YOUR_MODEL_ID",
-      "protocol": "openai-compatible",
-      "agent_version": "PINNED_VERSION_OR_COMMIT",
-      "source_ref": "git:PINNED_COMMIT",
-      "api_key_env": "CAIOS_CODEX_API_KEY",
-      "send_source_context": false,
       "model_revision": "PINNED_MODEL_REVISION_OR_DIGEST",
-      "protocol_version": "PINNED_PROTOCOL_REVISION",
-      "endpoint_id": "REQUIRES_REVIEWED_ENDPOINT_REGISTRY_ENTRY"
+      "protocol": "caios-openai-compatible-proposal-transport",
+      "protocol_version": "1.0.0",
+      "agent_version": "1.0.0",
+      "source_ref": "https://github.com/iAAi33iAAi/aethel-grid/blob/1382fd5a7ff1f97c9235ef4dd4b21358edb1b7c1/autonomy/caios_runtime.py",
+      "api_key_env": "CAIOS_OPENAI_API_KEY",
+      "send_source_context": false
     }
   ]
 }
