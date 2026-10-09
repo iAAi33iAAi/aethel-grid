@@ -24,6 +24,7 @@ import tempfile
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 SCHEMA = "caios-portfolio-ci-parity/v1"
 DEFAULT_TIMEOUT_SECONDS = 600
@@ -101,12 +102,33 @@ def _validate_manifest(raw: Any) -> list[dict[str, Any]]:
         if verification and verification[0] not in {"python", "python3", "pytest", "cargo", "npm", "node", "go", "bun"}:
             raise ValueError(f"repository {repo_id} uses a non-allowlisted verifier executable")
         verification_source = row.get("verification_source")
-        if verification_source is not None and (
-            not isinstance(verification_source, str)
-            or not verification_source.startswith("https://")
-            or any(ch.isspace() for ch in verification_source)
-        ):
-            raise ValueError(f"repository {repo_id} verification_source must be an HTTPS URL")
+        if verification_source is not None:
+            if (
+                not isinstance(verification_source, str)
+                or not verification_source.startswith("https://")
+                or any(ch.isspace() for ch in verification_source)
+            ):
+                raise ValueError(f"repository {repo_id} verification_source must be an HTTPS URL")
+            source_url = urlsplit(verification_source)
+            source_parts = source_url.path.split("/")
+            commit_pin = source_parts[4] if len(source_parts) > 4 else ""
+            if (
+                source_url.netloc != "github.com"
+                or source_url.query
+                or source_url.fragment
+                or len(source_parts) < 6
+                or source_parts[0] != ""
+                or not source_parts[1]
+                or not source_parts[2]
+                or source_parts[3] != "blob"
+                or len(commit_pin) != 40
+                or any(ch not in "0123456789abcdef" for ch in commit_pin)
+                or not source_parts[5]
+            ):
+                raise ValueError(
+                    f"repository {repo_id} verification_source must be an immutable GitHub blob URL "
+                    "pinned to a 40-character commit SHA"
+                )
         verification_scope = row.get("verification_scope")
         if verification_scope is not None and (
             not isinstance(verification_scope, str) or not verification_scope.strip()
