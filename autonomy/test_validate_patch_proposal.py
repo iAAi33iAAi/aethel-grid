@@ -96,9 +96,9 @@ def test_validation_runs_in_disposable_worktree_and_records_evidence(tmp_path: P
 
     class FakeSimulation:
         status = "PASS"
-        network_isolated = True
+        egress_blocked = True
         def as_dict(self):
-            return {"status": self.status, "validation_returncode": 0, "network_isolated": self.network_isolated}
+            return {"status": self.status, "validation_returncode": 0, "egress_blocked": self.egress_blocked}
 
     class FakeWorktree:
         def __init__(self, repo_root):
@@ -106,7 +106,7 @@ def test_validation_runs_in_disposable_worktree_and_records_evidence(tmp_path: P
         def run(self, patch, command, **kwargs):
             assert patch == "diff"
             assert command == verifier.VALIDATION_COMMAND
-            assert kwargs.get("require_network_isolation") is True
+            assert kwargs.get("require_egress_block") is True
             return FakeSimulation()
 
     monkeypatch.setattr(verifier, "DisposableWorktree", FakeWorktree)
@@ -115,8 +115,8 @@ def test_validation_runs_in_disposable_worktree_and_records_evidence(tmp_path: P
     assert result["status"] == "VALIDATED"
     assert result["validation_contract"]["model_api_keys_present"] is False
     assert result["validation_contract"]["repository_write_token_present"] is False
-    assert result["validation_contract"]["network_isolation_required"] is True
-    assert result["validation_contract"]["network_isolation_established"] is True
+    assert result["validation_contract"]["egress_block_required"] is True
+    assert result["validation_contract"]["egress_block_established"] is True
     assert json.loads(output_path.read_text(encoding="utf-8"))["status"] == "VALIDATED"
 
 
