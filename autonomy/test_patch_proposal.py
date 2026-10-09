@@ -548,7 +548,7 @@ def test_provider_preflight_binds_the_api_key_secret_name_to_endpoint(tmp_path: 
 def test_provider_preflight_rejects_agent_source_ref_claim_not_in_registry(tmp_path: Path, monkeypatch):
     seed_repo(tmp_path)
     config_path = write_agent_config(tmp_path, send_source_context=True)
-    profile = endpoint_profile(source_ref="git:unreviewed-source")
+    profile = endpoint_profile(source_ref="git:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
     setup_preflight_registries(monkeypatch, agents={"test-agent": profile})
 
     with pytest.raises(ValueError, match="agent-identity-binding-failed:test-agent:agent-source-ref-mismatch"):
