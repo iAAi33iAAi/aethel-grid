@@ -1,9 +1,8 @@
 import os
 import shutil
-import socket
-import threading
 from pathlib import Path
 import subprocess
+import uuid
 
 import pytest
 
@@ -148,69 +147,100 @@ def test_disposable_validation_uses_temporary_home(tmp_path: Path):
     subprocess.run(("git", "--version"), capture_output=True).returncode != 0,
     reason="git is required",
 )
-def test_docker_network_none_validation_cannot_reach_host_loopback(tmp_path: Path):
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    subprocess.run(("git", "init"), cwd=repo, capture_output=True, check=True)
-    subprocess.run(("git", "config", "user.email", "caios@test"), cwd=repo, check=True)
-    subprocess.run(("git", "config", "user.name", "CAIOS Test"), cwd=repo, check=True)
-    (repo / "value.txt").write_text("one\n", encoding="utf-8")
-    subprocess.run(("git", "add", "."), cwd=repo, check=True)
-    subprocess.run(("git", "commit", "-m", "base"), cwd=repo, capture_output=True, check=True)
+def test_docker_network_none_blocks_access_to_bridge_service(tmp_path: Path):
+    docker = shutil.which("docker")
+    image = os.environ["CAIOS_SANDBOX_IMAGE"]
+    network = f"caios-test-{uuid.uuid4().hex[:12]}"
+    server_name = f"caios-server-{uuid.uuid4().hex[:12]}"
 
-    listener = socket.socket()
-    listener.bind(("127.0.0.1", 0))
-    listener.listen(1)
-    port = listener.getsockname()[1]
-    reached = {"value": False}
+    created = subprocess.run(
+        (docker, "network", "create", network),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert created.returncode == 0, created.stderr
 
-    def accept_once():
-        listener.settimeout(2.0)
-        try:
-            conn, _ = listener.accept()
-            reached["value"] = True
-            conn.close()
-        except (TimeoutError, OSError):
-            pass
+    try:
+        server = subprocess.run(
+            (
+                docker, "run", "--detach", "--name", server_name,
+                "--network", network,
+                image, "python", "-m", "http.server", "8765", "--bind", "0.0.0.0",
+            ),
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        assert server.returncode == 0, server.stderr
 
-    thread = threading.Thread(target=accept_once, daemon=True)
-    thread.start()
-    patch = """diff --git a/value.txt b/value.txt
+        inspect = subprocess.run(
+            (docker, "inspect", "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", server_name),
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+        server_ip = inspect.stdout.strip()
+        assert inspect.returncode == 0 and server_ip, inspect.stderr
+
+        # Positive control: the endpoint is genuinely reachable from an
+        # ordinary container attached to the same bridge.
+        positive = subprocess.run(
+            (
+                docker, "run", "--rm", "--network", network, image, "python", "-c",
+                f"import socket; s=socket.create_connection(({server_ip!r}, 8765), timeout=3); s.close()",
+            ),
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+        assert positive.returncode == 0, positive.stderr
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        subprocess.run(("git", "init"), cwd=repo, capture_output=True, check=True)
+        subprocess.run(("git", "config", "user.email", "caios@test"), cwd=repo, check=True)
+        subprocess.run(("git", "config", "user.name", "CAIOS Test"), cwd=repo, check=True)
+        (repo / "value.txt").write_text("one\n", encoding="utf-8")
+        subprocess.run(("git", "add", "."), cwd=repo, check=True)
+        subprocess.run(("git", "commit", "-m", "base"), cwd=repo, capture_output=True, check=True)
+
+        patch = """diff --git a/value.txt b/value.txt
 --- a/value.txt
 +++ b/value.txt
 @@ -1 +1 @@
 -one
 +two
 """
-    command = (
-        "python",
-        "-c",
-        (
-            "import socket,sys\n"
-            f"port={port}\n"
-            "try:\n"
-            "    s=socket.socket()\n"
-            "    s.settimeout(1)\n"
-            "    s.connect(('127.0.0.1', port))\n"
-            "except OSError:\n"
-            "    sys.exit(0)\n"
-            "else:\n"
-            "    sys.exit(9)\n"
-        ),
-    )
-    try:
+        command = (
+            "python",
+            "-c",
+            (
+                "import socket,sys\n"
+                f"target={server_ip!r}\n"
+                "try:\n"
+                "    s=socket.create_connection((target, 8765), timeout=2)\n"
+                "    s.close()\n"
+                "except OSError:\n"
+                "    sys.exit(0)\n"
+                "else:\n"
+                "    sys.exit(9)\n"
+            ),
+        )
         result = DisposableWorktree(repo).run(
             patch,
             command,
             require_egress_block=True,
         )
+        assert result.status == "PASS", result.as_dict()
+        assert result.egress_blocked is True
     finally:
-        listener.close()
-        thread.join(timeout=3)
-
-    assert result.status == "PASS", result.as_dict()
-    assert result.egress_blocked is True
-    assert reached["value"] is False
+        subprocess.run((docker, "rm", "--force", server_name), capture_output=True, text=True, timeout=20, check=False)
+        subprocess.run((docker, "network", "rm", network), capture_output=True, text=True, timeout=20, check=False)
 
 
 @pytest.mark.skipif(
