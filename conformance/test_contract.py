@@ -72,8 +72,6 @@ def test_non_object_contract_root_fails_closed(tmp_path: Path):
 
 def test_malformed_nested_contract_fields_fail_closed(tmp_path: Path):
     import json
-    import pytest
-
     malformed = [
         (
             {"canonical_validator": ["not", "an", "object"]},
