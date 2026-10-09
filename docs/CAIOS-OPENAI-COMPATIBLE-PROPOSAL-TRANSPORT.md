@@ -8,7 +8,7 @@ The `caios-openai-compatible-proposal-transport` protocol names the CAIOS HTTP a
 
 It must not be advertised as ACP, MCP, or A2A. Those protocols describe different agent/client, agent/tool, or agent-to-agent boundaries. A provider using an OpenAI-compatible chat-completions HTTP shape is not thereby an ACP/MCP coding agent.
 
-The adapter's repository-owned identity is `caios-openai-compatible-proposal-adapter`, version `1.0.0`. Its source reference and SHA-256 are pinned in `autonomy/agent_registry.json`. Changing the implementation requires a reviewed change that updates the source pin and reruns the conformance/security checks. The runtime must fail closed if the local source digest does not match its registry record.
+The adapter's repository-owned identity is `caios-openai-compatible-proposal-adapter`, version `1.0.0`. Its source reference and SHA-256 are pinned in `autonomy/agent_registry.json`. The source reference must be immutable: either a full Git commit ID or a source URL containing a full commit ID (not a moving repository or branch URL). Changing the implementation requires a reviewed change that updates the version/source pin and SHA-256, then reruns the conformance/security checks. The runtime must fail closed if either the source reference is mutable or the local source digest does not match its registry record.
 
 ## Request contract
 
