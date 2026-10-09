@@ -82,8 +82,16 @@
         "project-mono",
         "openclaw-governance"
       ],
-      "verification": [],
-      "integration_mode": "observe-only"
+      "verification": [
+        "python",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_caios_interop.py"
+      ],
+      "integration_mode": "observe-only",
+      "verification_source": "https://github.com/iAAi33iAAi/openclaw-colony/blob/main/tests/test_caios_interop.py",
+      "verification_scope": "CAIOS Interop adapter and AETHEL Interop v1 response contract only; not the full OpenClaw Colony suite, Rust kernel, or production conformance."
     },
     {
       "id": "undermoon",
