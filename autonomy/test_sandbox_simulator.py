@@ -137,6 +137,10 @@ def test_disposable_validation_uses_temporary_home(tmp_path: Path):
     reason="Do not recursively create a Docker sandbox from inside the egress-blocked validation process",
 )
 @pytest.mark.skipif(
+    not os.environ.get("CAIOS_SANDBOX_IMAGE"),
+    reason="Run only after the trusted sandbox image has been built",
+)
+@pytest.mark.skipif(
     shutil.which("docker") is None,
     reason="Docker is required for network-isolated validation",
 )
