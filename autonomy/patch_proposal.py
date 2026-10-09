@@ -77,8 +77,8 @@ def load_endpoint_bindings(repo_root: Path) -> dict[str, dict[str, str]]:
         raise ValueError("provider-endpoint-registry-endpoints-must-be-a-list")
 
     required_fields = (
-        "id", "endpoint_url", "agent_id", "protocol", "protocol_version",
-        "model_id", "model_revision", "approval_ref",
+        "id", "endpoint_url", "agent_id", "agent_version", "source_ref",
+        "protocol", "protocol_version", "model_id", "model_revision", "approval_ref",
     )
     bindings: dict[str, dict[str, str]] = {}
     for index, endpoint in enumerate(endpoints):
@@ -139,6 +139,8 @@ def load_provider(repo_root: Path, config_path: Path) -> MultiAgentProposalProvi
         config_to_binding = {
             "endpoint_url": item["endpoint"],
             "agent_id": item["agent_id"],
+            "agent_version": item["agent_version"],
+            "source_ref": item["source_ref"],
             "protocol": item["protocol"],
             "protocol_version": item["protocol_version"],
             "model_id": item["model"],
