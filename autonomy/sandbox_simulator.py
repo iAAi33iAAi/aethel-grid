@@ -12,12 +12,103 @@ Copyright (c) 2026 iAAi33iAAi
 """
 from __future__ import annotations
 
+import ctypes
+import errno
 import os
 import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+
+
+class _SeccompArgCmp(ctypes.Structure):
+    _fields_ = [
+        ("arg", ctypes.c_uint),
+        ("op", ctypes.c_int),
+        ("datum_a", ctypes.c_uint64),
+        ("datum_b", ctypes.c_uint64),
+    ]
+
+
+def _export_egress_block_filter(fd: int) -> None:
+    """Compile a libseccomp filter that denies network socket operations."""
+    try:
+        lib = ctypes.CDLL("libseccomp.so.2", use_errno=True)
+    except OSError as exc:
+        raise RuntimeError("libseccomp-unavailable") from exc
+
+    lib.seccomp_init.argtypes = [ctypes.c_uint32]
+    lib.seccomp_init.restype = ctypes.c_void_p
+    lib.seccomp_syscall_resolve_name.argtypes = [ctypes.c_char_p]
+    lib.seccomp_syscall_resolve_name.restype = ctypes.c_int
+    lib.seccomp_rule_add.argtypes = [
+        ctypes.c_void_p, ctypes.c_uint32, ctypes.c_int, ctypes.c_uint
+    ]
+    lib.seccomp_rule_add.restype = ctypes.c_int
+    lib.seccomp_rule_add_array.argtypes = [
+        ctypes.c_void_p, ctypes.c_uint32, ctypes.c_int,
+        ctypes.c_uint, ctypes.POINTER(_SeccompArgCmp),
+    ]
+    lib.seccomp_rule_add_array.restype = ctypes.c_int
+    lib.seccomp_export_bpf.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    lib.seccomp_export_bpf.restype = ctypes.c_int
+    lib.seccomp_release.argtypes = [ctypes.c_void_p]
+    lib.seccomp_release.restype = None
+
+    # SCMP_ACT_ALLOW = 0x7fff0000; SCMP_ACT_ERRNO(EPERM) = 0x00050000 | EPERM.
+    ctx = lib.seccomp_init(0x7FFF0000)
+    if not ctx:
+        raise RuntimeError("seccomp-init-failed")
+    deny = 0x00050000 | errno.EPERM
+
+    def resolve(name: str, required: bool = True) -> int:
+        number = lib.seccomp_syscall_resolve_name(name.encode("ascii"))
+        if number < 0 and required:
+            raise RuntimeError(f"seccomp-syscall-not-resolved:{name}")
+        return number
+
+    try:
+        # Allow socket/socketpair only for AF_UNIX. AF_INET, AF_INET6,
+        # netlink, packet, vsock, and all other address families are denied.
+        not_unix = _SeccompArgCmp(0, 1, 1, 0)  # SCMP_CMP_NE, AF_UNIX == 1
+        for syscall_name in ("socket", "socketpair"):
+            number = resolve(syscall_name)
+            result = lib.seccomp_rule_add_array(
+                ctx, deny, number, 1, ctypes.byref(not_unix)
+            )
+            if result < 0:
+                raise RuntimeError(
+                    f"seccomp-socket-domain-rule-failed:{syscall_name}:{result}"
+                )
+
+        # Deny connection, listener, and data-transfer paths, including
+        # message batching and io_uring-based indirect socket operations.
+        required = {
+            "connect", "bind", "listen", "accept",
+            "sendto", "recvfrom", "sendmsg", "recvmsg", "shutdown",
+        }
+        blocked_syscalls = (
+            "connect", "bind", "listen", "accept", "accept4",
+            "sendto", "recvfrom", "sendmsg", "recvmsg", "sendmmsg",
+            "recvmmsg", "shutdown", "io_uring_setup", "io_uring_enter",
+            "io_uring_register", "bpf", "ptrace",
+        )
+        for syscall_name in blocked_syscalls:
+            number = resolve(syscall_name, required=syscall_name in required)
+            if number < 0:
+                continue
+            result = lib.seccomp_rule_add(ctx, deny, number, 0)
+            if result < 0:
+                raise RuntimeError(
+                    f"seccomp-syscall-rule-failed:{syscall_name}:{result}"
+                )
+
+        result = lib.seccomp_export_bpf(ctx, fd)
+        if result < 0:
+            raise RuntimeError(f"seccomp-bpf-export-failed:{result}")
+    finally:
+        lib.seccomp_release(ctx)
 
 
 @dataclass(frozen=True)
@@ -28,7 +119,7 @@ class SimulationResult:
     stdout_tail: str
     stderr_tail: str
     worktree: str
-    network_isolated: bool = False
+    egress_blocked: bool = False
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -38,7 +129,7 @@ class SimulationResult:
             "stdout_tail": self.stdout_tail,
             "stderr_tail": self.stderr_tail,
             "worktree": self.worktree,
-            "network_isolated": self.network_isolated,
+            "egress_blocked": self.egress_blocked,
         }
 
 
@@ -52,7 +143,7 @@ class DisposableWorktree:
         patch_text: str,
         validation_command: tuple[str, ...],
         *,
-        require_network_isolation: bool = False,
+        require_egress_block: bool = False,
     ) -> SimulationResult:
         # Keep the candidate checkout outside HOME and TMPDIR so those locations
         # can be hidden/replaced inside Bubblewrap without hiding the checkout.
@@ -109,18 +200,29 @@ class DisposableWorktree:
         def exec_cmd(
             args: tuple[str, ...],
             *,
-            isolate_network: bool = False,
+            block_egress: bool = False,
         ) -> tuple[int, str, str]:
             command = args
-            if isolate_network:
+            seccomp_file = None
+            pass_fds: tuple[int, ...] = ()
+            if block_egress:
                 bwrap = shutil.which("bwrap")
                 if not bwrap:
-                    return 127, "", "network-isolation-unavailable:bwrap-not-installed"
+                    return 127, "", "egress-block-unavailable:bwrap-not-installed"
+                try:
+                    seccomp_file = tempfile.TemporaryFile()
+                    _export_egress_block_filter(seccomp_file.fileno())
+                    seccomp_file.flush()
+                    seccomp_file.seek(0)
+                except Exception as exc:
+                    if seccomp_file is not None:
+                        seccomp_file.close()
+                    return 127, "", f"egress-block-unavailable:{type(exc).__name__}:{exc}"
+                pass_fds = (seccomp_file.fileno(),)
                 host_home_str = str(host_home)
                 command_list = [
                     bwrap,
                     "--die-with-parent",
-                    "--unshare-net",
                     "--unshare-pid",
                     "--unshare-ipc",
                     "--unshare-uts",
@@ -128,9 +230,10 @@ class DisposableWorktree:
                     "--bind", str(sandbox_tmp), "/tmp",
                     "--proc", "/proc",
                     "--dev", "/dev",
+                    "--seccomp", str(seccomp_file.fileno()),
                 ]
-                # Expose only the Rust executable shims and rustup toolchains
-                # read-only. Cargo credential/config directories are never mounted.
+                # Expose only Rust executable shims and rustup toolchain files
+                # read-only. Cargo credential/config directories are not mounted.
                 for var_name, (source, target) in toolchain_mounts.items():
                     command_list.extend(["--ro-bind", source, f"/tmp/{Path(target).relative_to(sandbox_tmp).as_posix()}"])
                 if host_home_str not in {"/", "/tmp", "/var/tmp"}:
@@ -144,18 +247,23 @@ class DisposableWorktree:
                     elif key == "TMPDIR":
                         sandbox_value = "/tmp"
                     command_list.extend(["--setenv", key, sandbox_value])
-                command_list.extend(["--setenv", "CAIOS_NETWORK_ISOLATED", "true"])
+                command_list.extend(["--setenv", "CAIOS_EGRESS_BLOCKED", "true"])
                 command_list.extend(args)
                 command = tuple(command_list)
-            proc = subprocess.run(
-                command,
-                cwd=Path("/") if isolate_network else worktree,
-                env=sandbox_env,
-                capture_output=True,
-                text=True,
-                timeout=self.timeout_seconds,
-                check=False,
-            )
+            try:
+                proc = subprocess.run(
+                    command,
+                    cwd=Path("/") if block_egress else worktree,
+                    env=sandbox_env,
+                    capture_output=True,
+                    text=True,
+                    timeout=self.timeout_seconds,
+                    check=False,
+                    pass_fds=pass_fds,
+                )
+            finally:
+                if seccomp_file is not None:
+                    seccomp_file.close()
             return proc.returncode, proc.stdout, proc.stderr
 
         try:
@@ -191,12 +299,12 @@ class DisposableWorktree:
                     worktree=str(worktree),
                 )
 
-            if require_network_isolation:
+            if require_egress_block:
                 isolated_workspace = sandbox_tmp / "workspace"
                 shutil.copytree(worktree, isolated_workspace, symlinks=True)
             rc, stdout, stderr = exec_cmd(
                 validation_command,
-                isolate_network=require_network_isolation,
+                block_egress=require_egress_block,
             )
             return SimulationResult(
                 status="PASS" if rc == 0 else "FAIL",
@@ -205,7 +313,7 @@ class DisposableWorktree:
                 stdout_tail=stdout[-4000:],
                 stderr_tail=stderr[-4000:],
                 worktree=str(worktree),
-                network_isolated=bool(require_network_isolation and rc == 0),
+                egress_blocked=bool(require_egress_block and rc == 0),
             )
         except subprocess.TimeoutExpired as exc:
             return SimulationResult(
