@@ -1,0 +1,268 @@
+name: CAIOS Bounded Autonomous Patch Loop
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "13 8 * * 1-5"
+
+concurrency:
+  group: caios-bounded-autonomous-patch-loop
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  propose:
+    name: Generate one low-risk patch proposal
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      configured: ${{ steps.config.outputs.configured }}
+      status: ${{ steps.planner.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install proposal-only runtime dependencies
+        run: python -m pip install "pytest>=8,<9" "cryptography==50.0.2"
+
+      - name: Check one-time agent configuration
+        id: config
+        shell: bash
+        run: |
+          if [ ! -f autonomy/agent_endpoints.json ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "## CAIOS autonomous patch loop"
+              echo "No patch was proposed because autonomy/agent_endpoints.json is not configured."
+              echo "The workflow is intentionally idle until registered agents and explicit source-context egress are configured."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Request and gate one low-risk patch
+        id: planner
+        if: steps.config.outputs.configured == 'true'
+        env:
+          CAIOS_CODEX_API_KEY: ${{ secrets.CAIOS_CODEX_API_KEY }}
+          CAIOS_GEMINI_API_KEY: ${{ secrets.CAIOS_GEMINI_API_KEY }}
+          CAIOS_ANTHROPIC_API_KEY: ${{ secrets.CAIOS_ANTHROPIC_API_KEY }}
+          CAIOS_OPENAI_API_KEY: ${{ secrets.CAIOS_OPENAI_API_KEY }}
+        shell: bash
+        run: |
+          set +e
+          python -m autonomy.patch_proposal \
+            --repo-root . \
+            --config autonomy/agent_endpoints.json \
+            --output /tmp/caios-patch-proposal.json \
+            --max-risk 0.45
+          result=$?
+          set -e
+          if [ ! -f /tmp/caios-patch-proposal.json ]; then
+            echo "status=BLOCKED" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          status="$(python -c 'import json; print(json.load(open("/tmp/caios-patch-proposal.json", encoding="utf-8")).get("status", "BLOCKED"))')"
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          {
+            echo "## CAIOS proposal result"
+            echo "- Status: $status"
+            echo "- Base: $(python -c 'import json; print(json.load(open("/tmp/caios-patch-proposal.json", encoding="utf-8")).get("base_sha", "unavailable"))')"
+            echo "- Policy: one patch, proposal-only, risk below 0.45, no execution in this job."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$result"
+
+      - name: Upload proposal artifact
+        if: steps.planner.outputs.status == 'PROPOSED'
+        uses: actions/upload-artifact@v4
+        with:
+          name: caios-patch-proposal
+          path: /tmp/caios-patch-proposal.json
+          if-no-files-found: error
+          retention-days: 3
+
+  validate:
+    name: Revalidate and test without model secrets or write permission
+    needs: propose
+    if: needs.propose.result == 'success' && needs.propose.outputs.configured == 'true' && needs.propose.outputs.status == 'PROPOSED'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      status: ${{ steps.validate.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install test dependencies
+        run: python -m pip install "pytest>=8,<9" "cryptography==50.0.2"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: caios-patch-proposal
+          path: /tmp/caios-proposal
+
+      - name: Revalidate and test patch in disposable worktree
+        id: validate
+        shell: bash
+        run: |
+          set +e
+          python -m autonomy.validate_patch_proposal \
+            --repo-root . \
+            --input /tmp/caios-proposal/caios-patch-proposal.json \
+            --output /tmp/caios-patch-validation.json \
+            --max-risk 0.45
+          result=$?
+          set -e
+          if [ ! -f /tmp/caios-patch-validation.json ]; then
+            echo "status=BLOCKED" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          status="$(python -c 'import json; print(json.load(open("/tmp/caios-patch-validation.json", encoding="utf-8")).get("status", "BLOCKED"))')"
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          {
+            echo "## CAIOS isolated validation"
+            echo "- Status: $status"
+            echo "- Candidate code ran in a disposable worktree."
+            echo "- No model API keys or repository write token were supplied to the candidate test process."
+            echo "- Fixed Python, Rust, TypeScript, and SPEC-004 candidate checks were requested."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$result"
+
+      - name: Upload validated patch evidence
+        if: steps.validate.outputs.status == 'VALIDATED'
+        uses: actions/upload-artifact@v4
+        with:
+          name: caios-patch-validation
+          path: /tmp/caios-patch-validation.json
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish validated proposal as a reviewable pull request
+    needs: [propose, validate]
+    if: needs.validate.result == 'success' && needs.validate.outputs.status == 'VALIDATED'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: main
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: caios-patch-validation
+          path: /tmp/caios-validated
+
+      - name: Recheck base, apply validated diff, and commit without executing candidate code
+        id: apply
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          row = json.loads(Path("/tmp/caios-validated/caios-patch-validation.json").read_text(encoding="utf-8"))
+          if row.get("status") != "VALIDATED":
+              raise SystemExit("validation artifact is not marked VALIDATED")
+          candidate = row.get("candidate")
+          if not isinstance(candidate, dict) or candidate.get("status") != "PROPOSED":
+              raise SystemExit("validated candidate payload missing")
+          if candidate.get("base_sha") != row.get("base_sha"):
+              raise SystemExit("candidate and validation base SHA differ")
+          Path("/tmp/caios-validated.patch").write_text(candidate["unified_diff"], encoding="utf-8")
+          Path("/tmp/caios-validated.meta.json").write_text(json.dumps({
+              "base_sha": row["base_sha"],
+              "proposal_digest": row["proposal_digest"],
+          }), encoding="utf-8")
+          PY
+          base_sha="$(python -c 'import json; print(json.load(open("/tmp/caios-validated.meta.json", encoding="utf-8"))["base_sha"])')"
+          proposal_digest="$(python -c 'import json; print(json.load(open("/tmp/caios-validated.meta.json", encoding="utf-8"))["proposal_digest"])')"
+          current_sha="$(git rev-parse HEAD)"
+          if [ "$current_sha" != "$base_sha" ]; then
+            echo "status=STALE" >> "$GITHUB_OUTPUT"
+            echo "Proposal not published: main advanced since the candidate was validated." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          suffix="$(python -c 'import json; print(json.load(open("/tmp/caios-validated.meta.json", encoding="utf-8"))["proposal_digest"][:12])')"
+          branch="caios/auto-$suffix"
+          git switch -c "$branch"
+          git apply --check /tmp/caios-validated.patch
+          git apply /tmp/caios-validated.patch
+          git diff --check
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "status=NO_DIFF" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "caios-autonomous[bot]"
+          git config user.email "caios-autonomous[bot]@users.noreply.github.com"
+          git add --all --force
+          git commit -m "CAIOS: propose bounded low-risk improvement"
+          echo "status=COMMITTED" >> "$GITHUB_OUTPUT"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Push branch and open pull request
+        if: steps.apply.outputs.status == 'COMMITTED'
+        env:
+          CAIOS_AUTOBUILD_TOKEN: ${{ secrets.CAIOS_AUTOBUILD_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$CAIOS_AUTOBUILD_TOKEN" ]; then
+            {
+              echo "## Pull request not published"
+              echo "Candidate validation passed, but CAIOS_AUTOBUILD_TOKEN is not configured."
+              echo "Set a fine-grained token with repository Contents: Read and write and Pull requests: Read and write, then rerun this workflow."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          export GH_TOKEN="$CAIOS_AUTOBUILD_TOKEN"
+          gh auth setup-git
+          git push origin "${{ steps.apply.outputs.branch }}"
+          gh pr create \
+            --repo iAAi33iAAi/aethel-grid \
+            --base main \
+            --head "${{ steps.apply.outputs.branch }}" \
+            --title "CAIOS: bounded autonomous patch proposal" \
+            --body "$(cat <<'BODY'
+          ## CAIOS autonomous patch proposal
+
+          This pull request was generated by the bounded CAIOS patch loop.
+
+          - Agent identity and model admission were checked against the repository registries.
+          - The patch passed the deterministic constitutional gate and low-risk limit.
+          - The patch was independently revalidated and tested in a disposable worktree without model API keys or a repository write token.
+          - The publishing job did not execute candidate code.
+          - This PR is not auto-merged. Normal review and PR checks still apply.
+
+          See the associated CAIOS Bounded Autonomous Patch Loop workflow run and its validation artifact for evidence.
+          BODY
+          )"
