@@ -107,6 +107,11 @@ def _validate_manifest(raw: Any) -> list[dict[str, Any]]:
             or any(ch.isspace() for ch in verification_source)
         ):
             raise ValueError(f"repository {repo_id} verification_source must be an HTTPS URL")
+        verification_scope = row.get("verification_scope")
+        if verification_scope is not None and (
+            not isinstance(verification_scope, str) or not verification_scope.strip()
+        ):
+            raise ValueError(f"repository {repo_id} verification_scope must be a non-empty string")
         clean.append({
             "id": repo_id,
             "path": normalized,
@@ -114,6 +119,7 @@ def _validate_manifest(raw: Any) -> list[dict[str, Any]]:
             "integration_mode": str(row.get("integration_mode", "unspecified")),
             "verification": list(verification),
             "verification_source": verification_source,
+            "verification_scope": verification_scope,
         })
     return clean
 
@@ -154,6 +160,7 @@ def audit_portfolio(
             "integration_mode": repo["integration_mode"],
             "verification_command": repo["verification"],
             "verification_source": repo["verification_source"],
+            "verification_scope": repo["verification_scope"],
             "revision": None,
             "status": None,
             "verification": None,
