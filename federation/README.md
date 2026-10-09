@@ -64,7 +64,7 @@ Portfolio status is conservative:
 - PARTIAL: configured verifiers passed, but at least one repository has no verifier. PARTIAL is not portfolio-wide conformance.
 - FAILED: a checkout, revision, manifest, command, or verification failed.
 
-The latest passing audit on candidate commit `be274613c11fb94f189b51e090a4b3f54b693316` configured nine of thirteen manifest entries with explicit verification commands; four are reported `NOT_CONFIGURED`, and none of the configured verifiers failed. The report records each repository's checked-out commit, command, and source where declared. See [the exact-head audit run](https://github.com/iAAi33iAAi/aethel-grid/actions/runs/38000258359). The overall result remains `PARTIAL`, and Gate 5 remains `PARTIALLY_CLOSED`.
+The latest successful main-branch audit on commit `241887de807dd5d94df87936ac357a35a7ff6d78` configured nine of thirteen manifest entries with explicit verification commands; four are reported `NOT_CONFIGURED`, and none of the configured verifiers failed. The report records each repository's checked-out commit, command, and source where declared. See [the main-branch audit run](https://github.com/iAAi33iAAi/aethel-grid/actions/runs/38000629663). The overall result remains `PARTIAL`, and Gate 5 remains `PARTIALLY_CLOSED`.
 
 One verifier is deliberately scoped: OpenClaw Colony's `tests/test_caios_interop.py` returned 2 passed and checks only its CAIOS adapter fallback and AETHEL Interop v1 response contract. It does not represent the full Colony test suite, native Rust kernel, or production conformance.
 
