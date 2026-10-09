@@ -11,6 +11,7 @@ AETHEL Grid is an open protocol and bootstrap implementation for systems where e
 | Bootstrap event algebra and interop service | Implemented |
 | Bootstrap interop tests | Implemented |
 | Candidate SPEC-004 TV-001 through TV-007 package | Implemented as candidate/non-canonical |
+| Candidate SPEC-005 Knowledge Contract schema and KC-001 through KC-008 vectors | Implemented as candidate/non-canonical |
 | Canonical SPEC-004 validator and ratified golden vectors | **Not yet established** |
 | Multi-language canonical conformance | Pending canonical specification |
 | Node 001 physical deployment | Not independently established here |

@@ -1,0 +1,45 @@
+{
+  "specification_id": "SPEC-005",
+  "specification_version": "candidate-0.1",
+  "status": "CANDIDATE_NONCANONICAL",
+  "case_id": "KC-002",
+  "name": "Required allowed_targets property absent",
+  "envelope": {
+    "contract": {
+      "contract_id": "KC-FACTORY-0001",
+      "contract_version": "2.0.0",
+      "domain": "FACTORY",
+      "agent_id": "factory-maintenance-01",
+      "approved_model_digests": [
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "approved_source_ids": [
+        "manual-approved-01"
+      ],
+      "permitted_sensor_ids": [
+        "sensor-01"
+      ],
+      "allowed_recommendations": [
+        "INSPECT",
+        "INVESTIGATE",
+        "REQUEST_HUMAN_REVIEW"
+      ],
+      "prohibited_actions": [
+        "SHUTDOWN"
+      ],
+      "max_telemetry_age_seconds": 60,
+      "min_evidence_quality_micros": 800000,
+      "valid_until_utc": "2026-11-09T09:00:00Z",
+      "revoked": false,
+      "policy_id": "factory-maintenance-demo-v1"
+    },
+    "signer_key_id": "test-only-do-not-trust",
+    "issued_at_utc": "2026-10-09T09:00:00Z",
+    "signature_algorithm": "Ed25519",
+    "signature_b64": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+  },
+  "expected": {
+    "schema_valid": false,
+    "cryptographic_verification": "NOT_EVALUATED"
+  }
+}
