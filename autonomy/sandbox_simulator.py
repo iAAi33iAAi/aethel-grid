@@ -146,7 +146,7 @@ class DisposableWorktree:
                 command = tuple(command_list)
             proc = subprocess.run(
                 command,
-                cwd=worktree,
+                cwd=Path("/") if isolate_network else worktree,
                 env=sandbox_env,
                 capture_output=True,
                 text=True,
