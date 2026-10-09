@@ -223,7 +223,6 @@ def test_every_manifest_repository_declares_explicit_verification_scope():
 
     assert len(rows) == 13
     assert all(isinstance(row["verification_scope"], str) and row["verification_scope"].strip() for row in rows)
-    assert {row["id"] for row in rows if row["verification_scope"]} == {row["id"] for row in rows}
 
 
 def test_every_declared_manifest_source_is_immutable():
