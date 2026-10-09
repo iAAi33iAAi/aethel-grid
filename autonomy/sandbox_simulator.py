@@ -112,7 +112,7 @@ class DisposableWorktree:
                     "--cpus=2",
                     "--tmpfs", "/tmp:rw,nosuid,nodev,size=1g",
                     "--tmpfs", "/run:rw,nosuid,nodev,size=64m",
-                    "--mount", f"type=bind,src={worktree},dst=/workspace,rw",
+                    "--mount", f"type=bind,src={worktree},dst=/workspace",
                     "--workdir", "/workspace",
                     "--user", f"{os.getuid()}:{os.getgid()}",
                     "--env", "HOME=/tmp",
