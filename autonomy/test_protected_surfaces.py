@@ -108,10 +108,14 @@ def test_mandatory_protected_surfaces_cannot_be_removed_by_configuration(tmp_pat
 
     gate = ConstitutionalGate(tmp_path)
 
-    allowed, reasons = gate.validate(_patch_action(path="conformance/canonical_contract.json"))
+    for path in (
+        "conformance/canonical_contract.json",
+        "autonomy/protected_surfaces.json",
+    ):
+        allowed, reasons = gate.validate(_patch_action(path=path))
+        assert allowed is False, path
+        assert "patch targets protected autonomous-control surface" in reasons, path
 
-    assert allowed is False
-    assert "patch targets protected autonomous-control surface" in reasons
     assert gate.protected_policy_valid is True
 
 

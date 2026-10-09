@@ -296,6 +296,7 @@ class ConstitutionalGate:
         ".github/workflows/**",
         "conformance/**",
         "autonomy/caios_runtime.py",
+        "autonomy/protected_surfaces.json",
         "autonomy/verify_certificates.py",
         "autonomy/proof_work_contract.py",
         "autonomy/proof_work_verifier.py",
