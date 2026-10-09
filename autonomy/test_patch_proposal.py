@@ -52,7 +52,7 @@ def seed_repo(root: Path) -> None:
                 "agent_id": "test-agent",
                 "agent_version": "1.0.0",
                 "source_ref": "git:0123456789abcdef",
-                "protocol": "openai-compatible",
+                "protocol": "caios-openai-compatible-proposal-transport",
                 "protocol_version": "1.0.0",
                 "model_id": "test-model",
                 "model_revision": "test-model@sha256:abc",
@@ -60,6 +60,10 @@ def seed_repo(root: Path) -> None:
                 "api_key_env": None,
             }],
         }),
+        encoding="utf-8",
+    )
+    (autonomy / "caios_runtime.py").write_text(
+        "trusted test adapter\n",
         encoding="utf-8",
     )
     (autonomy / "protected_surfaces.json").write_text(
@@ -87,8 +91,8 @@ def make_patch_proposal(*, risk: float = 0.2, target: str = "src/app.py", kind: 
             "+new\n"
         ),
         "agent_id": "test-agent",
-        "protocol": "openai-compatible",
-        "protocol_version": "1.0",
+        "protocol": "caios-openai-compatible-proposal-transport",
+        "protocol_version": "1.0.0",
         "model_id": "test-model",
         "model_revision": "test-model@sha256:abc",
         "agent_version": "1.0.0",
@@ -100,8 +104,8 @@ def install_test_attestation(monkeypatch) -> None:
     def fake_validate(repo_root, proposal, proposal_digest):
         attestation = ProposalAttestation(
             agent_id="test-agent",
-            protocol="openai-compatible",
-            protocol_version="1.0",
+            protocol="caios-openai-compatible-proposal-transport",
+            protocol_version="1.0.0",
             model_id="test-model",
             model_revision="test-model@sha256:abc",
             agent_version="1.0.0",
@@ -206,7 +210,7 @@ def write_agent_config(
     *,
     send_source_context=False,
     api_key_env=None,
-    protocol="openai-compatible",
+    protocol="caios-openai-compatible-proposal-transport",
     protocol_version="1.0.0",
     endpoint="https://example.invalid/v1/chat/completions",
     endpoint_id="test-endpoint",
@@ -283,6 +287,15 @@ def setup_preflight_registries(monkeypatch, *, agents, model_ok=True, protocol_o
         def __init__(self, repo_root):
             pass
 
+        def get(self, protocol_id):
+            from types import SimpleNamespace
+            role = (
+                "model-proposal-transport"
+                if protocol_id == "caios-openai-compatible-proposal-transport"
+                else "agent-client"
+            )
+            return SimpleNamespace(role=role)
+
         def admit(self, protocol_id, version, *, allow_draft=False):
             return protocol_ok, [] if protocol_ok else ["protocol-not-registered"]
 
@@ -294,10 +307,16 @@ def setup_preflight_registries(monkeypatch, *, agents, model_ok=True, protocol_o
 def endpoint_profile(
     *,
     authority="proposal",
-    protocols=("mcp",),
+    protocols=("caios-openai-compatible-proposal-transport",),
     capabilities=("coding", "patching"),
     provenance_confidence=0.99,
     protocol_versions=None,
+    software_version="1.0.0",
+    source_ref="git:0123456789abcdef",
+    agent_kind="model-proposal-adapter",
+    source_path="autonomy/caios_runtime.py",
+    source_sha256="57a550fa4fe91d4a7ccc49852764e569abaa826c863082089ab8368d14a8e444",
+    external_tool_execution=False,
 ):
     from types import SimpleNamespace
 
@@ -306,7 +325,16 @@ def endpoint_profile(
         protocols=frozenset(protocols),
         capabilities=frozenset(capabilities),
         provenance_confidence=provenance_confidence,
-        protocol_versions=protocol_versions if protocol_versions is not None else {"mcp": "2026-07-28"},
+        protocol_versions=(
+            protocol_versions if protocol_versions is not None
+            else {"caios-openai-compatible-proposal-transport": "1.0.0"}
+        ),
+        software_version=software_version,
+        source_ref=source_ref,
+        agent_kind=agent_kind,
+        source_path=source_path,
+        source_sha256=source_sha256,
+        external_tool_execution=external_tool_execution,
     )
 
 
@@ -325,7 +353,7 @@ def test_provider_preflight_rejects_protocol_not_advertised_by_agent(tmp_path: P
     profile = endpoint_profile(protocols=("acp",), protocol_versions={"acp": "1"})
     setup_preflight_registries(monkeypatch, agents={"test-agent": profile})
 
-    with pytest.raises(ValueError, match="agent-protocol-not-registered:test-agent:openai-compatible"):
+    with pytest.raises(ValueError, match="agent-protocol-not-registered:test-agent:caios-openai-compatible-proposal-transport"):
         patch_proposal.load_provider(tmp_path, config_path)
 
 
@@ -333,12 +361,12 @@ def test_provider_preflight_rejects_protocol_missing_from_protocol_registry(tmp_
     seed_repo(tmp_path)
     config_path = write_agent_config(tmp_path, send_source_context=True)
     profile = endpoint_profile(
-        protocols=("openai-compatible",),
-        protocol_versions={"openai-compatible": "1.0.0"},
+        protocols=("caios-openai-compatible-proposal-transport",),
+        protocol_versions={"caios-openai-compatible-proposal-transport": "1.0.0"},
     )
     setup_preflight_registries(monkeypatch, agents={"test-agent": profile}, protocol_ok=False)
 
-    with pytest.raises(ValueError, match="protocol-not-admitted:openai-compatible:1.0.0"):
+    with pytest.raises(ValueError, match="protocol-not-admitted:caios-openai-compatible-proposal-transport:1.0.0"):
         patch_proposal.load_provider(tmp_path, config_path)
 
 
@@ -346,8 +374,8 @@ def test_provider_preflight_rejects_unregistered_model_before_returning_provider
     seed_repo(tmp_path)
     config_path = write_agent_config(tmp_path, send_source_context=True)
     profile = endpoint_profile(
-        protocols=("openai-compatible",),
-        protocol_versions={"openai-compatible": "1.0.0"},
+        protocols=("caios-openai-compatible-proposal-transport",),
+        protocol_versions={"caios-openai-compatible-proposal-transport": "1.0.0"},
     )
     setup_preflight_registries(monkeypatch, agents={"test-agent": profile}, model_ok=False)
 
@@ -359,9 +387,9 @@ def test_provider_preflight_rejects_agent_without_patch_capability(tmp_path: Pat
     seed_repo(tmp_path)
     config_path = write_agent_config(tmp_path, send_source_context=True)
     profile = endpoint_profile(
-        protocols=("openai-compatible",),
+        protocols=("caios-openai-compatible-proposal-transport",),
         capabilities=("reasoning", "planning"),
-        protocol_versions={"openai-compatible": "1.0.0"},
+        protocol_versions={"caios-openai-compatible-proposal-transport": "1.0.0"},
     )
     setup_preflight_registries(monkeypatch, agents={"test-agent": profile})
 
@@ -373,12 +401,12 @@ def test_provider_preflight_rejects_unpinned_agent_protocol_version(tmp_path: Pa
     seed_repo(tmp_path)
     config_path = write_agent_config(tmp_path, send_source_context=True)
     profile = endpoint_profile(
-        protocols=("openai-compatible",),
+        protocols=("caios-openai-compatible-proposal-transport",),
         protocol_versions={},
     )
     setup_preflight_registries(monkeypatch, agents={"test-agent": profile})
 
-    with pytest.raises(ValueError, match="agent-protocol-version-not-pinned:test-agent:openai-compatible"):
+    with pytest.raises(ValueError, match="agent-protocol-version-not-pinned:test-agent:caios-openai-compatible-proposal-transport"):
         patch_proposal.load_provider(tmp_path, config_path)
 
 
