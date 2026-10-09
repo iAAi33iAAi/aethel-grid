@@ -1,4 +1,4 @@
-name: CAIOS Seccomp Egress Sandbox
+name: CAIOS Docker Network-None Sandbox
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
       - "autonomy/sandbox_simulator.py"
       - "autonomy/test_sandbox_simulator.py"
       - "autonomy/validate_patch_proposal.py"
+      - "autonomy/sandbox/Dockerfile"
       - ".github/workflows/caios-autonomous-pr.yml"
       - ".github/workflows/caios-network-sandbox.yml"
   pull_request:
@@ -14,6 +15,7 @@ on:
       - "autonomy/sandbox_simulator.py"
       - "autonomy/test_sandbox_simulator.py"
       - "autonomy/validate_patch_proposal.py"
+      - "autonomy/sandbox/Dockerfile"
       - ".github/workflows/caios-autonomous-pr.yml"
       - ".github/workflows/caios-network-sandbox.yml"
   workflow_dispatch:
@@ -27,7 +29,7 @@ concurrency:
 
 jobs:
   sandbox:
-    name: Verify network socket egress denial and fail-closed behavior
+    name: Verify network-none isolation and fail-closed behavior
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -41,17 +43,13 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Bubblewrap and libseccomp
+      - name: Verify Docker daemon and build sandbox image
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes bubblewrap libseccomp2
+          docker info
+          docker build --pull --tag caios-validation-sandbox:ci autonomy/sandbox
 
-      - name: Require Bubblewrap process namespace support (no network namespace required)
-        run: |
-          bwrap --die-with-parent --unshare-pid --unshare-ipc --unshare-uts --ro-bind / / /usr/bin/true
-
-      - name: Install test dependency
+      - name: Install host test dependency
         run: python -m pip install "pytest>=8,<9"
 
-      - name: Test disposable sandbox
+      - name: Test Docker network-none sandbox
         run: python -m pytest -q autonomy/test_sandbox_simulator.py
