@@ -206,6 +206,18 @@ def test_build_and_test_configuration_is_protected(tmp_path: Path):
         assert "patch targets protected build or test configuration" in reasons, path
 
 
+def test_proposal_transport_contract_is_protected(tmp_path: Path):
+    write_policy(tmp_path)
+    gate = ConstitutionalGate(tmp_path)
+
+    allowed, reasons = gate.validate(
+        _patch_action(path="docs/CAIOS-OPENAI-COMPATIBLE-PROPOSAL-TRANSPORT.md")
+    )
+
+    assert allowed is False
+    assert "protected autonomous-control surface" in reasons
+
+
 def test_symlinked_patch_path_cannot_escape_repository(tmp_path: Path):
     write_policy(tmp_path)
     outside = tmp_path.parent / f"{tmp_path.name}-outside"
