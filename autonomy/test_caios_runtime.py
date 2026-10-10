@@ -7,7 +7,7 @@ Copyright (c) 2026 iAAi33iAAi
 import json
 from pathlib import Path
 
-from autonomy.caios_runtime import CandidateAction, ConstitutionalGate, RedTeamObserver, ViabilityPlanner
+from autonomy.caios_runtime import (CandidateAction, ConstitutionalGate, RedTeamObserver, ViabilityPlanner, _normalize_unit_metrics, _normalize_model_command, _normalize_string_list)
 from autonomy.red_team import probes as red_team_probes
 
 
@@ -207,3 +207,21 @@ def test_malformed_authority_principal_fails_closed(tmp_path: Path):
     allowed, reasons = gate.validate(action)
     assert allowed is False
     assert any("authority-lattice-unavailable" in reason for reason in reasons)
+
+
+def test_model_proposal_normalizers_fail_closed_on_malformed_fields():
+    assert _normalize_unit_metrics({}) == {
+        "expected_gain": 0.30,
+        "risk": 0.50,
+        "reversibility": 0.60,
+        "resource_cost": 0.30,
+        "evidence_gain": 0.50,
+    }
+    assert _normalize_unit_metrics({"expected_gain": 10 ** 10000}) is None
+    assert _normalize_unit_metrics({"expected_gain": True}) is None
+    assert _normalize_unit_metrics({"risk": float("nan")}) is None
+    assert _normalize_unit_metrics({"risk": float("inf")}) is None
+    assert _normalize_model_command("'unterminated") is None
+    assert _normalize_model_command([]) is None
+    assert _normalize_string_list(42) is None
+    assert _normalize_string_list(["valid", 2]) is None
