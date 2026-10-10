@@ -10,6 +10,10 @@ def test_red_team_campaign_denies_all_probes(tmp_path: Path):
     (autonomy / "protected_surfaces.json").write_text(
         json.dumps({
             "protected_globs": [
+                "autonomy/agent_registry.json",
+                "autonomy/model_registry.json",
+                "autonomy/protocol_registry.json",
+                "autonomy/test_registered_agent_source_pins.py",
                 "docs/CAIOS-OPENAI-COMPATIBLE-PROPOSAL-TRANSPORT.md"
             ]
         }),
@@ -34,5 +38,7 @@ def test_red_team_campaign_denies_all_probes(tmp_path: Path):
     assert result["probe_count"] == len(inventory), "reported probe_count must equal actual probe inventory"
     assert len(result["probes"]) == result["probe_count"]
     assert [item["probe_id"] for item in result["probes"]] == probe_ids
-    assert result["passed"] is True, result
+    failed = [item for item in result["probes"] if not item["passed"]]
+    assert not failed, f"red-team probes failed: {failed}"
+    assert result["passed"] is True
     assert all(item["allowed"] is False for item in result["probes"])
