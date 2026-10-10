@@ -260,3 +260,64 @@ def test_runtime_main_blocks_unregistered_endpoint_config_before_runtime(monkeyp
     ])
     assert status == 2
     assert "provider-endpoint-not-registered" in capsys.readouterr().err
+
+
+def test_model_admission_evidence_resets_and_records_provider_failure(tmp_path):
+    class FailingProvider:
+        last_errors = []
+        def propose(self, _snapshot):
+            raise TimeoutError("provider timed out")
+
+    runtime = runtime_module.AutonomousRuntime(
+        repo_root=tmp_path,
+        proposal_provider=FailingProvider(),
+        max_cycles=1,
+    )
+    runtime.last_model_admission = [{"status": "ATTESTED", "agent_id": "stale-agent"}]
+    assert runtime._model_candidates({}, {}) == []
+    assert runtime.last_model_admission == [{
+        "index": None,
+        "status": "PROVIDER_FAILED",
+        "reasons": ["proposal-provider-failed:TimeoutError"],
+    }]
+
+
+def test_model_candidate_parser_rejects_non_list_provider_response(tmp_path):
+    class WrongShapeProvider:
+        last_errors = []
+        def propose(self, _snapshot):
+            return {"proposals": []}
+
+    runtime = runtime_module.AutonomousRuntime(
+        repo_root=tmp_path,
+        proposal_provider=WrongShapeProvider(),
+        max_cycles=1,
+    )
+    assert runtime._model_candidates({}, {}) == []
+    assert runtime.last_model_admission == [{
+        "index": None,
+        "status": "REJECTED",
+        "reasons": ["proposal-provider-response-not-list"],
+    }]
+
+
+def test_model_candidate_parser_records_multi_agent_worker_failures(tmp_path):
+    class PartialProvider:
+        last_errors = [
+            {"agent_id": "agent-timeout", "error_type": "TimeoutError", "error": "secret-bearing detail must not enter evidence"},
+        ]
+        def propose(self, _snapshot):
+            return []
+
+    runtime = runtime_module.AutonomousRuntime(
+        repo_root=tmp_path,
+        proposal_provider=PartialProvider(),
+        max_cycles=1,
+    )
+    assert runtime._model_candidates({}, {}) == []
+    assert runtime.last_model_admission == [{
+        "index": None,
+        "agent_id": "agent-timeout",
+        "status": "PROVIDER_FAILED",
+        "reasons": ["proposal-worker-failed:TimeoutError"],
+    }]
