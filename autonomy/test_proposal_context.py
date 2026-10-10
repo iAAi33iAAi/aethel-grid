@@ -121,3 +121,49 @@ def test_provider_caps_proposal_count_and_discards_non_object_rows(monkeypatch):
     proposals = provider.propose({"snapshot": {"head": "abc"}})
     assert len(proposals) == MAX_PROVIDER_PROPOSALS
     assert all(isinstance(row, dict) for row in proposals)
+
+
+def test_provider_rejects_endpoint_credentials_query_fragment_and_bad_port():
+    import pytest
+    invalid_urls = [
+        "https://user:secret@example.com/v1/chat/completions",
+        "https://example.com/v1/chat/completions?token=secret",
+        "https://example.com/v1/chat/completions#fragment",
+        "https://example.com:invalid/v1/chat/completions",
+    ]
+    for url in invalid_urls:
+        with pytest.raises(ValueError):
+            OpenAICompatibleProposalProvider(url, "test-model")
+
+
+def test_provider_does_not_inherit_environment_proxy_settings(monkeypatch):
+    import urllib.request
+    monkeypatch.setenv("HTTPS_PROXY", "http://proxy.attacker.invalid:3128")
+    monkeypatch.setenv("https_proxy", "http://proxy.attacker.invalid:3128")
+    provider = OpenAICompatibleProposalProvider(
+        "https://example.com/v1/chat/completions",
+        "test-model",
+    )
+    proxy_handlers = [
+        handler for handler in provider.opener.handlers
+        if isinstance(handler, urllib.request.ProxyHandler)
+    ]
+    assert len(proxy_handlers) == 1
+    assert proxy_handlers[0].proxies == {}
+
+
+def test_provider_rejects_invalid_chat_completion_shape(monkeypatch):
+    import pytest
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self, size=-1):
+            payload = b'{"choices":[]}'
+            return payload[:size] if size >= 0 else payload
+    provider = OpenAICompatibleProposalProvider(
+        "https://example.com/v1/chat/completions",
+        "test-model",
+    )
+    monkeypatch.setattr(provider.opener, "open", lambda request, timeout: Response())
+    with pytest.raises(ValueError, match="choices response has an invalid shape"):
+        provider.propose({"snapshot": {"head": "abc"}})
