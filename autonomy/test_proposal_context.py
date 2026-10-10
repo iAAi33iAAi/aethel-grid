@@ -172,3 +172,15 @@ def test_provider_rejects_invalid_chat_completion_shape(monkeypatch):
     monkeypatch.setattr(provider.opener, "open", lambda request, timeout: Response())
     with pytest.raises(ValueError, match="choices response has an invalid shape"):
         provider.propose({"snapshot": {"head": "abc"}})
+
+
+def test_provider_rejects_non_boolean_source_context_opt_in():
+    import pytest
+    invalid_values = ("false", "true", 0, 1, None, [])
+    for value in invalid_values:
+        with pytest.raises(ValueError, match="send_source_context must be a boolean"):
+            OpenAICompatibleProposalProvider(
+                "https://example.com/v1/chat/completions",
+                "test-model",
+                send_source_context=value,
+            )
