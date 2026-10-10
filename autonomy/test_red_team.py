@@ -36,9 +36,10 @@ def test_red_team_campaign_denies_all_probes(tmp_path: Path):
         "authority-principal-not-string",
         "numeric-huge-integer",
         "patch-missing-file-headers",
-        "numeric-huge-integer",
         "command-attested-agent-unprefixed-id",
         "oversized-single-line-diff",
+        "git-internals-case-variant",
+        "protected-surface-case-variant",
     }
     assert len(inventory) >= 52, f"red-team probe inventory below minimum: {len(inventory)}"
     assert len(probe_ids) == len(set(probe_ids)), "red-team probe IDs must be unique"
