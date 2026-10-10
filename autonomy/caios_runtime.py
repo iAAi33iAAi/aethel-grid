@@ -454,9 +454,15 @@ class ConstitutionalGate:
         "federation/signed_envelope.py",
     )
 
-    def __init__(self, repo_root: Path, max_patch_lines: int = 250) -> None:
+    def __init__(
+        self,
+        repo_root: Path,
+        max_patch_lines: int = 250,
+        max_patch_chars: int = 1_000_000,
+    ) -> None:
         self.repo_root = repo_root.resolve()
         self.max_patch_lines = max_patch_lines
+        self.max_patch_chars = max_patch_chars
         self.authority = AuthorityLattice(self.repo_root)
         policy_path = self.repo_root / "autonomy" / "protected_surfaces.json"
         self.protected_policy_valid = False
@@ -572,6 +578,9 @@ class ConstitutionalGate:
                 return False, reasons
             if not action.unified_diff:
                 reasons.append("patch action has no unified diff")
+            if len(action.unified_diff) > self.max_patch_chars:
+                reasons.append("patch exceeds maximum patch size")
+                return False, reasons
             changed_lines = sum(
                 1 for line in action.unified_diff.splitlines()
                 if line.startswith(("+", "-")) and not line.startswith(("+++", "---"))
