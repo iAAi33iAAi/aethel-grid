@@ -583,3 +583,72 @@ def test_provider_preflight_rejects_adapter_that_claims_external_tool_execution(
 
     with pytest.raises(ValueError, match="agent-identity-binding-failed:test-agent:model-proposal-adapter-must-not-execute-external-tools"):
         patch_proposal.load_provider(tmp_path, config_path)
+
+
+def test_select_candidate_rejects_nonfinite_max_risk(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    install_test_attestation(monkeypatch)
+    with pytest.raises(ValueError, match="max_risk must be a finite number within"):
+        patch_proposal.select_candidate(
+            tmp_path,
+            "f" * 40,
+            [make_patch_proposal(risk=0.54)],
+            max_risk=float("nan"),
+        )
+
+
+def test_select_candidate_rejects_nonfinite_registered_risk_threshold(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    install_test_attestation(monkeypatch)
+    path = tmp_path / "autonomy" / "agent_registry.json"
+    config = json.loads(path.read_text(encoding="utf-8"))
+    config["selection_policy"]["high_risk_threshold"] = float("nan")
+    path.write_text(json.dumps(config), encoding="utf-8")
+    with pytest.raises(ValueError, match="registered high_risk_threshold must be a finite number"):
+        patch_proposal.select_candidate(
+            tmp_path,
+            "f" * 40,
+            [make_patch_proposal(risk=0.54)],
+            max_risk=0.55,
+        )
+
+
+def test_select_candidate_rejects_huge_integer_and_boolean_metrics(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    install_test_attestation(monkeypatch)
+    proposals = [make_patch_proposal(), make_patch_proposal()]
+    proposals[0]["expected_gain"] = 10 ** 10000
+    proposals[1]["risk"] = True
+    result = patch_proposal.select_candidate(
+        tmp_path,
+        "f" * 40,
+        proposals,
+        max_risk=0.55,
+    )
+    assert result["status"] == "NO_CANDIDATE"
+    reasons = [reason for row in result["rejected"] for reason in row["reasons"]]
+    assert sum("invalid-metric" in reason for reason in reasons) == 2
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "expected_reason"),
+    [
+        ("target", [], "target-must-be-non-empty-string"),
+        ("rationale", {"unexpected": "object"}, "rationale-must-be-string"),
+        ("invariant_ids", "ID-1", "invariant-ids-must-be-string-array"),
+        ("tool_ids", 7, "tool-ids-must-be-string-array"),
+    ],
+)
+def test_select_candidate_rejects_malformed_action_metadata(tmp_path: Path, monkeypatch, field, value, expected_reason):
+    seed_repo(tmp_path)
+    install_test_attestation(monkeypatch)
+    proposal = make_patch_proposal()
+    proposal[field] = value
+    result = patch_proposal.select_candidate(
+        tmp_path,
+        "f" * 40,
+        [proposal],
+        max_risk=0.55,
+    )
+    assert result["status"] == "NO_CANDIDATE"
+    assert expected_reason in [reason for row in result["rejected"] for reason in row["reasons"]]
