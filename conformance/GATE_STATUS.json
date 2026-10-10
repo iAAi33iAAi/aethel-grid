@@ -29,7 +29,7 @@
   },
   "gate_5": {
     "status": "CLOSED",
-    "reason": "Gate 5 is CLOSED for manifest-driven CI verification coverage: all 13 portfolio repositories have an explicit verifier, all 13 non-empty verification scopes are recorded and enforced, and all 13 verifiers passed at the repository commits recorded by the audit. The ten declared verifier-source URLs are immutable GitHub blob references whose repository identifiers match the manifest. This closure means verification coverage only; it does not establish that every repository contains a complete runtime, production deployment, or portfolio-wide production conformance.",
+    "reason": "Gate 5 is CLOSED for manifest-driven CI verification coverage: all 13 portfolio repositories have an explicit verifier, all 13 non-empty verification scopes are recorded and enforced, and all 13 verifiers passed at the repository commits recorded by the successful audit. The audited commit recorded ten immutable verifier-source URLs; the current manifest now supplies immutable, repository-matched source references for all 13 repositories. This closure means verification coverage only; it does not establish that every repository contains a complete runtime, production deployment, or portfolio-wide production conformance.",
     "evidence": {
       "workflow_run": "https://github.com/iAAi33iAAi/aethel-grid/actions/runs/38004987250",
       "audited_commit": "17de7c7bc12002e32dbe497b77145a9773e72696",
@@ -44,7 +44,11 @@
       "declared_source_urls": 10,
       "pinned_source_urls": 10,
       "mutable_source_urls": 0,
-      "source_repository_mismatches": 0
+      "source_repository_mismatches": 0,
+      "current_manifest_source_urls": 13,
+      "current_manifest_pinned_source_urls": 13,
+      "current_manifest_mutable_source_urls": 0,
+      "current_manifest_source_repository_mismatches": 0
     }
   },
   "gate_6": {
