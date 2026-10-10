@@ -321,3 +321,29 @@ def test_model_candidate_parser_records_multi_agent_worker_failures(tmp_path):
         "status": "PROVIDER_FAILED",
         "reasons": ["proposal-worker-failed:TimeoutError"],
     }]
+
+
+def test_oversized_patch_is_rejected_before_file_header_parsing(tmp_path: Path):
+    _seed_authority(tmp_path)
+    autonomy = tmp_path / "autonomy"
+    (autonomy / "protected_surfaces.json").write_text(
+        json.dumps({"protected_globs": ["private/**"]}),
+        encoding="utf-8",
+    )
+    gate = ConstitutionalGate(tmp_path)
+    action = CandidateAction(
+        action_id="model-oversized-patch-before-parse",
+        kind="apply_patch",
+        target=".",
+        rationale="oversized malformed diff must fail before parser work",
+        expected_gain=0.4,
+        risk=0.3,
+        reversibility=1.0,
+        resource_cost=0.1,
+        evidence_gain=0.8,
+        unified_diff="x" * 1_000_001,
+    )
+    allowed, reasons = gate.validate(action)
+    assert allowed is False
+    assert "patch exceeds maximum patch size" in reasons
+    assert "patch must contain exactly one file section" not in reasons
