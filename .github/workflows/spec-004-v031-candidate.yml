@@ -1,0 +1,35 @@
+name: SPEC-004 v0.3.1 Candidate Conformance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "specs/spec-004/v0.3.1-candidate/**"
+      - ".github/workflows/spec-004-v031-candidate.yml"
+  push:
+    branches: [main]
+    paths:
+      - "specs/spec-004/v0.3.1-candidate/**"
+      - ".github/workflows/spec-004-v031-candidate.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: specs/spec-004/v0.3.1-candidate
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Set up Python
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
+        with:
+          python-version: "3.12"
+      - name: Recompute archived four-vector corpus
+        run: python archived_test_metric_law.py
+      - name: Run hardening and provenance tests
+        run: python -m unittest discover -s . -p 'test_*.py' -v
