@@ -626,12 +626,35 @@ class ConstitutionalGate:
                 return False, reasons
             # Enforce payload bounds before line splitting or path processing.
             diff_lines = action.unified_diff.splitlines()
+            diff_headers = [line for line in diff_lines if line.startswith("diff --git ")]
+            old_file_headers = [line[4:].split("\t", 1)[0] for line in diff_lines if line.startswith("--- ")]
+            new_file_headers = [line[4:].split("\t", 1)[0] for line in diff_lines if line.startswith("+++ ")]
             if (
-                sum(line.startswith("diff --git ") for line in diff_lines) != 1
-                or sum(line.startswith("--- ") for line in diff_lines) != 1
-                or sum(line.startswith("+++ ") for line in diff_lines) != 1
+                len(diff_headers) != 1
+                or len(old_file_headers) != 1
+                or len(new_file_headers) != 1
             ):
                 reasons.append("patch must contain exactly one file section")
+            else:
+                git_parts = diff_headers[0].split()
+                old_header = old_file_headers[0]
+                new_header = new_file_headers[0]
+                mismatch = (
+                    len(git_parts) != 4
+                    or not git_parts[2].startswith("a/")
+                    or not git_parts[3].startswith("b/")
+                    or (old_header != "/dev/null" and (
+                        not old_header.startswith("a/")
+                        or len(git_parts) == 4 and old_header[2:] != git_parts[2][2:]
+                    ))
+                    or (new_header != "/dev/null" and (
+                        not new_header.startswith("b/")
+                        or len(git_parts) == 4 and new_header[2:] != git_parts[3][2:]
+                    ))
+                    or (old_header == "/dev/null" and new_header == "/dev/null")
+                )
+                if mismatch:
+                    reasons.append("patch file headers do not match diff header")
             changed_lines = sum(
                 1 for line in action.unified_diff.splitlines()
                 if line.startswith(("+", "-")) and not line.startswith(("+++", "---"))
