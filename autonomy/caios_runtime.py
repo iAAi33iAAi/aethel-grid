@@ -333,6 +333,8 @@ class OpenAICompatibleProposalProvider:
             raise ValueError("model endpoint must not contain credentials, query parameters, or fragments")
         if parsed.scheme == "http" and hostname not in {"127.0.0.1", "localhost", "::1"}:
             raise ValueError("non-local model endpoints must use HTTPS")
+        if not isinstance(send_source_context, bool):
+            raise ValueError("send_source_context must be a boolean")
         self.endpoint = endpoint
         self.model = model
         self.api_key = api_key
@@ -342,7 +344,7 @@ class OpenAICompatibleProposalProvider:
             urllib.request.ProxyHandler({}),
             _NoRedirectHandler(),
         )
-        self.send_source_context = bool(send_source_context)
+        self.send_source_context = send_source_context
         self.egress_policy = EgressPolicy(
             allow_source_context=self.send_source_context,
         )
