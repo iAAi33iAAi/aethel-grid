@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-10-09T23:37:26Z",
+  "generated_at_utc": "2026-10-10T02:55:14Z",
   "gate_1": {
     "status": "BLOCKED",
     "reason": "Canonical SPEC-004 v0.3.1 metric law and normative u_metric/decision partition are not present on main; existing TV-001..TV-007 remain candidate/noncanonical."
@@ -31,8 +31,8 @@
     "status": "CLOSED",
     "reason": "Gate 5 is CLOSED for manifest-driven CI verification coverage: all 13 portfolio repositories have an explicit verifier, all 13 non-empty verification scopes are recorded and enforced, and all 13 verifiers passed at the repository commits recorded by the successful audit. The audited commit recorded ten immutable verifier-source URLs; the current manifest now supplies immutable, repository-matched source references for all 13 repositories. This closure means verification coverage only; it does not establish that every repository contains a complete runtime, production deployment, or portfolio-wide production conformance.",
     "evidence": {
-      "workflow_run": "https://github.com/iAAi33iAAi/aethel-grid/actions/runs/38004987250",
-      "audited_commit": "17de7c7bc12002e32dbe497b77145a9773e72696",
+      "workflow_run": "https://github.com/iAAi33iAAi/aethel-grid/actions/runs/38018547956",
+      "audited_commit": "eac6d701a08a09dc7bd4518a68df725045039e6c",
       "repositories_total": 13,
       "verified": 13,
       "not_configured": 0,
