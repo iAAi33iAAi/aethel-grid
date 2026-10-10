@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from federation import caios_federation
 from federation.caios_federation import build_federation, digest
 
 
@@ -135,8 +136,17 @@ def _parity_manifest_and_report(workspace: Path) -> tuple[dict, dict, str]:
     return {"schema": "caios-federation/v1", "repositories": [spec]}, report, revision
 
 
-def test_snapshot_reuses_passing_parity_report_without_rerunning_verifier(tmp_path: Path):
+def test_snapshot_reuses_passing_parity_report_without_rerunning_verifier(tmp_path: Path, monkeypatch):
     manifest, report, revision = _parity_manifest_and_report(tmp_path)
+    real_run_argv = caios_federation.run_argv
+    verifier_command = manifest["repositories"][0]["verification"]
+
+    def reject_duplicate_verification(cwd: Path, argv: list[str], timeout: int = 120):
+        if argv == verifier_command:
+            pytest.fail("snapshot reran a verifier already recorded in the parity report")
+        return real_run_argv(cwd, argv, timeout)
+
+    monkeypatch.setattr(caios_federation, "run_argv", reject_duplicate_verification)
     snapshot = build_federation(tmp_path, manifest, False, verification_report=report)
     node = next(row for row in snapshot["repositories"] if row["id"] == "core")
 
@@ -158,6 +168,30 @@ def test_snapshot_binds_system_digest_to_parity_evidence(tmp_path: Path):
     second = build_federation(tmp_path, manifest, False, verification_report=changed_report)["system_digest"]
 
     assert first != second
+
+
+def test_snapshot_rejects_parity_report_command_mismatch(tmp_path: Path):
+    manifest, report, _ = _parity_manifest_and_report(tmp_path)
+    report["repositories"][0]["verification_command"] = ["python", "-c", "print('different')"]
+
+    with pytest.raises(ValueError, match="command mismatch"):
+        build_federation(tmp_path, manifest, False, verification_report=report)
+
+
+def test_snapshot_rejects_parity_report_source_mismatch(tmp_path: Path):
+    manifest, report, _ = _parity_manifest_and_report(tmp_path)
+    report["repositories"][0]["verification_source"] = "https://github.com/example/core/blob/0123456789abcdef0123456789abcdef01234567/tests/test.py"
+
+    with pytest.raises(ValueError, match="source mismatch"):
+        build_federation(tmp_path, manifest, False, verification_report=report)
+
+
+def test_snapshot_rejects_inconsistent_report_summary(tmp_path: Path):
+    manifest, report, _ = _parity_manifest_and_report(tmp_path)
+    report["summary"]["passed"] = 0
+
+    with pytest.raises(ValueError, match="summary does not prove complete passing coverage"):
+        build_federation(tmp_path, manifest, False, verification_report=report)
 
 
 def test_snapshot_rejects_parity_report_revision_mismatch(tmp_path: Path):
