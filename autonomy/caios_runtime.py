@@ -62,6 +62,56 @@ def digest(value: Any) -> str:
     return hashlib.sha256(canonical_json(value)).hexdigest()
 
 
+def _normalize_unit_metrics(item: dict[str, Any]) -> dict[str, float] | None:
+    """Validate proposal metrics before coercion, rejecting bools and huge integers."""
+    defaults = {
+        "expected_gain": 0.30,
+        "risk": 0.50,
+        "reversibility": 0.60,
+        "resource_cost": 0.30,
+        "evidence_gain": 0.50,
+    }
+    metrics: dict[str, float] = {}
+    for name, default in defaults.items():
+        value = item.get(name, default)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
+        if isinstance(value, int):
+            # Do not convert arbitrary-size integers to float before bounds checking.
+            if value < 0 or value > 1:
+                return None
+            metrics[name] = float(value)
+            continue
+        if not math.isfinite(value) or not 0.0 <= value <= 1.0:
+            return None
+        metrics[name] = value
+    return metrics
+
+
+def _normalize_model_command(value: Any) -> tuple[str, ...] | None:
+    """Parse an optional model command without allowing malformed input to escape."""
+    if value is None or value == "":
+        return ()
+    if not isinstance(value, str):
+        return None
+    if not value.strip():
+        return ()
+    try:
+        argv = tuple(shlex.split(value))
+    except ValueError:
+        return None
+    return argv if argv else None
+
+
+def _normalize_string_list(value: Any) -> tuple[str, ...] | None:
+    """Accept JSON arrays of non-empty strings only for invariant/tool identifiers."""
+    if not isinstance(value, list) or any(
+        not isinstance(item, str) or not item for item in value
+    ):
+        return None
+    return tuple(value)
+
+
 def _is_test_file_path(path: str) -> bool:
     candidate = Path(path)
     basename = candidate.name.lower()
@@ -490,7 +540,12 @@ class ConstitutionalGate:
         elif (
             isinstance(action.kind, str)
             and action.kind in {"run_test", "run_security_scan"}
-            and action.action_id.startswith("model-")
+            and (
+                action.action_id.startswith("model-")
+                or action.authority_principal != "caios"
+                or action.agent_id is not None
+                or action.attestation_digest is not None
+            )
         ):
             reasons.append("model-originated actions cannot supply arbitrary executable commands")
 
@@ -1212,28 +1267,53 @@ class AutonomousRuntime:
                 "protocol": attestation.protocol,
                 "attestation_digest": attestation.attestation_digest,
             })
-            kind = str(item.get("kind", "human_review"))
-            target = str(item.get("target", "."))
-            diff = str(item.get("unified_diff", ""))
-            command = tuple(shlex.split(str(item["command"]))) if item.get("command") else ()
-            try:
-                metrics = {
-                    "expected_gain": float(item.get("expected_gain", 0.30)),
-                    "risk": float(item.get("risk", 0.50)),
-                    "reversibility": float(item.get("reversibility", 0.60)),
-                    "resource_cost": float(item.get("resource_cost", 0.30)),
-                    "evidence_gain": float(item.get("evidence_gain", 0.50)),
-                }
-            except (TypeError, ValueError):
+            kind = item.get("kind", "human_review")
+            target = item.get("target", ".")
+            rationale = item.get("rationale", "model proposal")
+            diff = item.get("unified_diff", "")
+            proposed_action_id = item.get("action_id", "proposal")
+            if not all(isinstance(value, str) for value in (kind, target, rationale, diff, proposed_action_id)):
+                self.last_model_admission.append({
+                    "index": idx,
+                    "status": "REJECTED",
+                    "reasons": ["proposal-action-fields-must-be-strings"],
+                    "proposal_digest": proposal_digest,
+                })
                 continue
-            if any(not math.isfinite(value) or not 0.0 <= value <= 1.0 for value in metrics.values()):
+            command = _normalize_model_command(item.get("command"))
+            if command is None:
+                self.last_model_admission.append({
+                    "index": idx,
+                    "status": "REJECTED",
+                    "reasons": ["proposal-command-malformed"],
+                    "proposal_digest": proposal_digest,
+                })
+                continue
+            invariant_ids = _normalize_string_list(item.get("invariant_ids", []))
+            tool_ids = _normalize_string_list(item.get("tool_ids", []))
+            if invariant_ids is None or tool_ids is None:
+                self.last_model_admission.append({
+                    "index": idx,
+                    "status": "REJECTED",
+                    "reasons": ["proposal-invariant-or-tool-ids-malformed"],
+                    "proposal_digest": proposal_digest,
+                })
+                continue
+            metrics = _normalize_unit_metrics(item)
+            if metrics is None:
+                self.last_model_admission.append({
+                    "index": idx,
+                    "status": "REJECTED",
+                    "reasons": ["proposal-metrics-malformed"],
+                    "proposal_digest": proposal_digest,
+                })
                 continue
             candidates.append(
                 CandidateAction(
-                    action_id=f"model-{idx}-{str(item.get('action_id', 'proposal'))}",
+                    action_id=f"model-{idx}-{proposed_action_id}",
                     kind=kind,
                     target=target,
-                    rationale=str(item.get("rationale", "model proposal")),
+                    rationale=rationale,
                     expected_gain=metrics["expected_gain"],
                     risk=metrics["risk"],
                     reversibility=metrics["reversibility"],
@@ -1247,8 +1327,8 @@ class AutonomousRuntime:
                     model_id=attestation.model_id,
                     model_revision=attestation.model_revision,
                     attestation_digest=attestation.attestation_digest,
-                    invariant_ids=tuple(str(value) for value in item.get("invariant_ids", [])),
-                    tool_ids=tuple(str(value) for value in item.get("tool_ids", [])),
+                    invariant_ids=invariant_ids,
+                    tool_ids=tool_ids,
                     authority_principal="model",
                 )
             )
