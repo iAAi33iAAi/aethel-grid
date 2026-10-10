@@ -446,12 +446,17 @@ class ConstitutionalGate:
             "evidence_gain": action.evidence_gain,
         }
         for field, value in numeric_fields.items():
-            if (
-                isinstance(value, bool)
-                or not isinstance(value, (int, float))
-                or not math.isfinite(value)
-                or not 0.0 <= value <= 1.0
-            ):
+            valid_number = (
+                not isinstance(value, bool)
+                and isinstance(value, (int, float))
+            )
+            if valid_number and isinstance(value, float):
+                valid_number = math.isfinite(value)
+            # Compare arbitrary-size ints directly; math.isfinite(int) can
+            # raise OverflowError while converting a hostile integer to float.
+            if valid_number:
+                valid_number = 0.0 <= value <= 1.0
+            if not valid_number:
                 reasons.append(f"{field} must be finite and within [0,1]")
 
         if (
