@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import subprocess
 import time
@@ -34,7 +35,7 @@ from typing import Any
 
 def canonical_json(value: Any) -> bytes:
     return json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
     ).encode("utf-8")
 
 
@@ -135,9 +136,111 @@ def content_fingerprint(root: Path) -> str:
     return _safe_file_fingerprint(root)
 
 
-def repo_snapshot(workspace: Path, spec: dict[str, Any], run_verification: bool) -> dict[str, Any]:
+def index_verification_report(
+    manifest: dict[str, Any], report: dict[str, Any]
+) -> dict[str, dict[str, Any]]:
+    """Validate a passing parity report before its evidence is imported."""
+    if not isinstance(report, dict) or report.get("schema") != "caios-portfolio-ci-parity/v1":
+        raise ValueError("verification report has an unsupported schema")
+    if report.get("overall_status") != "PASS":
+        raise ValueError("verification report must have overall_status PASS")
+    specs = manifest.get("repositories", [])
+    if not isinstance(specs, list) or not specs:
+        raise ValueError("manifest repositories must be a non-empty list")
+    expected = {str(spec["id"]): spec for spec in specs}
+    if len(expected) != len(specs):
+        raise ValueError("manifest repository IDs must be unique")
+    rows = report.get("repositories")
+    if not isinstance(rows, list):
+        raise ValueError("verification report repositories must be a list")
+
+    indexed: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get("id"), str) or not row["id"]:
+            raise ValueError("verification report has an invalid repository row")
+        repo_id = row["id"]
+        if repo_id in indexed:
+            raise ValueError(f"verification report duplicates repository {repo_id}")
+        if repo_id not in expected:
+            raise ValueError(f"verification report contains unknown repository {repo_id}")
+        spec = expected[repo_id]
+        if row.get("path") != spec.get("path"):
+            raise ValueError(f"verification report path mismatch for {repo_id}")
+        if row.get("verification_command") != list(spec.get("verification", [])):
+            raise ValueError(f"verification report command mismatch for {repo_id}")
+        if row.get("verification_source") != spec.get("verification_source"):
+            raise ValueError(f"verification report source mismatch for {repo_id}")
+        if row.get("verification_scope") != spec.get("verification_scope"):
+            raise ValueError(f"verification report scope mismatch for {repo_id}")
+        if row.get("status") != "PASS":
+            raise ValueError(f"verification report is not passing for {repo_id}")
+
+        revision = row.get("revision")
+        if (
+            not isinstance(revision, str)
+            or len(revision) != 40
+            or any(ch not in "0123456789abcdef" for ch in revision)
+        ):
+            raise ValueError(f"verification report has an invalid commit revision for {repo_id}")
+
+        verification = row.get("verification")
+        if (
+            not isinstance(verification, dict)
+            or type(verification.get("returncode")) is not int
+            or verification.get("returncode") != 0
+        ):
+            raise ValueError(f"verification report lacks successful command evidence for {repo_id}")
+        if not isinstance(verification.get("stdout_tail", ""), str) or not isinstance(
+            verification.get("stderr_tail", ""), str
+        ):
+            raise ValueError(f"verification report has invalid output evidence for {repo_id}")
+        duration = verification.get("duration_seconds")
+        if (
+            not isinstance(duration, (int, float))
+            or isinstance(duration, bool)
+            or not math.isfinite(float(duration))
+            or duration < 0
+        ):
+            raise ValueError(f"verification report has invalid duration for {repo_id}")
+        indexed[repo_id] = row
+
+    if set(indexed) != set(expected):
+        missing = sorted(set(expected) - set(indexed))
+        raise ValueError(f"verification report does not cover every manifest repository: {missing}")
+
+    summary = report.get("summary")
+    if not isinstance(summary, dict):
+        raise ValueError("verification report summary is missing")
+    required_summary = {
+        "repositories_total": len(expected),
+        "verified": len(expected),
+        "passed": len(expected),
+        "not_configured": 0,
+        "failed": 0,
+    }
+    for field, expected_value in required_summary.items():
+        actual_value = summary.get(field)
+        if type(actual_value) is not int or actual_value != expected_value:
+            raise ValueError(
+                "verification report summary does not prove complete passing coverage: "
+                f"{field}={actual_value!r}, expected={expected_value}"
+            )
+    generated_at = report.get("generated_at_utc")
+    if not isinstance(generated_at, str) or not generated_at.strip():
+        raise ValueError("verification report timestamp is missing")
+    return indexed
+
+
+def repo_snapshot(
+    workspace: Path,
+    spec: dict[str, Any],
+    run_verification: bool,
+    verification_report_entry: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     root = (workspace / str(spec["path"])).resolve()
     if not root.is_dir():
+        if verification_report_entry is not None:
+            raise ValueError(f"verification report references missing checkout for {spec['id']}")
         return {
             "id": spec["id"],
             "role": spec.get("role", ""),
@@ -198,7 +301,29 @@ def repo_snapshot(workspace: Path, spec: dict[str, Any], run_verification: bool)
     })
 
     verification = None
-    if run_verification and spec.get("verification"):
+    if verification_report_entry is not None:
+        audited_revision = verification_report_entry["revision"]
+        if metadata.get("head") != audited_revision:
+            raise ValueError(
+                f"verification report revision mismatch for {spec['id']}: "
+                f"current={metadata.get('head')!r}, audited={audited_revision!r}"
+            )
+        report_verification = verification_report_entry["verification"]
+        verification = {
+            "status": verification_report_entry["status"],
+            "returncode": report_verification["returncode"],
+            "command": list(spec["verification"]),
+            "stdout_tail": report_verification.get("stdout_tail", "")[-5000:],
+            "stderr_tail": report_verification.get("stderr_tail", "")[-3000:],
+            "elapsed_ms": round(float(report_verification["duration_seconds"]) * 1000),
+            "started_at_utc": report_verification.get("started_at_utc"),
+            "audited_revision": audited_revision,
+            "verification_source": spec.get("verification_source"),
+            "verification_scope": spec["verification_scope"],
+            "audit_row_digest": digest(verification_report_entry),
+        }
+        evidence.append({"kind": "verification", "source": "portfolio-ci-parity-report", **verification})
+    elif run_verification and spec.get("verification"):
         started = time.monotonic_ns()
         rc, out, err = run_argv(root, list(spec["verification"]), timeout=180)
         verification = {
@@ -286,15 +411,31 @@ def dependency_pressure(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return ranked
 
 
-def build_federation(workspace: Path, manifest: dict[str, Any], run_verification: bool) -> dict[str, Any]:
+def build_federation(
+    workspace: Path,
+    manifest: dict[str, Any],
+    run_verification: bool,
+    verification_report: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    if run_verification and verification_report is not None:
+        raise ValueError("--verify and --verification-report are mutually exclusive")
+    report_index = index_verification_report(manifest, verification_report) if verification_report is not None else None
     nodes = [
-        repo_snapshot(workspace, spec, run_verification)
+        repo_snapshot(
+            workspace,
+            spec,
+            run_verification,
+            report_index.get(str(spec["id"])) if report_index is not None else None,
+        )
         for spec in manifest.get("repositories", [])
     ]
     ranked = dependency_pressure(nodes)
     system_digest = digest(
         {
             "schema": manifest.get("schema"),
+            "verification_report_digest": (
+                digest(verification_report) if verification_report is not None else None
+            ),
             "nodes": [
                 {
                     "id": n["id"],
@@ -302,6 +443,9 @@ def build_federation(workspace: Path, manifest: dict[str, Any], run_verification
                     "head": n.get("metadata", {}).get("head"),
                     "content_fingerprint": n.get("content_fingerprint"),
                     "verification": (n.get("verification") or {}).get("status"),
+                    "verification_evidence_digest": (
+                        digest(n["verification"]) if n.get("verification") is not None else None
+                    ),
                     "cdp": n["constitutional_dependency_pressure"],
                 }
                 for n in ranked
@@ -313,6 +457,17 @@ def build_federation(workspace: Path, manifest: dict[str, Any], run_verification
         "generated_at_unix": time.time(),
         "system_digest": system_digest,
         "next_inspection_target": ranked[0]["id"] if ranked else None,
+        "verification_report": (
+            {
+                "schema": verification_report.get("schema"),
+                "overall_status": verification_report.get("overall_status"),
+                "generated_at_utc": verification_report.get("generated_at_utc"),
+                "summary": verification_report.get("summary"),
+                "evidence_digest": digest(verification_report),
+            }
+            if verification_report is not None
+            else None
+        ),
         "repositories": ranked,
     }
 
@@ -321,13 +476,36 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="CAIOS federation bridge")
     parser.add_argument("--manifest", default="federation/system_manifest.json")
     parser.add_argument("--workspace", default=".")
-    parser.add_argument("--verify", action="store_true")
+    parser.add_argument("--verify", action="store_true", help="Run manifest verifiers directly.")
+    parser.add_argument(
+        "--verification-report",
+        type=Path,
+        help="Reuse a passing caios-portfolio-ci-parity/v1 JSON report instead of rerunning verifiers.",
+    )
     parser.add_argument("--output", default="ops/caios/federation-snapshot.json")
     args = parser.parse_args(argv)
+    if args.verify and args.verification_report is not None:
+        parser.error("--verify and --verification-report are mutually exclusive")
 
-    workspace = Path(args.workspace).resolve()
-    manifest = json.loads((workspace / args.manifest).read_text(encoding="utf-8"))
-    snapshot = build_federation(workspace, manifest, args.verify)
+    try:
+        workspace = Path(args.workspace).resolve()
+        manifest = json.loads((workspace / args.manifest).read_text(encoding="utf-8"))
+        verification_report = None
+        if args.verification_report is not None:
+            report_path = args.verification_report
+            if not report_path.is_absolute():
+                report_path = workspace / report_path
+            verification_report = json.loads(report_path.read_text(encoding="utf-8"))
+        snapshot = build_federation(
+            workspace,
+            manifest,
+            args.verify,
+            verification_report=verification_report,
+        )
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        print(json.dumps({"status": "FAILED", "error": f"{type(exc).__name__}: {exc}"}, indent=2))
+        return 2
+
     output = workspace / args.output
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(snapshot, indent=2, sort_keys=True) + "\n", encoding="utf-8")
