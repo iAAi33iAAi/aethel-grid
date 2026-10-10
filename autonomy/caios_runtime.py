@@ -2023,48 +2023,39 @@ def main(argv: list[str] | None = None) -> int:
 
     repo_root = Path(args.repo_root).resolve()
     provider = None
-    if os.getenv("CAIOS_MODEL_URL") and os.getenv("CAIOS_MODEL_NAME"):
-        provider = OpenAICompatibleProposalProvider(
-            endpoint=os.environ["CAIOS_MODEL_URL"],
-            model=os.environ["CAIOS_MODEL_NAME"],
-            api_key=os.getenv("CAIOS_MODEL_API_KEY"),
-            send_source_context=os.getenv("CAIOS_SEND_SOURCE_CONTEXT", "false").lower() == "true",
-        )
+    direct_endpoint_requested = bool(
+        os.getenv("CAIOS_MODEL_URL") or os.getenv("CAIOS_MODEL_NAME")
+    )
+    if direct_endpoint_requested:
+        print(json.dumps({
+            "provider_activation": "BLOCKED",
+            "reason": (
+                "direct endpoint environment activation is disabled; "
+                "use a registry-bound --agent-config"
+            ),
+        }, sort_keys=True), file=sys.stderr)
+        return 2
 
-    config_path = Path(args.agent_config) if args.agent_config else (Path(args.config) if args.config else None)
-    if config_path:
-        config = load_json(config_path)
-        agent_cfgs = config.get("agents") or []
-        if agent_cfgs:
-            from autonomy.multi_agent_provider import EndpointSpec, MultiAgentProposalProvider
-
-            specs = []
-            for item in agent_cfgs:
-                api_key_env = item.get("api_key_env")
-                specs.append(
-                    EndpointSpec(
-                        agent_id=str(item["agent_id"]),
-                        endpoint=str(item["endpoint"]),
-                        model=str(item["model"]),
-                        model_revision=str(item.get("model_revision", "")),
-                        protocol=str(item.get("protocol", "openai-compatible")),
-                        agent_version=str(item.get("agent_version", "unspecified")),
-                        source_ref=str(item.get("source_ref", "unspecified")),
-                        api_key=os.getenv(str(api_key_env)) if api_key_env else None,
-                        max_proposals=int(item.get("max_proposals", 8)),
-                        send_source_context=bool(item.get("send_source_context", False)),
-                    )
-                )
-            provider = MultiAgentProposalProvider(tuple(specs))
-        else:
-            model_cfg = config.get("model", {})
-            if model_cfg.get("endpoint") and model_cfg.get("model"):
-                provider = OpenAICompatibleProposalProvider(
-                    endpoint=str(model_cfg["endpoint"]),
-                    model=str(model_cfg["model"]),
-                    api_key=str(model_cfg.get("api_key")) if model_cfg.get("api_key") else None,
-                    send_source_context=bool(model_cfg.get("send_source_context", False)),
-                )
+    raw_config_path = args.agent_config if args.agent_config else args.config
+    config_path = Path(raw_config_path) if raw_config_path else None
+    if config_path is not None:
+        if not config_path.is_absolute():
+            config_path = repo_root / config_path
+        try:
+            # This preflights the exact destination, agent, protocol, model,
+            # source binding and approval record before a provider can be called.
+            from autonomy.patch_proposal import load_provider
+            provider = load_provider(
+                repo_root,
+                config_path,
+                require_source_context=False,
+            )
+        except Exception as exc:
+            print(json.dumps({
+                "provider_activation": "BLOCKED",
+                "reason": f"{type(exc).__name__}:{str(exc)[:1000]}",
+            }, sort_keys=True), file=sys.stderr)
+            return 2
 
     runtime = AutonomousRuntime(
         repo_root=repo_root,
