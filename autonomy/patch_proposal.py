@@ -332,18 +332,6 @@ def select_candidate(
             rejected.append({"index": index, "reasons": ["unified-diff-malformed"]})
             continue
 
-        proposal_digest = digest(item)
-        admitted, identity_reasons, attestation = validate_proposal(
-            repo_root, item, proposal_digest
-        )
-        if not admitted or attestation is None:
-            rejected.append({
-                "index": index,
-                "proposal_digest": proposal_digest,
-                "reasons": identity_reasons or ["proposal-attestation-unavailable"],
-            })
-            continue
-
         try:
             metrics = {
                 "expected_gain": _number(item, "expected_gain", 0.30),
@@ -378,6 +366,28 @@ def select_candidate(
             continue
         if requested_tool_ids is None:
             rejected.append({"index": index, "reasons": ["tool-ids-must-be-string-array"]})
+            continue
+
+        # The proposal is untrusted; canonical hashing must not be allowed to
+        # turn malformed or oversized numeric values into an uncaught exception.
+        try:
+            proposal_digest = digest(item)
+        except (TypeError, ValueError, OverflowError, RecursionError) as exc:
+            rejected.append({
+                "index": index,
+                "reasons": [f"proposal-canonicalization-failed:{type(exc).__name__}"],
+            })
+            continue
+
+        admitted, identity_reasons, attestation = validate_proposal(
+            repo_root, item, proposal_digest
+        )
+        if not admitted or attestation is None:
+            rejected.append({
+                "index": index,
+                "proposal_digest": proposal_digest,
+                "reasons": identity_reasons or ["proposal-attestation-unavailable"],
+            })
             continue
 
         action = CandidateAction(
