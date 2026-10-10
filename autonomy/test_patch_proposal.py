@@ -694,3 +694,24 @@ def test_select_candidate_rejects_multi_file_patch(tmp_path: Path, monkeypatch):
     assert "unified-diff-must-target-exactly-one-file" in [
         reason for row in result["rejected"] for reason in row["reasons"]
     ]
+
+
+def test_select_candidate_rejects_conflicting_diff_header_paths(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    install_test_attestation(monkeypatch)
+    proposal = make_patch_proposal()
+    proposal["unified_diff"] = proposal["unified_diff"].replace(
+        "diff --git a/src/app.py b/src/app.py",
+        "diff --git a/src/app.py b/src/other.py",
+    )
+
+    result = patch_proposal.select_candidate(
+        tmp_path,
+        "f" * 40,
+        [proposal],
+        max_risk=0.55,
+    )
+    assert result["status"] == "NO_CANDIDATE"
+    assert "unified-diff-header-path-mismatch" in [
+        reason for row in result["rejected"] for reason in row["reasons"]
+    ]
