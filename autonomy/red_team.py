@@ -248,6 +248,10 @@ def probes() -> tuple[RedTeamProbe, ...]:
         "autonomy/test_validate_patch_proposal.py",
         "autonomy/test_multi_agent_provider.py",
         "autonomy/test_proposal_context.py",
+        "autonomy/agent_registry.json",
+        "autonomy/model_registry.json",
+        "autonomy/protocol_registry.json",
+        "autonomy/test_registered_agent_source_pins.py",
         "autonomy/agent_endpoints.json",
         "autonomy/provider_endpoint_registry.json",
     )
