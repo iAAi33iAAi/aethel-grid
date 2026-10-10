@@ -1369,7 +1369,15 @@ class AutonomousRuntime:
                     "reasons": ["proposal-not-object"],
                 })
                 continue
-            proposal_digest = digest(item)
+            try:
+                proposal_digest = digest(item)
+            except (TypeError, ValueError, OverflowError, RecursionError) as exc:
+                self.last_model_admission.append({
+                    "index": idx,
+                    "status": "REJECTED",
+                    "reasons": [f"proposal-canonicalization-failed:{type(exc).__name__}"],
+                })
+                continue
             admitted, reasons, attestation = validate_proposal(
                 self.repo_root, item, proposal_digest
             )
