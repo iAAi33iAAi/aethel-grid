@@ -238,8 +238,8 @@ def test_gate5_ledger_matches_complete_coverage_evidence():
     assert "verification coverage" in gate5["reason"].lower()
     assert "does not establish" in gate5["reason"].lower()
     assert "production conformance" in gate5["reason"].lower()
-    assert evidence["workflow_run"] == "https://github.com/iAAi33iAAi/aethel-grid/actions/runs/38004987250"
-    assert evidence["audited_commit"] == "17de7c7bc12002e32dbe497b77145a9773e72696"
+    assert evidence["workflow_run"] == "https://github.com/iAAi33iAAi/aethel-grid/actions/runs/38018547956"
+    assert evidence["audited_commit"] == "eac6d701a08a09dc7bd4518a68df725045039e6c"
     assert evidence["status"] == "PASS"
     assert evidence["evidence_scope"] == "VERIFICATION_COVERAGE_ONLY_NOT_PRODUCTION_CONFORMANCE"
     assert evidence["repositories_total"] == len(rows) == 13
