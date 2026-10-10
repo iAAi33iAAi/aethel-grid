@@ -320,15 +320,28 @@ class OpenAICompatibleProposalProvider:
         api_key: str | None = None,
         send_source_context: bool = False,
     ) -> None:
-        parsed = urllib.parse.urlparse(endpoint)
-        if parsed.scheme not in {"https", "http"} or not parsed.netloc:
+        try:
+            parsed = urllib.parse.urlsplit(endpoint)
+            hostname = parsed.hostname
+            # Accessing .port validates malformed / out-of-range port text.
+            _ = parsed.port
+        except (TypeError, ValueError) as exc:
+            raise ValueError("model endpoint URL is malformed") from exc
+        if parsed.scheme not in {"https", "http"} or not hostname:
             raise ValueError("model endpoint must be an absolute HTTP(S) URL")
-        if parsed.scheme == "http" and parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
+        if parsed.username or parsed.password or parsed.query or parsed.fragment:
+            raise ValueError("model endpoint must not contain credentials, query parameters, or fragments")
+        if parsed.scheme == "http" and hostname not in {"127.0.0.1", "localhost", "::1"}:
             raise ValueError("non-local model endpoints must use HTTPS")
         self.endpoint = endpoint
         self.model = model
         self.api_key = api_key
-        self.opener = urllib.request.build_opener(_NoRedirectHandler())
+        # Do not inherit HTTP(S)_PROXY from the process environment. The
+        # configured, registry-bound endpoint is the only allowed destination.
+        self.opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({}),
+            _NoRedirectHandler(),
+        )
         self.send_source_context = bool(send_source_context)
         self.egress_policy = EgressPolicy(
             allow_source_context=self.send_source_context,
