@@ -663,7 +663,7 @@ class ConstitutionalGate:
                         security_path.startswith("/")
                         or has_drive_prefix
                         or any(part == ".." for part in security_parts)
-                        or ".git" in security_parts
+                        or any(part.casefold() == ".git" for part in security_parts)
                     ):
                         reasons.append("patch path escapes or targets git internals")
                         continue
@@ -681,7 +681,12 @@ class ConstitutionalGate:
                     except ValueError:
                         reasons.append("patch path resolves outside repository root")
 
-                    if any(fnmatch.fnmatch(normalized, pattern) for pattern in self.protected_globs):
+                    # Normalize case for portable fail-closed matching on
+                    # case-insensitive filesystems (e.g. default Windows volumes).
+                    if any(
+                        fnmatch.fnmatch(normalized.casefold(), pattern.casefold())
+                        for pattern in self.protected_globs
+                    ):
                         reasons.append("patch targets protected autonomous-control surface")
                     if _is_build_control_file(normalized):
                         reasons.append("patch targets protected build or test configuration")
