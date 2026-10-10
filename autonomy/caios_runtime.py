@@ -302,6 +302,19 @@ MAX_PROVIDER_RESPONSE_BYTES = 2_000_000
 MAX_PROVIDER_PROPOSALS = 20
 
 
+def _reject_json_constant(value: str):
+    raise ValueError("non-standard JSON numeric constant is forbidden")
+
+
+def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate JSON object key is forbidden")
+        result[key] = value
+    return result
+
+
 class OpenAICompatibleProposalProvider:
     """
     Optional model adapter.
@@ -381,13 +394,13 @@ class OpenAICompatibleProposalProvider:
                 },
                 {
                     "role": "user",
-                    "content": json.dumps(model_snapshot, sort_keys=True),
+                    "content": canonical_json(model_snapshot).decode("utf-8"),
                 },
             ],
         }
         req = urllib.request.Request(
             self.endpoint,
-            data=json.dumps(body).encode("utf-8"),
+            data=canonical_json(body),
             headers={
                 "Content-Type": "application/json",
                 **({"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}),
@@ -401,8 +414,12 @@ class OpenAICompatibleProposalProvider:
         if len(raw_response) > MAX_PROVIDER_RESPONSE_BYTES:
             raise ValueError("model response exceeds maximum byte size")
         try:
-            data = json.loads(raw_response.decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            data = json.loads(
+                raw_response.decode("utf-8"),
+                parse_constant=_reject_json_constant,
+                object_pairs_hook=_reject_duplicate_json_keys,
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
             raise ValueError(f"model response is not valid UTF-8 JSON: {type(exc).__name__}") from exc
         if not isinstance(data, dict):
             raise ValueError("model response must be a JSON object")
@@ -417,9 +434,13 @@ class OpenAICompatibleProposalProvider:
             if not isinstance(message, dict) or not isinstance(message.get("content"), str):
                 raise ValueError("model choice message content must be a string")
             try:
-                parsed = json.loads(message["content"])
-            except json.JSONDecodeError as exc:
-                raise ValueError("model choice content is not valid JSON") from exc
+                parsed = json.loads(
+                    message["content"],
+                    parse_constant=_reject_json_constant,
+                    object_pairs_hook=_reject_duplicate_json_keys,
+                )
+            except (json.JSONDecodeError, ValueError) as exc:
+                raise ValueError("model choice content is not valid JSON or has duplicate keys") from exc
             if not isinstance(parsed, dict):
                 raise ValueError("model choice content must decode to a JSON object")
             rows = parsed.get("proposals", [])
