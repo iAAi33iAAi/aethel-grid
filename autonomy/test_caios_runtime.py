@@ -5,6 +5,7 @@ License: Apache-2.0
 Copyright (c) 2026 iAAi33iAAi
 """
 import json
+import autonomy.caios_runtime as runtime_module
 from pathlib import Path
 
 from autonomy.caios_runtime import (CandidateAction, ConstitutionalGate, RedTeamObserver, ViabilityPlanner, _normalize_unit_metrics, _normalize_model_command, _normalize_string_list)
@@ -225,3 +226,37 @@ def test_model_proposal_normalizers_fail_closed_on_malformed_fields():
     assert _normalize_model_command([]) is None
     assert _normalize_string_list(42) is None
     assert _normalize_string_list(["valid", 2]) is None
+
+
+def test_runtime_main_blocks_direct_environment_endpoint_activation(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("CAIOS_MODEL_URL", "https://unapproved.example/v1/chat/completions")
+    monkeypatch.setenv("CAIOS_MODEL_NAME", "unapproved-model")
+
+    def must_not_construct_runtime(*_args, **_kwargs):
+        raise AssertionError("runtime must not start with a direct unregistered endpoint")
+
+    monkeypatch.setattr(runtime_module, "AutonomousRuntime", must_not_construct_runtime)
+    status = runtime_module.main([
+        "--repo-root", str(tmp_path),
+        "--output", str(tmp_path / "certificates.jsonl"),
+    ])
+    assert status == 2
+    assert "direct endpoint environment activation is disabled" in capsys.readouterr().err
+
+
+def test_runtime_main_blocks_unregistered_endpoint_config_before_runtime(monkeypatch, tmp_path, capsys):
+    repo_root = Path(__file__).resolve().parents[1]
+    monkeypatch.delenv("CAIOS_MODEL_URL", raising=False)
+    monkeypatch.delenv("CAIOS_MODEL_NAME", raising=False)
+
+    def must_not_construct_runtime(*_args, **_kwargs):
+        raise AssertionError("runtime must not start with an unregistered endpoint")
+
+    monkeypatch.setattr(runtime_module, "AutonomousRuntime", must_not_construct_runtime)
+    status = runtime_module.main([
+        "--repo-root", str(repo_root),
+        "--agent-config", "autonomy/agent_endpoints.example.json",
+        "--output", str(tmp_path / "certificates.jsonl"),
+    ])
+    assert status == 2
+    assert "provider-endpoint-not-registered" in capsys.readouterr().err
