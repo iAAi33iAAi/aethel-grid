@@ -204,11 +204,11 @@
       "protocol_versions": {
         "caios-openai-compatible-proposal-transport": "1.0.0"
       },
-      "software_version": "1.1.6",
-      "source_ref": "https://github.com/iAAi33iAAi/aethel-grid/blob/47e20f8896b4b7e09c79f7ee7b904d66b8343277/autonomy/caios_runtime.py",
+      "software_version": "1.1.7",
+      "source_ref": "https://github.com/iAAi33iAAi/aethel-grid/blob/bbec53d52bfd554e6c9b639f3eace51e14375bdb/autonomy/caios_runtime.py",
       "agent_kind": "model-proposal-adapter",
       "source_path": "autonomy/caios_runtime.py",
-      "source_sha256": "215a40e041ea9d57c2856eb1213b8e23a58bc87ff987e009e06937986fb48ac5",
+      "source_sha256": "92add27e5f3cf28c32fe32b57020e1d54720b6d680aa3c6e8444baa793f8607b",
       "external_tool_execution": false
     }
   ]
