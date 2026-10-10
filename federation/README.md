@@ -37,17 +37,26 @@ federated/
 
 Populate those paths by cloning the public repositories into the declared locations.
 
-## Run
+## Run locally
+
+For an explicit local diagnostic, the bridge can run each manifest command itself:
 
 ```bash
 python federation/caios_federation.py --verify
 ```
 
-The snapshot is written to:
+The snapshot is written to `ops/caios/federation-snapshot.json`.
 
+## CI evidence reuse
+
+The CI workflow runs the portfolio parity auditor once, then passes its JSON report to the federation bridge:
+
+```bash
+python federation/portfolio_ci_parity.py --manifest federation/system_manifest.json --root . --output ops/caios/portfolio-ci-parity.json --timeout-seconds 600
+python federation/caios_federation.py --verification-report ops/caios/portfolio-ci-parity.json --output ops/caios/federation-snapshot.json
 ```
-ops/caios/federation-snapshot.json
-```
+
+When `--verification-report` is supplied, the bridge does not execute test commands again. It validates the report schema and summary, requires an exact manifest-ID/path/command/source/scope match, and compares each report revision to the current checked-out Git HEAD before importing the recorded result. A mismatch or non-PASS report is rejected. The system digest includes the report digest and per-repository verification evidence digest, so the snapshot binds to the test result rather than only a PASS label. `--verify` and `--verification-report` are mutually exclusive.
 
 
 ## Portfolio CI parity evidence
