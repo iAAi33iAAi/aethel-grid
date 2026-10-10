@@ -148,8 +148,13 @@ def test_provider_does_not_inherit_environment_proxy_settings(monkeypatch):
         handler for handler in provider.opener.handlers
         if isinstance(handler, urllib.request.ProxyHandler)
     ]
-    assert len(proxy_handlers) == 1
-    assert proxy_handlers[0].proxies == {}
+    # An empty ProxyHandler may be omitted by build_opener because it has
+    # no protocol hooks; importantly, no handler with environment proxies remains.
+    assert all(handler.proxies == {} for handler in proxy_handlers)
+    assert not any(
+        isinstance(handler, urllib.request.ProxyHandler) and handler.proxies
+        for handler in provider.opener.handlers
+    )
 
 
 def test_provider_rejects_invalid_chat_completion_shape(monkeypatch):
