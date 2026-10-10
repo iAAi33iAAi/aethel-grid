@@ -33,12 +33,14 @@ jobs:
         run: python archived_test_metric_law.py
       - name: Run hardening and provenance tests
         run: python -m unittest discover -s . -p 'test_*.py' -v
-      - name: Install pinned Rust toolchain action
+      - name: Install pinned Rust toolchain action and compiler
         uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f
         with:
-          toolchain: stable
+          toolchain: "1.99.0"
       - name: Compile independent Rust implementation
         run: cargo check --manifest-path rust/Cargo.toml
+      - name: Emit generated Cargo lock for reproducibility pinning
+        run: cat rust/Cargo.lock
       - name: Run independent Rust conformance tests
         run: cargo test --manifest-path rust/Cargo.toml --verbose
       - name: Run Rust vector replay
