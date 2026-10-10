@@ -18,7 +18,7 @@ permissions:
 jobs:
   candidate-conformance:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: specs/spec-004/v0.3.1-candidate
@@ -33,3 +33,13 @@ jobs:
         run: python archived_test_metric_law.py
       - name: Run hardening and provenance tests
         run: python -m unittest discover -s . -p 'test_*.py' -v
+      - name: Install pinned Rust toolchain action
+        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f
+        with:
+          toolchain: stable
+      - name: Compile independent Rust implementation
+        run: cargo check --manifest-path rust/Cargo.toml
+      - name: Run independent Rust conformance tests
+        run: cargo test --manifest-path rust/Cargo.toml --verbose
+      - name: Run Rust vector replay
+        run: cargo run --manifest-path rust/Cargo.toml --quiet
