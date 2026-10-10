@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -214,6 +215,45 @@ def test_manifest_rejects_non_github_verification_source():
                 }
             ],
         })
+
+
+def test_gate5_ledger_matches_complete_coverage_evidence():
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads((root / "federation" / "system_manifest.json").read_text(encoding="utf-8"))
+    gate_status = json.loads((root / "conformance" / "GATE_STATUS.json").read_text(encoding="utf-8"))
+    rows = _validate_manifest(manifest)
+    gate5 = gate_status["gate_5"]
+    evidence = gate5["evidence"]
+    scoped = [row for row in rows if row["verification_scope"].strip()]
+    sourced = [row for row in rows if row["verification_source"]]
+    pinned = [row for row in sourced if re.search(r"/blob/[0-9a-f]{40}/", row["verification_source"])]
+    mismatched = [
+        row for row in sourced
+        if urlsplit(row["verification_source"]).path.split("/")[2].casefold() != row["id"].casefold()
+    ]
+
+    assert gate5["status"] == "CLOSED"
+    assert all(row["verification"] for row in rows)
+    assert all(row["verification_scope"].strip() for row in rows)
+    assert "verification coverage" in gate5["reason"].lower()
+    assert "does not establish" in gate5["reason"].lower()
+    assert "production conformance" in gate5["reason"].lower()
+    assert evidence["workflow_run"] == "https://github.com/iAAi33iAAi/aethel-grid/actions/runs/38004987250"
+    assert evidence["audited_commit"] == "17de7c7bc12002e32dbe497b77145a9773e72696"
+    assert evidence["status"] == "PASS"
+    assert evidence["evidence_scope"] == "VERIFICATION_COVERAGE_ONLY_NOT_PRODUCTION_CONFORMANCE"
+    assert evidence["repositories_total"] == len(rows) == 13
+    assert evidence["verified"] == evidence["passed"] == 13
+    assert evidence["not_configured"] == evidence["failed"] == 0
+    assert evidence["verification_scopes_declared"] == len(scoped) == 13
+    assert evidence["declared_source_urls"] == len(sourced) == 10
+    assert evidence["pinned_source_urls"] == len(pinned) == 10
+    assert evidence["mutable_source_urls"] == 0
+    assert evidence["source_repository_mismatches"] == len(mismatched) == 0
+    assert gate_status["gate_1"]["status"] == "BLOCKED"
+    assert gate_status["gate_3"]["status"] == "PARTIALLY_CLOSED"
+    assert gate_status["gate_4"]["status"] == "NOT_STARTED"
+    assert gate_status["gate_6"]["status"] == "BLOCKED"
 
 
 def test_every_manifest_repository_declares_explicit_verification_scope():
