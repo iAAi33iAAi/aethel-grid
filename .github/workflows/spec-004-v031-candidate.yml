@@ -1,0 +1,45 @@
+name: SPEC-004 v0.3.1 Candidate Conformance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "specs/spec-004/v0.3.1-candidate/**"
+      - ".github/workflows/spec-004-v031-candidate.yml"
+  push:
+    branches: [main]
+    paths:
+      - "specs/spec-004/v0.3.1-candidate/**"
+      - ".github/workflows/spec-004-v031-candidate.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: specs/spec-004/v0.3.1-candidate
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Set up Python
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
+        with:
+          python-version: "3.12"
+      - name: Recompute archived four-vector corpus
+        run: python archived_test_metric_law.py
+      - name: Run hardening and provenance tests
+        run: python -m unittest discover -s . -p 'test_*.py' -v
+      - name: Install pinned Rust toolchain action and compiler
+        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f
+        with:
+          toolchain: "1.99.0"
+      - name: Compile independent Rust implementation
+        run: cargo check --manifest-path rust/Cargo.toml --locked
+      - name: Run independent Rust conformance tests
+        run: cargo test --manifest-path rust/Cargo.toml --locked --verbose
+      - name: Run Rust vector replay
+        run: cargo run --manifest-path rust/Cargo.toml --locked --quiet

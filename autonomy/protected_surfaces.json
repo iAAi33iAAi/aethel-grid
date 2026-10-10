@@ -18,6 +18,7 @@
     "autonomy/protocol_registry.json",
     "autonomy/agent_registry.json",
     "autonomy/model_registry.json",
+    "autonomy/test_registered_agent_source_pins.py",
     "integrations/tool_compiler.py",
     "integrations/tool_registry.py",
     "federation/security_primitives.py",

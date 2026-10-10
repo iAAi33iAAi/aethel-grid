@@ -5,9 +5,10 @@ License: Apache-2.0
 Copyright (c) 2026 iAAi33iAAi
 """
 import json
+import autonomy.caios_runtime as runtime_module
 from pathlib import Path
 
-from autonomy.caios_runtime import CandidateAction, ConstitutionalGate, RedTeamObserver, ViabilityPlanner
+from autonomy.caios_runtime import (CandidateAction, ConstitutionalGate, RedTeamObserver, ViabilityPlanner, _normalize_unit_metrics, _normalize_model_command, _normalize_string_list)
 from autonomy.red_team import probes as red_team_probes
 
 
@@ -207,3 +208,199 @@ def test_malformed_authority_principal_fails_closed(tmp_path: Path):
     allowed, reasons = gate.validate(action)
     assert allowed is False
     assert any("authority-lattice-unavailable" in reason for reason in reasons)
+
+
+def test_model_proposal_normalizers_fail_closed_on_malformed_fields():
+    assert _normalize_unit_metrics({}) == {
+        "expected_gain": 0.30,
+        "risk": 0.50,
+        "reversibility": 0.60,
+        "resource_cost": 0.30,
+        "evidence_gain": 0.50,
+    }
+    assert _normalize_unit_metrics({"expected_gain": 10 ** 10000}) is None
+    assert _normalize_unit_metrics({"expected_gain": True}) is None
+    assert _normalize_unit_metrics({"risk": float("nan")}) is None
+    assert _normalize_unit_metrics({"risk": float("inf")}) is None
+    assert _normalize_model_command("'unterminated") is None
+    assert _normalize_model_command([]) is None
+    assert _normalize_string_list(42) is None
+    assert _normalize_string_list(["valid", 2]) is None
+
+
+def test_runtime_main_blocks_direct_environment_endpoint_activation(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("CAIOS_MODEL_URL", "https://unapproved.example/v1/chat/completions")
+    monkeypatch.setenv("CAIOS_MODEL_NAME", "unapproved-model")
+
+    def must_not_construct_runtime(*_args, **_kwargs):
+        raise AssertionError("runtime must not start with a direct unregistered endpoint")
+
+    monkeypatch.setattr(runtime_module, "AutonomousRuntime", must_not_construct_runtime)
+    status = runtime_module.main([
+        "--repo-root", str(tmp_path),
+        "--output", str(tmp_path / "certificates.jsonl"),
+    ])
+    assert status == 2
+    assert "direct endpoint environment activation is disabled" in capsys.readouterr().err
+
+
+def test_runtime_main_blocks_unregistered_endpoint_config_before_runtime(monkeypatch, tmp_path, capsys):
+    repo_root = Path(__file__).resolve().parents[1]
+    monkeypatch.delenv("CAIOS_MODEL_URL", raising=False)
+    monkeypatch.delenv("CAIOS_MODEL_NAME", raising=False)
+
+    def must_not_construct_runtime(*_args, **_kwargs):
+        raise AssertionError("runtime must not start with an unregistered endpoint")
+
+    monkeypatch.setattr(runtime_module, "AutonomousRuntime", must_not_construct_runtime)
+    status = runtime_module.main([
+        "--repo-root", str(repo_root),
+        "--agent-config", "autonomy/agent_endpoints.example.json",
+        "--output", str(tmp_path / "certificates.jsonl"),
+    ])
+    assert status == 2
+    assert "provider-endpoint-not-registered" in capsys.readouterr().err
+
+
+def test_model_admission_evidence_resets_and_records_provider_failure(tmp_path):
+    class FailingProvider:
+        last_errors = []
+        def propose(self, _snapshot):
+            raise TimeoutError("provider timed out")
+
+    runtime = runtime_module.AutonomousRuntime(
+        repo_root=tmp_path,
+        proposal_provider=FailingProvider(),
+        max_cycles=1,
+    )
+    runtime.last_model_admission = [{"status": "ATTESTED", "agent_id": "stale-agent"}]
+    assert runtime._model_candidates({}, {}) == []
+    assert runtime.last_model_admission == [{
+        "index": None,
+        "status": "PROVIDER_FAILED",
+        "reasons": ["proposal-provider-failed:TimeoutError"],
+    }]
+
+
+def test_model_candidate_parser_rejects_non_list_provider_response(tmp_path):
+    class WrongShapeProvider:
+        last_errors = []
+        def propose(self, _snapshot):
+            return {"proposals": []}
+
+    runtime = runtime_module.AutonomousRuntime(
+        repo_root=tmp_path,
+        proposal_provider=WrongShapeProvider(),
+        max_cycles=1,
+    )
+    assert runtime._model_candidates({}, {}) == []
+    assert runtime.last_model_admission == [{
+        "index": None,
+        "status": "REJECTED",
+        "reasons": ["proposal-provider-response-not-list"],
+    }]
+
+
+def test_model_candidate_parser_records_multi_agent_worker_failures(tmp_path):
+    class PartialProvider:
+        last_errors = [
+            {"agent_id": "agent-timeout", "error_type": "TimeoutError", "error": "secret-bearing detail must not enter evidence"},
+        ]
+        def propose(self, _snapshot):
+            return []
+
+    runtime = runtime_module.AutonomousRuntime(
+        repo_root=tmp_path,
+        proposal_provider=PartialProvider(),
+        max_cycles=1,
+    )
+    assert runtime._model_candidates({}, {}) == []
+    assert runtime.last_model_admission == [{
+        "index": None,
+        "agent_id": "agent-timeout",
+        "status": "PROVIDER_FAILED",
+        "reasons": ["proposal-worker-failed:TimeoutError"],
+    }]
+
+
+def test_oversized_patch_is_rejected_before_file_header_parsing(tmp_path: Path):
+    _seed_authority(tmp_path)
+    autonomy = tmp_path / "autonomy"
+    (autonomy / "protected_surfaces.json").write_text(
+        json.dumps({"protected_globs": ["private/**"]}),
+        encoding="utf-8",
+    )
+    gate = ConstitutionalGate(tmp_path)
+    action = CandidateAction(
+        action_id="model-oversized-patch-before-parse",
+        kind="apply_patch",
+        target=".",
+        rationale="oversized malformed diff must fail before parser work",
+        expected_gain=0.4,
+        risk=0.3,
+        reversibility=1.0,
+        resource_cost=0.1,
+        evidence_gain=0.8,
+        unified_diff="x" * 1_000_001,
+    )
+    allowed, reasons = gate.validate(action)
+    assert allowed is False
+    assert "patch exceeds maximum patch size" in reasons
+    assert "patch must contain exactly one file section" not in reasons
+
+
+def test_model_candidate_parser_rejects_huge_integer_before_digest_can_escape(tmp_path):
+    class HugePayloadProvider:
+        last_errors = []
+        def propose(self, _snapshot):
+            return [{"untrusted_extension": 10 ** 10000}]
+
+    runtime = runtime_module.AutonomousRuntime(
+        repo_root=tmp_path,
+        proposal_provider=HugePayloadProvider(),
+        max_cycles=1,
+    )
+    assert runtime._model_candidates({}, {}) == []
+    assert runtime.last_model_admission == [{
+        "index": 0,
+        "status": "REJECTED",
+        "reasons": ["proposal-canonicalization-failed:ValueError"],
+    }]
+
+
+def test_gate_fails_closed_on_cyclic_symlink_patch_path(tmp_path: Path):
+    import pytest
+
+    _seed_authority(tmp_path)
+    autonomy = tmp_path / "autonomy"
+    (autonomy / "protected_surfaces.json").write_text(
+        json.dumps({"protected_globs": ["private/**"]}),
+        encoding="utf-8",
+    )
+    loop_path = autonomy / "loop"
+    try:
+        loop_path.symlink_to("loop", target_is_directory=True)
+    except (OSError, NotImplementedError) as exc:
+        pytest.skip(f"symlink creation unavailable on this platform: {exc}")
+
+    gate = ConstitutionalGate(tmp_path)
+    action = CandidateAction(
+        action_id="model-redteam-symlink-loop",
+        kind="apply_patch",
+        target=".",
+        rationale="attempt to force repository path resolution through a symlink loop",
+        expected_gain=0.4,
+        risk=0.3,
+        reversibility=1.0,
+        resource_cost=0.1,
+        evidence_gain=0.8,
+        unified_diff=(
+            "diff --git a/autonomy/loop/escaped.py b/autonomy/loop/escaped.py\n"
+            "--- a/autonomy/loop/escaped.py\n"
+            "+++ b/autonomy/loop/escaped.py\n"
+            "@@ -1 +1 @@\n-old\n+new\n"
+        ),
+    )
+    allowed, reasons = gate.validate(action)
+    assert allowed is False
+    assert "patch path resolution failed closed: RuntimeError" in reasons

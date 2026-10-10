@@ -55,11 +55,61 @@ from autonomy.authority_lattice import AuthorityLattice
 
 
 def canonical_json(value: Any) -> bytes:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode("utf-8")
 
 
 def digest(value: Any) -> str:
     return hashlib.sha256(canonical_json(value)).hexdigest()
+
+
+def _normalize_unit_metrics(item: dict[str, Any]) -> dict[str, float] | None:
+    """Validate proposal metrics before coercion, rejecting bools and huge integers."""
+    defaults = {
+        "expected_gain": 0.30,
+        "risk": 0.50,
+        "reversibility": 0.60,
+        "resource_cost": 0.30,
+        "evidence_gain": 0.50,
+    }
+    metrics: dict[str, float] = {}
+    for name, default in defaults.items():
+        value = item.get(name, default)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
+        if isinstance(value, int):
+            # Do not convert arbitrary-size integers to float before bounds checking.
+            if value < 0 or value > 1:
+                return None
+            metrics[name] = float(value)
+            continue
+        if not math.isfinite(value) or not 0.0 <= value <= 1.0:
+            return None
+        metrics[name] = value
+    return metrics
+
+
+def _normalize_model_command(value: Any) -> tuple[str, ...] | None:
+    """Parse an optional model command without allowing malformed input to escape."""
+    if value is None or value == "":
+        return ()
+    if not isinstance(value, str):
+        return None
+    if not value.strip():
+        return ()
+    try:
+        argv = tuple(shlex.split(value))
+    except ValueError:
+        return None
+    return argv if argv else None
+
+
+def _normalize_string_list(value: Any) -> tuple[str, ...] | None:
+    """Accept JSON arrays of non-empty strings only for invariant/tool identifiers."""
+    if not isinstance(value, list) or any(
+        not isinstance(item, str) or not item for item in value
+    ):
+        return None
+    return tuple(value)
 
 
 def _is_test_file_path(path: str) -> bool:
@@ -248,6 +298,23 @@ class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
         return None
 
 
+MAX_PROVIDER_RESPONSE_BYTES = 2_000_000
+MAX_PROVIDER_PROPOSALS = 20
+
+
+def _reject_json_constant(value: str):
+    raise ValueError("non-standard JSON numeric constant is forbidden")
+
+
+def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate JSON object key is forbidden")
+        result[key] = value
+    return result
+
+
 class OpenAICompatibleProposalProvider:
     """
     Optional model adapter.
@@ -266,16 +333,31 @@ class OpenAICompatibleProposalProvider:
         api_key: str | None = None,
         send_source_context: bool = False,
     ) -> None:
-        parsed = urllib.parse.urlparse(endpoint)
-        if parsed.scheme not in {"https", "http"} or not parsed.netloc:
+        try:
+            parsed = urllib.parse.urlsplit(endpoint)
+            hostname = parsed.hostname
+            # Accessing .port validates malformed / out-of-range port text.
+            _ = parsed.port
+        except (TypeError, ValueError) as exc:
+            raise ValueError("model endpoint URL is malformed") from exc
+        if parsed.scheme not in {"https", "http"} or not hostname:
             raise ValueError("model endpoint must be an absolute HTTP(S) URL")
-        if parsed.scheme == "http" and parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
+        if parsed.username or parsed.password or parsed.query or parsed.fragment:
+            raise ValueError("model endpoint must not contain credentials, query parameters, or fragments")
+        if parsed.scheme == "http" and hostname not in {"127.0.0.1", "localhost", "::1"}:
             raise ValueError("non-local model endpoints must use HTTPS")
+        if not isinstance(send_source_context, bool):
+            raise ValueError("send_source_context must be a boolean")
         self.endpoint = endpoint
         self.model = model
         self.api_key = api_key
-        self.opener = urllib.request.build_opener(_NoRedirectHandler())
-        self.send_source_context = bool(send_source_context)
+        # Do not inherit HTTP(S)_PROXY from the process environment. The
+        # configured, registry-bound endpoint is the only allowed destination.
+        self.opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({}),
+            _NoRedirectHandler(),
+        )
+        self.send_source_context = send_source_context
         self.egress_policy = EgressPolicy(
             allow_source_context=self.send_source_context,
         )
@@ -312,13 +394,13 @@ class OpenAICompatibleProposalProvider:
                 },
                 {
                     "role": "user",
-                    "content": json.dumps(model_snapshot, sort_keys=True),
+                    "content": canonical_json(model_snapshot).decode("utf-8"),
                 },
             ],
         }
         req = urllib.request.Request(
             self.endpoint,
-            data=json.dumps(body).encode("utf-8"),
+            data=canonical_json(body),
             headers={
                 "Content-Type": "application/json",
                 **({"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}),
@@ -326,14 +408,48 @@ class OpenAICompatibleProposalProvider:
             method="POST",
         )
         with self.opener.open(req, timeout=45) as response:
-            data = json.loads(response.read().decode("utf-8"))
+            raw_response = response.read(MAX_PROVIDER_RESPONSE_BYTES + 1)
+        if not isinstance(raw_response, (bytes, bytearray)):
+            raise ValueError("model response body must be bytes")
+        if len(raw_response) > MAX_PROVIDER_RESPONSE_BYTES:
+            raise ValueError("model response exceeds maximum byte size")
+        try:
+            data = json.loads(
+                raw_response.decode("utf-8"),
+                parse_constant=_reject_json_constant,
+                object_pairs_hook=_reject_duplicate_json_keys,
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+            raise ValueError(f"model response is not valid UTF-8 JSON: {type(exc).__name__}") from exc
+        if not isinstance(data, dict):
+            raise ValueError("model response must be a JSON object")
+
         if "proposals" in data:
-            return list(data["proposals"])
-        if "choices" in data:
-            content = data["choices"][0]["message"]["content"]
-            parsed = json.loads(content)
-            return list(parsed.get("proposals", []))
-        return []
+            rows = data["proposals"]
+        elif "choices" in data:
+            choices = data["choices"]
+            if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
+                raise ValueError("model choices response has an invalid shape")
+            message = choices[0].get("message")
+            if not isinstance(message, dict) or not isinstance(message.get("content"), str):
+                raise ValueError("model choice message content must be a string")
+            try:
+                parsed = json.loads(
+                    message["content"],
+                    parse_constant=_reject_json_constant,
+                    object_pairs_hook=_reject_duplicate_json_keys,
+                )
+            except (json.JSONDecodeError, ValueError) as exc:
+                raise ValueError("model choice content is not valid JSON or has duplicate keys") from exc
+            if not isinstance(parsed, dict):
+                raise ValueError("model choice content must decode to a JSON object")
+            rows = parsed.get("proposals", [])
+        else:
+            return []
+
+        if not isinstance(rows, list):
+            raise ValueError("model proposals field must be a JSON array")
+        return [row for row in rows if isinstance(row, dict)][:MAX_PROVIDER_PROPOSALS]
 
 
 class ConstitutionalGate:
@@ -404,9 +520,15 @@ class ConstitutionalGate:
         "federation/signed_envelope.py",
     )
 
-    def __init__(self, repo_root: Path, max_patch_lines: int = 250) -> None:
+    def __init__(
+        self,
+        repo_root: Path,
+        max_patch_lines: int = 250,
+        max_patch_chars: int = 1_000_000,
+    ) -> None:
         self.repo_root = repo_root.resolve()
         self.max_patch_lines = max_patch_lines
+        self.max_patch_chars = max_patch_chars
         self.authority = AuthorityLattice(self.repo_root)
         policy_path = self.repo_root / "autonomy" / "protected_surfaces.json"
         self.protected_policy_valid = False
@@ -433,7 +555,9 @@ class ConstitutionalGate:
 
     def validate(self, action: CandidateAction) -> tuple[bool, list[str]]:
         reasons: list[str] = []
-        if action.kind not in self.ALLOWED_KINDS:
+        if not isinstance(action.kind, str):
+            reasons.append("action kind must be a string in the allowlist")
+        elif action.kind not in self.ALLOWED_KINDS:
             reasons.append(f"action kind '{action.kind}' is not in the allowlist")
 
         numeric_fields = {
@@ -444,67 +568,183 @@ class ConstitutionalGate:
             "evidence_gain": action.evidence_gain,
         }
         for field, value in numeric_fields.items():
-            if not math.isfinite(value) or not 0.0 <= value <= 1.0:
+            valid_number = (
+                not isinstance(value, bool)
+                and isinstance(value, (int, float))
+            )
+            if valid_number and isinstance(value, float):
+                valid_number = math.isfinite(value)
+            # Compare arbitrary-size ints directly; math.isfinite(int) can
+            # raise OverflowError while converting a hostile integer to float.
+            if valid_number:
+                valid_number = 0.0 <= value <= 1.0
+            if not valid_number:
                 reasons.append(f"{field} must be finite and within [0,1]")
 
-        target = (self.repo_root / action.target).resolve()
-        try:
-            target.relative_to(self.repo_root)
-        except ValueError:
-            reasons.append("target escapes repository root")
+        if (
+            not isinstance(action.target, str)
+            or any(ord(char) < 0x20 or ord(char) == 0x7f for char in action.target)
+        ):
+            reasons.append("target contains unsupported control characters")
+        else:
+            try:
+                target = (self.repo_root / action.target).resolve()
+                target.relative_to(self.repo_root)
+            except ValueError as exc:
+                if "embedded null byte" in str(exc).lower():
+                    reasons.append("target contains unsupported control characters")
+                else:
+                    reasons.append("target escapes repository root")
+            except (OSError, RuntimeError) as exc:
+                reasons.append(f"target resolution failed closed: {type(exc).__name__}")
 
-        if action.risk > 0.85:
+        if isinstance(action.risk, (int, float)) and not isinstance(action.risk, bool) and action.risk > 0.85:
             reasons.append("risk exceeds autonomous threshold")
-        if action.reversibility < 0.40 and action.kind != "human_review":
+        if (
+            isinstance(action.reversibility, (int, float))
+            and not isinstance(action.reversibility, bool)
+            and action.reversibility < 0.40
+            and action.kind != "human_review"
+        ):
             reasons.append("action is insufficiently reversible")
-        if action.kind in {"run_test", "run_security_scan"} and action.action_id.startswith("model-"):
+        if not isinstance(action.action_id, str):
+            reasons.append("action id must be a string")
+        elif (
+            isinstance(action.kind, str)
+            and action.kind in {"run_test", "run_security_scan"}
+            and (
+                action.action_id.startswith("model-")
+                or action.authority_principal != "caios"
+                or action.agent_id is not None
+                or action.attestation_digest is not None
+            )
+        ):
             reasons.append("model-originated actions cannot supply arbitrary executable commands")
 
-        required_capability = "supervise" if action.authority_principal == "caios" else "propose"
-        authorized, authority_reason = self.authority.authorize(
-            action.authority_principal,
-            required_capability,
-        )
-        if not authorized:
-            reasons.append(
-                f"authority principal '{action.authority_principal}' denied {required_capability}: {authority_reason}"
+        if not isinstance(action.authority_principal, str) or not action.authority_principal:
+            reasons.append("authority principal must be a non-empty string")
+        else:
+            required_capability = "supervise" if action.authority_principal == "caios" else "propose"
+            authorized, authority_reason = self.authority.authorize(
+                action.authority_principal,
+                required_capability,
             )
+            if not authorized:
+                reasons.append(
+                    f"authority principal '{action.authority_principal}' denied {required_capability}: {authority_reason}"
+                )
 
         if action.kind == "apply_patch":
             if not self.protected_policy_valid:
                 reasons.append(
                     "protected-surface-policy-unavailable; autonomous patches are denied"
                 )
+            if not isinstance(action.unified_diff, str):
+                reasons.append("patch action unified diff must be a string")
+                return False, reasons
             if not action.unified_diff:
                 reasons.append("patch action has no unified diff")
+            if len(action.unified_diff) > self.max_patch_chars:
+                reasons.append("patch exceeds maximum patch size")
+                return False, reasons
+            # Enforce payload bounds before line splitting or path processing.
+            diff_lines = action.unified_diff.splitlines()
+            diff_headers = [line for line in diff_lines if line.startswith("diff --git ")]
+            old_file_headers = [line[4:].split("\t", 1)[0] for line in diff_lines if line.startswith("--- ")]
+            new_file_headers = [line[4:].split("\t", 1)[0] for line in diff_lines if line.startswith("+++ ")]
+            if (
+                len(diff_headers) != 1
+                or len(old_file_headers) != 1
+                or len(new_file_headers) != 1
+            ):
+                reasons.append("patch must contain exactly one file section")
+            else:
+                git_parts = diff_headers[0].split()
+                old_header = old_file_headers[0]
+                new_header = new_file_headers[0]
+                mismatch = (
+                    len(git_parts) != 4
+                    or not git_parts[2].startswith("a/")
+                    or not git_parts[3].startswith("b/")
+                    or (old_header != "/dev/null" and (
+                        not old_header.startswith("a/")
+                        or len(git_parts) == 4 and old_header[2:] != git_parts[2][2:]
+                    ))
+                    or (new_header != "/dev/null" and (
+                        not new_header.startswith("b/")
+                        or len(git_parts) == 4 and new_header[2:] != git_parts[3][2:]
+                    ))
+                    or (old_header == "/dev/null" and new_header == "/dev/null")
+                )
+                if mismatch:
+                    reasons.append("patch file headers do not match diff header")
             changed_lines = sum(
                 1 for line in action.unified_diff.splitlines()
                 if line.startswith(("+", "-")) and not line.startswith(("+++", "---"))
             )
             if changed_lines > self.max_patch_lines:
                 reasons.append("patch exceeds maximum autonomous change budget")
+            has_file_header = False
             for line in action.unified_diff.splitlines():
                 if line.startswith(("+++ ", "--- ")):
+                    has_file_header = True
                     patch_path = line[4:].split("\t", 1)[0]
                     if patch_path == "/dev/null":
                         if line.startswith("+++ "):
                             reasons.append("autonomous patch deletion is not permitted")
                         continue
-                    normalized = patch_path[2:] if patch_path.startswith(("a/", "b/")) else patch_path
-                    if normalized.startswith(("/", "../")) or "/../" in normalized or normalized.startswith(".git/"):
+                    raw_path = patch_path[2:] if patch_path.startswith(("a/", "b/")) else patch_path
+                    # Git can interpret quoted path headers; fail closed rather than
+                    # comparing an ambiguous literal against protected path globs.
+                    if any(ord(char) < 0x20 or 0x7f <= ord(char) <= 0x9f for char in raw_path):
+                        reasons.append("patch path contains unsupported control characters")
+                        continue
+                    if raw_path.startswith('"') or raw_path.endswith('"') or any(char.isspace() for char in raw_path):
+                        reasons.append("patch path uses unsupported quoted or whitespace format")
+                        continue
+                    # Canonicalize separators and dot segments before policy matching.
+                    security_path = raw_path.replace("\\", "/")
+                    security_parts = tuple(
+                        part for part in security_path.split("/")
+                        if part not in ("", ".")
+                    )
+                    has_drive_prefix = (
+                        len(security_path) >= 2
+                        and security_path[0].isalpha()
+                        and security_path[1] == ":"
+                    )
+                    if (
+                        security_path.startswith("/")
+                        or has_drive_prefix
+                        or any(part == ".." for part in security_parts)
+                        or any(part.casefold() == ".git" for part in security_parts)
+                    ):
                         reasons.append("patch path escapes or targets git internals")
+                        continue
+                    normalized = "/".join(security_parts)
+                    if not normalized:
+                        reasons.append("patch path is empty or not parseable")
                         continue
 
                     # Lexical checks do not stop a path that crosses an existing
                     # symlinked directory. Resolve every patch path against the
                     # checkout and fail closed when it reaches outside the repo.
-                    resolved_patch_path = (self.repo_root / normalized).resolve()
                     try:
+                        resolved_patch_path = (self.repo_root / normalized).resolve()
                         resolved_patch_path.relative_to(self.repo_root)
                     except ValueError:
                         reasons.append("patch path resolves outside repository root")
+                    except (OSError, RuntimeError) as exc:
+                        reasons.append(
+                            f"patch path resolution failed closed: {type(exc).__name__}"
+                        )
 
-                    if any(fnmatch.fnmatch(normalized, pattern) for pattern in self.protected_globs):
+                    # Normalize case for portable fail-closed matching on
+                    # case-insensitive filesystems (e.g. default Windows volumes).
+                    if any(
+                        fnmatch.fnmatch(normalized.casefold(), pattern.casefold())
+                        for pattern in self.protected_globs
+                    ):
                         reasons.append("patch targets protected autonomous-control surface")
                     if _is_build_control_file(normalized):
                         reasons.append("patch targets protected build or test configuration")
@@ -514,6 +754,8 @@ class ConstitutionalGate:
                         and (self.repo_root / normalized).is_file()
                     ):
                         reasons.append("patch modifies an existing test file")
+            if not has_file_header:
+                reasons.append("patch has no parseable file headers")
 
         return not reasons, reasons
 
@@ -1100,6 +1342,9 @@ class AutonomousRuntime:
         return admitted
 
     def _model_candidates(self, snapshot: dict[str, Any], gaps: dict[str, float]) -> list[CandidateAction]:
+        # Admission evidence is scoped to a single cycle. Never allow prior
+        # cycle outcomes to survive a provider failure or missing provider.
+        self.last_model_admission = []
         if not self.proposal_provider:
             return []
         try:
@@ -1109,10 +1354,38 @@ class AutonomousRuntime:
                 "source_context": ContextWindow(self.repo_root).build(),
             }
             raw = self.proposal_provider.propose(model_input)
-        except Exception:
+        except Exception as exc:
+            self.last_model_admission.append({
+                "index": None,
+                "status": "PROVIDER_FAILED",
+                "reasons": [f"proposal-provider-failed:{type(exc).__name__}"],
+            })
             return []
+        if not isinstance(raw, list):
+            self.last_model_admission.append({
+                "index": None,
+                "status": "REJECTED",
+                "reasons": ["proposal-provider-response-not-list"],
+            })
+            return []
+
+        worker_errors = getattr(self.proposal_provider, "last_errors", [])
+        if isinstance(worker_errors, list):
+            for error in worker_errors[:20]:
+                if not isinstance(error, dict):
+                    continue
+                agent_id = error.get("agent_id", "")
+                error_type = error.get("error_type", "Exception")
+                self.last_model_admission.append({
+                    "index": None,
+                    "agent_id": agent_id if isinstance(agent_id, str) else "",
+                    "status": "PROVIDER_FAILED",
+                    "reasons": [
+                        "proposal-worker-failed:"
+                        + (error_type if isinstance(error_type, str) else "Exception")
+                    ],
+                })
         candidates: list[CandidateAction] = []
-        self.last_model_admission = []
         for idx, item in enumerate(raw[:20]):
             if not isinstance(item, dict):
                 self.last_model_admission.append({
@@ -1121,7 +1394,15 @@ class AutonomousRuntime:
                     "reasons": ["proposal-not-object"],
                 })
                 continue
-            proposal_digest = digest(item)
+            try:
+                proposal_digest = digest(item)
+            except (TypeError, ValueError, OverflowError, RecursionError) as exc:
+                self.last_model_admission.append({
+                    "index": idx,
+                    "status": "REJECTED",
+                    "reasons": [f"proposal-canonicalization-failed:{type(exc).__name__}"],
+                })
+                continue
             admitted, reasons, attestation = validate_proposal(
                 self.repo_root, item, proposal_digest
             )
@@ -1140,28 +1421,53 @@ class AutonomousRuntime:
                 "protocol": attestation.protocol,
                 "attestation_digest": attestation.attestation_digest,
             })
-            kind = str(item.get("kind", "human_review"))
-            target = str(item.get("target", "."))
-            diff = str(item.get("unified_diff", ""))
-            command = tuple(shlex.split(str(item["command"]))) if item.get("command") else ()
-            try:
-                metrics = {
-                    "expected_gain": float(item.get("expected_gain", 0.30)),
-                    "risk": float(item.get("risk", 0.50)),
-                    "reversibility": float(item.get("reversibility", 0.60)),
-                    "resource_cost": float(item.get("resource_cost", 0.30)),
-                    "evidence_gain": float(item.get("evidence_gain", 0.50)),
-                }
-            except (TypeError, ValueError):
+            kind = item.get("kind", "human_review")
+            target = item.get("target", ".")
+            rationale = item.get("rationale", "model proposal")
+            diff = item.get("unified_diff", "")
+            proposed_action_id = item.get("action_id", "proposal")
+            if not all(isinstance(value, str) for value in (kind, target, rationale, diff, proposed_action_id)):
+                self.last_model_admission.append({
+                    "index": idx,
+                    "status": "REJECTED",
+                    "reasons": ["proposal-action-fields-must-be-strings"],
+                    "proposal_digest": proposal_digest,
+                })
                 continue
-            if any(not math.isfinite(value) or not 0.0 <= value <= 1.0 for value in metrics.values()):
+            command = _normalize_model_command(item.get("command"))
+            if command is None:
+                self.last_model_admission.append({
+                    "index": idx,
+                    "status": "REJECTED",
+                    "reasons": ["proposal-command-malformed"],
+                    "proposal_digest": proposal_digest,
+                })
+                continue
+            invariant_ids = _normalize_string_list(item.get("invariant_ids", []))
+            tool_ids = _normalize_string_list(item.get("tool_ids", []))
+            if invariant_ids is None or tool_ids is None:
+                self.last_model_admission.append({
+                    "index": idx,
+                    "status": "REJECTED",
+                    "reasons": ["proposal-invariant-or-tool-ids-malformed"],
+                    "proposal_digest": proposal_digest,
+                })
+                continue
+            metrics = _normalize_unit_metrics(item)
+            if metrics is None:
+                self.last_model_admission.append({
+                    "index": idx,
+                    "status": "REJECTED",
+                    "reasons": ["proposal-metrics-malformed"],
+                    "proposal_digest": proposal_digest,
+                })
                 continue
             candidates.append(
                 CandidateAction(
-                    action_id=f"model-{idx}-{str(item.get('action_id', 'proposal'))}",
+                    action_id=f"model-{idx}-{proposed_action_id}",
                     kind=kind,
                     target=target,
-                    rationale=str(item.get("rationale", "model proposal")),
+                    rationale=rationale,
                     expected_gain=metrics["expected_gain"],
                     risk=metrics["risk"],
                     reversibility=metrics["reversibility"],
@@ -1175,8 +1481,8 @@ class AutonomousRuntime:
                     model_id=attestation.model_id,
                     model_revision=attestation.model_revision,
                     attestation_digest=attestation.attestation_digest,
-                    invariant_ids=tuple(str(value) for value in item.get("invariant_ids", [])),
-                    tool_ids=tuple(str(value) for value in item.get("tool_ids", [])),
+                    invariant_ids=invariant_ids,
+                    tool_ids=tool_ids,
                     authority_principal="model",
                 )
             )
@@ -1862,48 +2168,39 @@ def main(argv: list[str] | None = None) -> int:
 
     repo_root = Path(args.repo_root).resolve()
     provider = None
-    if os.getenv("CAIOS_MODEL_URL") and os.getenv("CAIOS_MODEL_NAME"):
-        provider = OpenAICompatibleProposalProvider(
-            endpoint=os.environ["CAIOS_MODEL_URL"],
-            model=os.environ["CAIOS_MODEL_NAME"],
-            api_key=os.getenv("CAIOS_MODEL_API_KEY"),
-            send_source_context=os.getenv("CAIOS_SEND_SOURCE_CONTEXT", "false").lower() == "true",
-        )
+    direct_endpoint_requested = bool(
+        os.getenv("CAIOS_MODEL_URL") or os.getenv("CAIOS_MODEL_NAME")
+    )
+    if direct_endpoint_requested:
+        print(json.dumps({
+            "provider_activation": "BLOCKED",
+            "reason": (
+                "direct endpoint environment activation is disabled; "
+                "use a registry-bound --agent-config"
+            ),
+        }, sort_keys=True), file=sys.stderr)
+        return 2
 
-    config_path = Path(args.agent_config) if args.agent_config else (Path(args.config) if args.config else None)
-    if config_path:
-        config = load_json(config_path)
-        agent_cfgs = config.get("agents") or []
-        if agent_cfgs:
-            from autonomy.multi_agent_provider import EndpointSpec, MultiAgentProposalProvider
-
-            specs = []
-            for item in agent_cfgs:
-                api_key_env = item.get("api_key_env")
-                specs.append(
-                    EndpointSpec(
-                        agent_id=str(item["agent_id"]),
-                        endpoint=str(item["endpoint"]),
-                        model=str(item["model"]),
-                        model_revision=str(item.get("model_revision", "")),
-                        protocol=str(item.get("protocol", "openai-compatible")),
-                        agent_version=str(item.get("agent_version", "unspecified")),
-                        source_ref=str(item.get("source_ref", "unspecified")),
-                        api_key=os.getenv(str(api_key_env)) if api_key_env else None,
-                        max_proposals=int(item.get("max_proposals", 8)),
-                        send_source_context=bool(item.get("send_source_context", False)),
-                    )
-                )
-            provider = MultiAgentProposalProvider(tuple(specs))
-        else:
-            model_cfg = config.get("model", {})
-            if model_cfg.get("endpoint") and model_cfg.get("model"):
-                provider = OpenAICompatibleProposalProvider(
-                    endpoint=str(model_cfg["endpoint"]),
-                    model=str(model_cfg["model"]),
-                    api_key=str(model_cfg.get("api_key")) if model_cfg.get("api_key") else None,
-                    send_source_context=bool(model_cfg.get("send_source_context", False)),
-                )
+    raw_config_path = args.agent_config if args.agent_config else args.config
+    config_path = Path(raw_config_path) if raw_config_path else None
+    if config_path is not None:
+        if not config_path.is_absolute():
+            config_path = repo_root / config_path
+        try:
+            # This preflights the exact destination, agent, protocol, model,
+            # source binding and approval record before a provider can be called.
+            from autonomy.patch_proposal import load_provider
+            provider = load_provider(
+                repo_root,
+                config_path,
+                require_source_context=False,
+            )
+        except Exception as exc:
+            print(json.dumps({
+                "provider_activation": "BLOCKED",
+                "reason": f"{type(exc).__name__}:{str(exc)[:1000]}",
+            }, sort_keys=True), file=sys.stderr)
+            return 2
 
     runtime = AutonomousRuntime(
         repo_root=repo_root,

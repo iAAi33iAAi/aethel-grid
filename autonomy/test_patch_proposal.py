@@ -583,3 +583,135 @@ def test_provider_preflight_rejects_adapter_that_claims_external_tool_execution(
 
     with pytest.raises(ValueError, match="agent-identity-binding-failed:test-agent:model-proposal-adapter-must-not-execute-external-tools"):
         patch_proposal.load_provider(tmp_path, config_path)
+
+
+def test_select_candidate_rejects_nonfinite_max_risk(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    install_test_attestation(monkeypatch)
+    with pytest.raises(ValueError, match="max_risk must be a finite number within"):
+        patch_proposal.select_candidate(
+            tmp_path,
+            "f" * 40,
+            [make_patch_proposal(risk=0.54)],
+            max_risk=float("nan"),
+        )
+
+
+def test_select_candidate_rejects_nonfinite_registered_risk_threshold(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    install_test_attestation(monkeypatch)
+    path = tmp_path / "autonomy" / "agent_registry.json"
+    config = json.loads(path.read_text(encoding="utf-8"))
+    config["selection_policy"]["high_risk_threshold"] = float("nan")
+    path.write_text(json.dumps(config), encoding="utf-8")
+    with pytest.raises(ValueError, match="registered high_risk_threshold must be a finite number"):
+        patch_proposal.select_candidate(
+            tmp_path,
+            "f" * 40,
+            [make_patch_proposal(risk=0.54)],
+            max_risk=0.55,
+        )
+
+
+def test_select_candidate_rejects_huge_integer_and_boolean_metrics(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    install_test_attestation(monkeypatch)
+    proposals = [make_patch_proposal(), make_patch_proposal()]
+    proposals[0]["expected_gain"] = 10 ** 10000
+    proposals[1]["risk"] = True
+    result = patch_proposal.select_candidate(
+        tmp_path,
+        "f" * 40,
+        proposals,
+        max_risk=0.55,
+    )
+    assert result["status"] == "NO_CANDIDATE"
+    reasons = [reason for row in result["rejected"] for reason in row["reasons"]]
+    assert sum("invalid-metric" in reason for reason in reasons) == 2
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "expected_reason"),
+    [
+        ("target", [], "target-must-be-non-empty-string"),
+        ("rationale", {"unexpected": "object"}, "rationale-must-be-string"),
+        ("invariant_ids", "ID-1", "invariant-ids-must-be-string-array"),
+        ("tool_ids", 7, "tool-ids-must-be-string-array"),
+    ],
+)
+def test_select_candidate_rejects_malformed_action_metadata(tmp_path: Path, monkeypatch, field, value, expected_reason):
+    seed_repo(tmp_path)
+    install_test_attestation(monkeypatch)
+    proposal = make_patch_proposal()
+    proposal[field] = value
+    result = patch_proposal.select_candidate(
+        tmp_path,
+        "f" * 40,
+        [proposal],
+        max_risk=0.55,
+    )
+    assert result["status"] == "NO_CANDIDATE"
+    assert expected_reason in [reason for row in result["rejected"] for reason in row["reasons"]]
+
+
+def test_select_candidate_rejects_huge_integer_in_unrecognized_field_during_digest(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    install_test_attestation(monkeypatch)
+    proposal = make_patch_proposal()
+    proposal["unrecognized_numeric_extension"] = 10 ** 10000
+
+    result = patch_proposal.select_candidate(
+        tmp_path,
+        "f" * 40,
+        [proposal],
+        max_risk=0.55,
+    )
+    assert result["status"] == "NO_CANDIDATE"
+    assert "proposal-canonicalization-failed:ValueError" in [
+        reason for row in result["rejected"] for reason in row["reasons"]
+    ]
+
+
+def test_select_candidate_rejects_multi_file_patch(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    install_test_attestation(monkeypatch)
+    proposal = make_patch_proposal()
+    second_file = (
+        "diff --git a/src/second.py b/src/second.py\n"
+        "--- a/src/second.py\n"
+        "+++ b/src/second.py\n"
+        "@@ -1 +1 @@\n-old\n+new\n"
+    )
+    proposal["unified_diff"] += second_file
+
+    result = patch_proposal.select_candidate(
+        tmp_path,
+        "f" * 40,
+        [proposal],
+        max_risk=0.55,
+    )
+    assert result["status"] == "NO_CANDIDATE"
+    assert "unified-diff-must-target-exactly-one-file" in [
+        reason for row in result["rejected"] for reason in row["reasons"]
+    ]
+
+
+def test_select_candidate_rejects_conflicting_diff_header_paths(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    install_test_attestation(monkeypatch)
+    proposal = make_patch_proposal()
+    proposal["unified_diff"] = proposal["unified_diff"].replace(
+        "diff --git a/src/app.py b/src/app.py",
+        "diff --git a/src/app.py b/src/other.py",
+    )
+
+    result = patch_proposal.select_candidate(
+        tmp_path,
+        "f" * 40,
+        [proposal],
+        max_risk=0.55,
+    )
+    assert result["status"] == "NO_CANDIDATE"
+    assert "unified-diff-header-path-mismatch" in [
+        reason for row in result["rejected"] for reason in row["reasons"]
+    ]

@@ -1,0 +1,230 @@
+[
+  {
+    "id": "TV-001",
+    "audit_record": {
+      "spec_version": "SPEC-004:v0.3.1_METRIC_LAW",
+      "prev_state_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "timestamp": "2026-10-07T12:00:00Z",
+      "input_bundle": {
+        "evidence": [
+          1000000,
+          1000000,
+          1000000,
+          1000000,
+          1000000,
+          1000000
+        ],
+        "density": [
+          1000000,
+          1000000,
+          1000000,
+          1000000,
+          1000000,
+          1000000
+        ],
+        "source_id": "genesis-node-001"
+      },
+      "operator": "caios-kernel-01",
+      "operator_version": "3.6.9",
+      "applied_transforms": [
+        "none"
+      ],
+      "result_state": [
+        1000000,
+        1000000,
+        1000000,
+        1000000,
+        1000000,
+        1000000,
+        1000000,
+        1000000,
+        1000000,
+        1000000,
+        1000000,
+        1000000
+      ],
+      "u_metric": 0,
+      "decision": "PROCEED"
+    },
+    "audit_preimage": "{\"spec_version\":\"SPEC-004:v0.3.1_METRIC_LAW\",\"prev_state_hash\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"timestamp\":\"2026-10-07T12:00:00Z\",\"input_bundle\":{\"evidence\":[1000000,1000000,1000000,1000000,1000000,1000000],\"density\":[1000000,1000000,1000000,1000000,1000000,1000000],\"source_id\":\"genesis-node-001\"},\"operator\":\"caios-kernel-01\",\"operator_version\":\"3.6.9\",\"applied_transforms\":[\"none\"],\"result_state\":[1000000,1000000,1000000,1000000,1000000,1000000,1000000,1000000,1000000,1000000,1000000,1000000],\"u_metric\":0,\"decision\":\"PROCEED\"}",
+    "expected_sha256": "ab1596130d80a9152acfa510e5ce7a8e6beda4a80eb5429526cd2b04d6dde8e8",
+    "derivation": {
+      "V_h": 12000000,
+      "A_h": 120000,
+      "delta": 0,
+      "C": 0,
+      "u_raw": 0
+    }
+  },
+  {
+    "id": "TV-002",
+    "audit_record": {
+      "spec_version": "SPEC-004:v0.3.1_METRIC_LAW",
+      "prev_state_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "timestamp": "2026-10-07T12:00:00Z",
+      "input_bundle": {
+        "evidence": [
+          2500000,
+          3000000,
+          1000000,
+          1000000,
+          500000,
+          1000000
+        ],
+        "density": [
+          800000,
+          700000,
+          1000000,
+          1000000,
+          900000,
+          950000
+        ],
+        "source_id": "genesis-node-001"
+      },
+      "operator": "caios-kernel-01",
+      "operator_version": "3.6.9",
+      "applied_transforms": [
+        "rotate_d1_45"
+      ],
+      "result_state": [
+        800000,
+        2500000,
+        -1626346,
+        2616295,
+        1000000,
+        1000000,
+        1000000,
+        1000000,
+        900000,
+        500000,
+        950000,
+        1000000
+      ],
+      "u_metric": 448387,
+      "decision": "REVIEW"
+    },
+    "audit_preimage": "{\"spec_version\":\"SPEC-004:v0.3.1_METRIC_LAW\",\"prev_state_hash\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"timestamp\":\"2026-10-07T12:00:00Z\",\"input_bundle\":{\"evidence\":[2500000,3000000,1000000,1000000,500000,1000000],\"density\":[800000,700000,1000000,1000000,900000,950000],\"source_id\":\"genesis-node-001\"},\"operator\":\"caios-kernel-01\",\"operator_version\":\"3.6.9\",\"applied_transforms\":[\"rotate_d1_45\"],\"result_state\":[800000,2500000,-1626346,2616295,1000000,1000000,1000000,1000000,900000,500000,950000,1000000],\"u_metric\":448387,\"decision\":\"REVIEW\"}",
+    "expected_sha256": "c9be4eb5f51f9936236519588cde69bb542d85cba49ae6ce9cb0b8b225d4e470",
+    "derivation": {
+      "V_h": 14850000,
+      "A_h": 148500,
+      "delta": 6592641,
+      "C": 443948,
+      "u_raw": 448387
+    }
+  },
+  {
+    "id": "TV-003",
+    "audit_record": {
+      "spec_version": "SPEC-004:v0.3.1_METRIC_LAW",
+      "prev_state_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "timestamp": "2026-10-07T12:00:00Z",
+      "input_bundle": {
+        "evidence": [
+          10000000,
+          12000000,
+          100000,
+          100000,
+          10000,
+          500000
+        ],
+        "density": [
+          200000,
+          100000,
+          500000,
+          500000,
+          100000,
+          200000
+        ],
+        "source_id": "genesis-node-001"
+      },
+      "operator": "caios-kernel-01",
+      "operator_version": "3.6.9",
+      "applied_transforms": [
+        "none"
+      ],
+      "result_state": [
+        200000,
+        10000000,
+        100000,
+        12000000,
+        500000,
+        100000,
+        500000,
+        100000,
+        100000,
+        10000,
+        200000,
+        500000
+      ],
+      "u_metric": 1000000,
+      "decision": "BLOCK"
+    },
+    "audit_preimage": "{\"spec_version\":\"SPEC-004:v0.3.1_METRIC_LAW\",\"prev_state_hash\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"timestamp\":\"2026-10-07T12:00:00Z\",\"input_bundle\":{\"evidence\":[10000000,12000000,100000,100000,10000,500000],\"density\":[200000,100000,500000,500000,100000,200000],\"source_id\":\"genesis-node-001\"},\"operator\":\"caios-kernel-01\",\"operator_version\":\"3.6.9\",\"applied_transforms\":[\"none\"],\"result_state\":[200000,10000000,100000,12000000,500000,100000,500000,100000,100000,10000,200000,500000],\"u_metric\":1000000,\"decision\":\"BLOCK\"}",
+    "expected_sha256": "bb9bae3ca7d2566207a378fa9be1d9bf19e98a98fd7766f156474036bd031837",
+    "derivation": {
+      "V_h": 27600000,
+      "A_h": 276000,
+      "delta": 27690000,
+      "C": 1003260,
+      "u_raw": 1013292
+    }
+  },
+  {
+    "id": "TV-004_DWX_SLICE",
+    "audit_record": {
+      "spec_version": "SPEC-004:v0.3.1_METRIC_LAW",
+      "prev_state_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "timestamp": "2026-10-07T12:00:00Z",
+      "input_bundle": {
+        "evidence": [
+          1000000,
+          4850000,
+          48000000,
+          15000000,
+          10000,
+          1000000
+        ],
+        "density": [
+          900000,
+          800000,
+          1000000,
+          1000000,
+          1000000,
+          990000
+        ],
+        "source_id": "genesis-node-001-dwx-scale"
+      },
+      "operator": "caios-kernel-01",
+      "operator_version": "3.6.9",
+      "applied_transforms": [
+        "rotate_d1_15"
+      ],
+      "result_state": [
+        900000,
+        1000000,
+        -482531,
+        4891796,
+        1000000,
+        48000000,
+        1000000,
+        15000000,
+        1000000,
+        10000,
+        990000,
+        1000000
+      ],
+      "u_metric": 890371,
+      "decision": "REVIEW"
+    },
+    "audit_preimage": "{\"spec_version\":\"SPEC-004:v0.3.1_METRIC_LAW\",\"prev_state_hash\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"timestamp\":\"2026-10-07T12:00:00Z\",\"input_bundle\":{\"evidence\":[1000000,4850000,48000000,15000000,10000,1000000],\"density\":[900000,800000,1000000,1000000,1000000,990000],\"source_id\":\"genesis-node-001-dwx-scale\"},\"operator\":\"caios-kernel-01\",\"operator_version\":\"3.6.9\",\"applied_transforms\":[\"rotate_d1_15\"],\"result_state\":[900000,1000000,-482531,4891796,1000000,48000000,1000000,15000000,1000000,10000,990000,1000000],\"u_metric\":890371,\"decision\":\"REVIEW\"}",
+    "expected_sha256": "9d4114c0333890c012867871d5dfbcba1c6e58af8ace3d6cdb5a6f710e71d7c8",
+    "derivation": {
+      "V_h": 76540000,
+      "A_h": 765400,
+      "delta": 67474327,
+      "C": 881556,
+      "u_raw": 890371
+    }
+  }
+]
