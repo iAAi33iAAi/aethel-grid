@@ -138,18 +138,20 @@ jobs:
         working-directory: aethel-grid
         run: python -m pytest -q federation/test_caios_federation.py
 
-      - name: Generate federated snapshot
-        working-directory: aethel-grid
-        run: python federation/caios_federation.py --verify --output ops/caios/federation-snapshot.json
-
       - name: Run portfolio CI parity audit
         working-directory: aethel-grid
         run: python federation/portfolio_ci_parity.py --manifest federation/system_manifest.json --root . --output ops/caios/portfolio-ci-parity.json --timeout-seconds 600
 
+      - name: Generate federated snapshot from the exact parity evidence
+        working-directory: aethel-grid
+        run: python federation/caios_federation.py --verification-report ops/caios/portfolio-ci-parity.json --output ops/caios/federation-snapshot.json
+
       - name: Upload federated evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: caios-portfolio-federation-evidence
           path: |
             aethel-grid/ops/caios/federation-snapshot.json
             aethel-grid/ops/caios/portfolio-ci-parity.json
+          if-no-files-found: warn
