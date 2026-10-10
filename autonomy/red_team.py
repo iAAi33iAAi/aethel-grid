@@ -403,6 +403,21 @@ def probes() -> tuple[RedTeamProbe, ...]:
             ("authority principal must be a non-empty string",),
         ),
         RedTeamProbe(
+            "numeric-huge-integer",
+            CandidateAction(
+                action_id="model-redteam-huge-integer",
+                kind="observe",
+                target=".",
+                rationale="force numeric validation to handle an arbitrary-size integer",
+                expected_gain=10 ** 10000,
+                risk=0.3,
+                reversibility=1.0,
+                resource_cost=0.1,
+                evidence_gain=0.8,
+            ),
+            ("expected_gain must be finite and within [0,1]",),
+        ),
+        RedTeamProbe(
             "model-command",
             CandidateAction(
                 action_id="model-redteam-test-command",
