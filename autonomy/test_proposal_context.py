@@ -184,3 +184,65 @@ def test_provider_rejects_non_boolean_source_context_opt_in():
                 "test-model",
                 send_source_context=value,
             )
+
+
+def test_provider_rejects_nonstandard_numeric_constants(monkeypatch):
+    import pytest
+
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self, size=-1):
+            payload = b'{"proposals":[],"metadata":{"score":NaN}}'
+            return payload[:size] if size >= 0 else payload
+
+    provider = OpenAICompatibleProposalProvider(
+        "https://example.com/v1/chat/completions",
+        "test-model",
+    )
+    monkeypatch.setattr(provider.opener, "open", lambda request, timeout: Response())
+    with pytest.raises(ValueError, match="not valid UTF-8 JSON"):
+        provider.propose({"snapshot": {"head": "abc"}})
+
+
+def test_provider_rejects_duplicate_keys_in_top_level_json(monkeypatch):
+    import pytest
+
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self, size=-1):
+            payload = b'{"proposals":[],"proposals":[{"kind":"apply_patch"}]}'
+            return payload[:size] if size >= 0 else payload
+
+    provider = OpenAICompatibleProposalProvider(
+        "https://example.com/v1/chat/completions",
+        "test-model",
+    )
+    monkeypatch.setattr(provider.opener, "open", lambda request, timeout: Response())
+    with pytest.raises(ValueError, match="not valid UTF-8 JSON"):
+        provider.propose({"snapshot": {"head": "abc"}})
+
+
+def test_provider_rejects_duplicate_keys_in_nested_choice_content(monkeypatch):
+    import json
+    import pytest
+
+    content = '{"proposals":[],"proposals":[{"kind":"apply_patch"}]}'
+    payload = json.dumps({
+        "choices": [{"message": {"content": content}}],
+    }).encode("utf-8")
+
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self, size=-1):
+            return payload[:size] if size >= 0 else payload
+
+    provider = OpenAICompatibleProposalProvider(
+        "https://example.com/v1/chat/completions",
+        "test-model",
+    )
+    monkeypatch.setattr(provider.opener, "open", lambda request, timeout: Response())
+    with pytest.raises(ValueError, match="not valid JSON or has duplicate keys"):
+        provider.propose({"snapshot": {"head": "abc"}})
