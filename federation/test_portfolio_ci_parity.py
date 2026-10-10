@@ -246,10 +246,16 @@ def test_gate5_ledger_matches_complete_coverage_evidence():
     assert evidence["verified"] == evidence["passed"] == 13
     assert evidence["not_configured"] == evidence["failed"] == 0
     assert evidence["verification_scopes_declared"] == len(scoped) == 13
-    assert evidence["declared_source_urls"] == len(sourced) == 10
-    assert evidence["pinned_source_urls"] == len(pinned) == 10
+    # The recorded audit predates the three additional source pins; keep its
+    # counters historically accurate while validating the live manifest separately.
+    assert evidence["declared_source_urls"] == evidence["pinned_source_urls"] == 10
+    assert len(sourced) == len(pinned) == 13
+    assert evidence["current_manifest_source_urls"] == len(sourced) == 13
+    assert evidence["current_manifest_pinned_source_urls"] == len(pinned) == 13
+    assert evidence["current_manifest_mutable_source_urls"] == 0
+    assert evidence["current_manifest_source_repository_mismatches"] == len(mismatched) == 0
     assert evidence["mutable_source_urls"] == 0
-    assert evidence["source_repository_mismatches"] == len(mismatched) == 0
+    assert evidence["source_repository_mismatches"] == 0
     assert gate_status["gate_1"]["status"] == "BLOCKED"
     assert gate_status["gate_3"]["status"] == "PARTIALLY_CLOSED"
     assert gate_status["gate_4"]["status"] == "NOT_STARTED"
@@ -271,7 +277,7 @@ def test_every_declared_manifest_source_is_immutable():
     rows = _validate_manifest(manifest)
     source_rows = [row for row in rows if row["verification_source"] is not None]
 
-    assert len(source_rows) == 10
+    assert len(source_rows) == 13
     for row in source_rows:
         source = row["verification_source"]
         parts = urlsplit(source)
