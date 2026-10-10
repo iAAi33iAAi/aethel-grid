@@ -433,7 +433,9 @@ class ConstitutionalGate:
 
     def validate(self, action: CandidateAction) -> tuple[bool, list[str]]:
         reasons: list[str] = []
-        if action.kind not in self.ALLOWED_KINDS:
+        if not isinstance(action.kind, str):
+            reasons.append("action kind must be a string in the allowlist")
+        elif action.kind not in self.ALLOWED_KINDS:
             reasons.append(f"action kind '{action.kind}' is not in the allowlist")
 
         numeric_fields = {
@@ -444,20 +446,47 @@ class ConstitutionalGate:
             "evidence_gain": action.evidence_gain,
         }
         for field, value in numeric_fields.items():
-            if not math.isfinite(value) or not 0.0 <= value <= 1.0:
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                or not 0.0 <= value <= 1.0
+            ):
                 reasons.append(f"{field} must be finite and within [0,1]")
 
-        target = (self.repo_root / action.target).resolve()
-        try:
-            target.relative_to(self.repo_root)
-        except ValueError:
-            reasons.append("target escapes repository root")
+        if (
+            not isinstance(action.target, str)
+            or any(ord(char) < 0x20 or ord(char) == 0x7f for char in action.target)
+        ):
+            reasons.append("target contains unsupported control characters")
+        else:
+            try:
+                target = (self.repo_root / action.target).resolve()
+                target.relative_to(self.repo_root)
+            except ValueError as exc:
+                if "embedded null byte" in str(exc).lower():
+                    reasons.append("target contains unsupported control characters")
+                else:
+                    reasons.append("target escapes repository root")
+            except (OSError, RuntimeError) as exc:
+                reasons.append(f"target resolution failed closed: {type(exc).__name__}")
 
-        if action.risk > 0.85:
+        if isinstance(action.risk, (int, float)) and not isinstance(action.risk, bool) and action.risk > 0.85:
             reasons.append("risk exceeds autonomous threshold")
-        if action.reversibility < 0.40 and action.kind != "human_review":
+        if (
+            isinstance(action.reversibility, (int, float))
+            and not isinstance(action.reversibility, bool)
+            and action.reversibility < 0.40
+            and action.kind != "human_review"
+        ):
             reasons.append("action is insufficiently reversible")
-        if action.kind in {"run_test", "run_security_scan"} and action.action_id.startswith("model-"):
+        if not isinstance(action.action_id, str):
+            reasons.append("action id must be a string")
+        elif (
+            isinstance(action.kind, str)
+            and action.kind in {"run_test", "run_security_scan"}
+            and action.action_id.startswith("model-")
+        ):
             reasons.append("model-originated actions cannot supply arbitrary executable commands")
 
         required_capability = "supervise" if action.authority_principal == "caios" else "propose"
@@ -475,6 +504,9 @@ class ConstitutionalGate:
                 reasons.append(
                     "protected-surface-policy-unavailable; autonomous patches are denied"
                 )
+            if not isinstance(action.unified_diff, str):
+                reasons.append("patch action unified diff must be a string")
+                return False, reasons
             if not action.unified_diff:
                 reasons.append("patch action has no unified diff")
             changed_lines = sum(
@@ -495,6 +527,9 @@ class ConstitutionalGate:
                     raw_path = patch_path[2:] if patch_path.startswith(("a/", "b/")) else patch_path
                     # Git can interpret quoted path headers; fail closed rather than
                     # comparing an ambiguous literal against protected path globs.
+                    if any(ord(char) < 0x20 or 0x7f <= ord(char) <= 0x9f for char in raw_path):
+                        reasons.append("patch path contains unsupported control characters")
+                        continue
                     if raw_path.startswith('"') or raw_path.endswith('"') or any(char.isspace() for char in raw_path):
                         reasons.append("patch path uses unsupported quoted or whitespace format")
                         continue
