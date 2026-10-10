@@ -16,7 +16,8 @@
         "interop"
       ],
       "integration_mode": "local-root",
-      "verification_scope": "The declared python -m pytest -q interop command checks the Python interoperability test suite only. It does not ratify canonical SPEC-004/CPOL behavior, verify all source modules, or establish production deployment."
+      "verification_scope": "The declared python -m pytest -q interop command checks the Python interoperability test suite only. It does not ratify canonical SPEC-004/CPOL behavior, verify all source modules, or establish production deployment.",
+      "verification_source": "https://github.com/iAAi33iAAi/aethel-grid/blob/eac6d701a08a09dc7bd4518a68df725045039e6c/.github/workflows/interop.yml"
     },
     {
       "id": "safety-kernel",
@@ -31,7 +32,8 @@
         "test_sk.py"
       ],
       "integration_mode": "observe-only",
-      "verification_scope": "The python test_sk.py command runs the Safety Kernel CLI, proof-generation, proof-integrity, and tamper-detection checks. It is not formal verification of the host operating system, hardware isolation, or production certification."
+      "verification_scope": "The python test_sk.py command runs the Safety Kernel CLI, proof-generation, proof-integrity, and tamper-detection checks. It is not formal verification of the host operating system, hardware isolation, or production certification.",
+      "verification_source": "https://github.com/iAAi33iAAi/safety-kernel/blob/f9a62bd63b725c30c7fd7c1ebe469075fcfe9ae8/test_sk.py"
     },
     {
       "id": "project-mono",
@@ -50,7 +52,8 @@
         "tests"
       ],
       "integration_mode": "observe-only",
-      "verification_scope": "The pytest tests suite checks this repository's declared application tests at the recorded commit. It does not establish live-service availability, successful municipal deployments, or production conformance."
+      "verification_scope": "The pytest tests suite checks this repository's declared application tests at the recorded commit. It does not establish live-service availability, successful municipal deployments, or production conformance.",
+      "verification_source": "https://github.com/iAAi33iAAi/project-mono/blob/5712bba2698fdba02e30b974d386bf276e65dcf7/.github/workflows/ci.yml"
     },
     {
       "id": "openclaw-governance",
