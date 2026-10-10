@@ -8,6 +8,7 @@ const T_REVIEW: i64 = 900_000;
 const CORPUS: &str = "../golden_corpus.json";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 struct InputBundle {
     evidence: [i64; 6],
     density: [i64; 6],
@@ -15,6 +16,7 @@ struct InputBundle {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 struct AuditRecord {
     spec_version: String,
     prev_state_hash: String,
@@ -29,6 +31,7 @@ struct AuditRecord {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct Vector {
     id: String,
     audit_record: AuditRecord,
@@ -38,15 +41,16 @@ struct Vector {
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 struct Derivation {
     #[serde(rename = "V_h")]
-    v_h: i64,
+    v_h: i128,
     #[serde(rename = "A_h")]
-    a_h: i64,
-    delta: i64,
+    a_h: i128,
+    delta: i128,
     #[serde(rename = "C")]
-    c: i64,
-    u_raw: i64,
+    c: i128,
+    u_raw: i128,
 }
 
 fn checked_i64(v: i128, label: &str) -> Result<i64, String> {
@@ -109,7 +113,6 @@ fn derive_result_state(record: &AuditRecord) -> Result<[i64; 12], String> {
     }
 
     match record.applied_transforms.as_slice() {
-        [] => return Ok(state),
         [only] if only == "none" => return Ok(state),
         [name] => {
             let angle_text = name
@@ -137,7 +140,7 @@ fn derive_result_state(record: &AuditRecord) -> Result<[i64; 12], String> {
             state[3] = checked_i64(qdiv(imag_num, Q)?, "rotated evidence")?;
             Ok(state)
         }
-        _ => Err("candidate law permits at most one transform".into()),
+        _ => Err("candidate law requires exactly one transform entry".into()),
     }
 }
 
@@ -182,11 +185,11 @@ fn compute_metric(
     let u = u_raw.clamp(0, Q);
 
     let derivation = Derivation {
-        v_h: checked_i64(v_h, "V_h")?,
-        a_h: checked_i64(a_h, "A_h")?,
-        delta: checked_i64(delta, "Delta")?,
-        c: checked_i64(c, "C")?,
-        u_raw: checked_i64(u_raw, "u_raw")?,
+        v_h,
+        a_h,
+        delta,
+        c,
+        u_raw,
     };
     Ok((checked_i64(u, "u_metric")?, derivation))
 }
@@ -295,12 +298,47 @@ mod tests {
         assert!(derive_result_state(&vector.audit_record).is_err());
 
         let mut vector = load_corpus().unwrap().remove(0);
+        vector.audit_record.applied_transforms = vec![];
+        assert!(derive_result_state(&vector.audit_record).is_err());
+
+        let mut vector = load_corpus().unwrap().remove(0);
         vector.audit_record.applied_transforms = vec!["rotate_d1_17".into()];
         assert!(derive_result_state(&vector.audit_record).is_err());
 
         let mut vector = load_corpus().unwrap().remove(0);
         vector.audit_record.applied_transforms = vec!["rotate_d1_015".into()];
         assert!(derive_result_state(&vector.audit_record).is_err());
+    }
+
+    #[test]
+    fn large_i64_evidence_uses_i128_metric_intermediates() {
+        let input = InputBundle {
+            evidence: [i64::MAX; 6],
+            density: [Q as i64; 6],
+            source_id: "i64-max-boundary".into(),
+        };
+        let mut state = [0_i64; 12];
+        for i in 0..6 {
+            state[2 * i] = Q as i64;
+            state[2 * i + 1] = i64::MAX;
+        }
+
+        let (metric, derivation) = compute_metric(&input, &state).unwrap();
+        assert_eq!(metric, Q as i64);
+        assert_eq!(derivation, Derivation {
+            v_h: 55340232221134654842_i128,
+            a_h: 553402322211346548_i128,
+            delta: 55340232221122654842_i128,
+            c: 999999_i128,
+            u_raw: 1009998_i128,
+        });
+    }
+
+    #[test]
+    fn unknown_fields_are_rejected_on_corpus_structures() {
+        assert!(serde_json::from_str::<InputBundle>(
+            r#"{"evidence":[1,1,1,1,1,1],"density":[1,1,1,1,1,1],"source_id":"s","unexpected":1}"#
+        ).is_err());
     }
 }
 

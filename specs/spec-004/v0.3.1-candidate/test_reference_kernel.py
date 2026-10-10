@@ -75,6 +75,21 @@ class V031CandidateTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             law.compute_u_metric(good, good, [law.Q]*11)
 
+    def test_i64_max_evidence_keeps_metric_intermediates_in_i128_domain(self):
+        max_i64 = (1 << 63) - 1
+        evidence = [max_i64] * 6
+        density = [law.Q] * 6
+        state = law.derive_state(evidence, density, "none")
+        metric = law.compute_u_metric(evidence, density, state)
+        self.assertEqual(metric, {
+            "V_h": 55340232221134654842,
+            "A_h": 553402322211346548,
+            "delta": 55340232221122654842,
+            "C": 999999,
+            "u_raw": 1009998,
+            "u_metric": 1000000,
+        })
+
     def test_transform_allowlist_and_canonical_numeric_encoding(self):
         good = [law.Q] * 6
         for transform in ("rotate_d1_17", "rotate_d1_", "rotate_d1_015", "rotate_d1_٤٥", "unknown"):

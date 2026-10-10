@@ -37,7 +37,9 @@ The adapter's stricter input profile is a candidate wrapper, not silently retroa
 
 The compact JSON audit preimage used by these vectors is not the ten-field colon-delimited ledger preimage described by the separate Gate 3 reference law. Those byte contracts remain distinct until their scopes and encodings are ratified.
 
-The tests do not prove production cryptographic signing, sensor truth, physical behavior, complete execution admission, formally verified arithmetic, independent external review, or Level-4 certification. Rust/Python matching these four vectors is a concrete cross-language conformance result for the candidate corpus, not general proof over every permitted input.
+The Rust candidate retains V_h, A_h, Delta, C, and u_raw in i128 rather than down-casting intermediate values to i64. A new high-boundary test exercises six i64::MAX evidence values, whose V_h and Delta exceed i64 but remain within i128. Both languages test the same expected intermediate values. The Rust parser also rejects an empty transform list and denies unknown fields on typed corpus structures.
+
+The tests do not prove production cryptographic signing, sensor truth, physical behavior, complete execution admission, formally verified arithmetic, independent external review, or Level-4 certification. Rust/Python matching the recorded vectors and explicit arithmetic boundary is a concrete candidate conformance result, not a general proof over every permitted input.
 
 ## Promotion rule
 
