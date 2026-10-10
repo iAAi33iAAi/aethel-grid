@@ -347,3 +347,22 @@ def test_oversized_patch_is_rejected_before_file_header_parsing(tmp_path: Path):
     assert allowed is False
     assert "patch exceeds maximum patch size" in reasons
     assert "patch must contain exactly one file section" not in reasons
+
+
+def test_model_candidate_parser_rejects_huge_integer_before_digest_can_escape(tmp_path):
+    class HugePayloadProvider:
+        last_errors = []
+        def propose(self, _snapshot):
+            return [{"untrusted_extension": 10 ** 10000}]
+
+    runtime = runtime_module.AutonomousRuntime(
+        repo_root=tmp_path,
+        proposal_provider=HugePayloadProvider(),
+        max_cycles=1,
+    )
+    assert runtime._model_candidates({}, {}) == []
+    assert runtime.last_model_admission == [{
+        "index": 0,
+        "status": "REJECTED",
+        "reasons": ["proposal-canonicalization-failed:ValueError"],
+    }]
