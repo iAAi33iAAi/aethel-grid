@@ -491,7 +491,18 @@ class ConstitutionalGate:
                             reasons.append("autonomous patch deletion is not permitted")
                         continue
                     normalized = patch_path[2:] if patch_path.startswith(("a/", "b/")) else patch_path
-                    if normalized.startswith(("/", "../")) or "/../" in normalized or normalized.startswith(".git/"):
+                    # Check normalized path components, not only string prefixes.
+                    # A leading "./" or nested ".git" must not bypass the control boundary.
+                    security_path = normalized.replace("\\", "/")
+                    security_parts = tuple(
+                        part for part in security_path.split("/")
+                        if part not in ("", ".")
+                    )
+                    if (
+                        security_path.startswith("/")
+                        or any(part == ".." for part in security_parts)
+                        or ".git" in security_parts
+                    ):
                         reasons.append("patch path escapes or targets git internals")
                         continue
 
