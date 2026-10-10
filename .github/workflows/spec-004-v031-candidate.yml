@@ -38,10 +38,8 @@ jobs:
         with:
           toolchain: "1.99.0"
       - name: Compile independent Rust implementation
-        run: cargo check --manifest-path rust/Cargo.toml
-      - name: Emit generated Cargo lock for reproducibility pinning
-        run: cat rust/Cargo.lock
+        run: cargo check --manifest-path rust/Cargo.toml --locked
       - name: Run independent Rust conformance tests
-        run: cargo test --manifest-path rust/Cargo.toml --verbose
+        run: cargo test --manifest-path rust/Cargo.toml --locked --verbose
       - name: Run Rust vector replay
-        run: cargo run --manifest-path rust/Cargo.toml --quiet
+        run: cargo run --manifest-path rust/Cargo.toml --locked --quiet
