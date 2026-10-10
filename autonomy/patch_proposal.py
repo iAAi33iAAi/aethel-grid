@@ -331,6 +331,16 @@ def select_candidate(
         if "diff --git " not in patch or "\n--- " not in patch or "\n+++ " not in patch:
             rejected.append({"index": index, "reasons": ["unified-diff-malformed"]})
             continue
+        if (
+            patch.count("diff --git ") != 1
+            or sum(line.startswith("--- ") for line in patch.splitlines()) != 1
+            or sum(line.startswith("+++ ") for line in patch.splitlines()) != 1
+        ):
+            rejected.append({
+                "index": index,
+                "reasons": ["unified-diff-must-target-exactly-one-file"],
+            })
+            continue
 
         try:
             metrics = {
