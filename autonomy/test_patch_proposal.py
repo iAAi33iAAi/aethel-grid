@@ -652,3 +652,21 @@ def test_select_candidate_rejects_malformed_action_metadata(tmp_path: Path, monk
     )
     assert result["status"] == "NO_CANDIDATE"
     assert expected_reason in [reason for row in result["rejected"] for reason in row["reasons"]]
+
+
+def test_select_candidate_rejects_huge_integer_in_unrecognized_field_during_digest(tmp_path: Path, monkeypatch):
+    seed_repo(tmp_path)
+    install_test_attestation(monkeypatch)
+    proposal = make_patch_proposal()
+    proposal["unrecognized_numeric_extension"] = 10 ** 10000
+
+    result = patch_proposal.select_candidate(
+        tmp_path,
+        "f" * 40,
+        [proposal],
+        max_risk=0.55,
+    )
+    assert result["status"] == "NO_CANDIDATE"
+    assert "proposal-canonicalization-failed:ValueError" in [
+        reason for row in result["rejected"] for reason in row["reasons"]
+    ]
