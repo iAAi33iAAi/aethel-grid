@@ -483,27 +483,43 @@ class ConstitutionalGate:
             )
             if changed_lines > self.max_patch_lines:
                 reasons.append("patch exceeds maximum autonomous change budget")
+            has_file_header = False
             for line in action.unified_diff.splitlines():
                 if line.startswith(("+++ ", "--- ")):
+                    has_file_header = True
                     patch_path = line[4:].split("\t", 1)[0]
                     if patch_path == "/dev/null":
                         if line.startswith("+++ "):
                             reasons.append("autonomous patch deletion is not permitted")
                         continue
-                    normalized = patch_path[2:] if patch_path.startswith(("a/", "b/")) else patch_path
-                    # Check normalized path components, not only string prefixes.
-                    # A leading "./" or nested ".git" must not bypass the control boundary.
-                    security_path = normalized.replace("\\", "/")
+                    raw_path = patch_path[2:] if patch_path.startswith(("a/", "b/")) else patch_path
+                    # Git can interpret quoted path headers; fail closed rather than
+                    # comparing an ambiguous literal against protected path globs.
+                    if raw_path.startswith('"') or raw_path.endswith('"') or any(char.isspace() for char in raw_path):
+                        reasons.append("patch path uses unsupported quoted or whitespace format")
+                        continue
+                    # Canonicalize separators and dot segments before policy matching.
+                    security_path = raw_path.replace("\\", "/")
                     security_parts = tuple(
                         part for part in security_path.split("/")
                         if part not in ("", ".")
                     )
+                    has_drive_prefix = (
+                        len(security_path) >= 2
+                        and security_path[0].isalpha()
+                        and security_path[1] == ":"
+                    )
                     if (
                         security_path.startswith("/")
+                        or has_drive_prefix
                         or any(part == ".." for part in security_parts)
                         or ".git" in security_parts
                     ):
                         reasons.append("patch path escapes or targets git internals")
+                        continue
+                    normalized = "/".join(security_parts)
+                    if not normalized:
+                        reasons.append("patch path is empty or not parseable")
                         continue
 
                     # Lexical checks do not stop a path that crosses an existing
@@ -525,6 +541,8 @@ class ConstitutionalGate:
                         and (self.repo_root / normalized).is_file()
                     ):
                         reasons.append("patch modifies an existing test file")
+            if not has_file_header:
+                reasons.append("patch has no parseable file headers")
 
         return not reasons, reasons
 
