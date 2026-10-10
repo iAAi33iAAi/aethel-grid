@@ -366,3 +366,41 @@ def test_model_candidate_parser_rejects_huge_integer_before_digest_can_escape(tm
         "status": "REJECTED",
         "reasons": ["proposal-canonicalization-failed:ValueError"],
     }]
+
+
+def test_gate_fails_closed_on_cyclic_symlink_patch_path(tmp_path: Path):
+    import pytest
+
+    _seed_authority(tmp_path)
+    autonomy = tmp_path / "autonomy"
+    (autonomy / "protected_surfaces.json").write_text(
+        json.dumps({"protected_globs": ["private/**"]}),
+        encoding="utf-8",
+    )
+    loop_path = autonomy / "loop"
+    try:
+        loop_path.symlink_to("loop", target_is_directory=True)
+    except (OSError, NotImplementedError) as exc:
+        pytest.skip(f"symlink creation unavailable on this platform: {exc}")
+
+    gate = ConstitutionalGate(tmp_path)
+    action = CandidateAction(
+        action_id="model-redteam-symlink-loop",
+        kind="apply_patch",
+        target=".",
+        rationale="attempt to force repository path resolution through a symlink loop",
+        expected_gain=0.4,
+        risk=0.3,
+        reversibility=1.0,
+        resource_cost=0.1,
+        evidence_gain=0.8,
+        unified_diff=(
+            "diff --git a/autonomy/loop/escaped.py b/autonomy/loop/escaped.py\n"
+            "--- a/autonomy/loop/escaped.py\n"
+            "+++ b/autonomy/loop/escaped.py\n"
+            "@@ -1 +1 @@\n-old\n+new\n"
+        ),
+    )
+    allowed, reasons = gate.validate(action)
+    assert allowed is False
+    assert "patch path resolution failed closed: RuntimeError" in reasons
