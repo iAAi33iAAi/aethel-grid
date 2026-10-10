@@ -331,14 +331,41 @@ def select_candidate(
         if "diff --git " not in patch or "\n--- " not in patch or "\n+++ " not in patch:
             rejected.append({"index": index, "reasons": ["unified-diff-malformed"]})
             continue
+        patch_lines = patch.splitlines()
+        diff_headers = [line for line in patch_lines if line.startswith("diff --git ")]
+        old_headers = [line[4:].split("\t", 1)[0] for line in patch_lines if line.startswith("--- ")]
+        new_headers = [line[4:].split("\t", 1)[0] for line in patch_lines if line.startswith("+++ ")]
         if (
             patch.count("diff --git ") != 1
-            or sum(line.startswith("--- ") for line in patch.splitlines()) != 1
-            or sum(line.startswith("+++ ") for line in patch.splitlines()) != 1
+            or len(old_headers) != 1
+            or len(new_headers) != 1
         ):
             rejected.append({
                 "index": index,
                 "reasons": ["unified-diff-must-target-exactly-one-file"],
+            })
+            continue
+        git_parts = diff_headers[0].split()
+        old_header = old_headers[0]
+        new_header = new_headers[0]
+        mismatch = (
+            len(git_parts) != 4
+            or not git_parts[2].startswith("a/")
+            or not git_parts[3].startswith("b/")
+            or (old_header != "/dev/null" and (
+                not old_header.startswith("a/")
+                or len(git_parts) == 4 and old_header[2:] != git_parts[2][2:]
+            ))
+            or (new_header != "/dev/null" and (
+                not new_header.startswith("b/")
+                or len(git_parts) == 4 and new_header[2:] != git_parts[3][2:]
+            ))
+            or (old_header == "/dev/null" and new_header == "/dev/null")
+        )
+        if mismatch:
+            rejected.append({
+                "index": index,
+                "reasons": ["unified-diff-header-path-mismatch"],
             })
             continue
 
