@@ -1,0 +1,21 @@
+{
+  "spec_version": "SPEC-004:v0.3.1_METRIC_LAW",
+  "status": "RECONSTRUCTED_CANDIDATE_NOT_MERGED",
+  "source_artifact": "AETHEL_CAIOS_FULL_CONVERSATION_CODE_DUMP.pdf (Library archive, 2026-10-08)",
+  "source_law_sha256": "da97f57ab83109385c31d25802ee57aa4ebfdca7813747b8b0156cbf2557ec14",
+  "source_python_sha256": "23d41c256f9bc3ee412647a1e99deda254a411ba1c391fe2e820a4a192e4edf9",
+  "source_test_sha256": "298678ede93882f588a14ad6f98112c21463d6a35a9dfb26a3f13f0b56c00816",
+  "deprecated_v03_rigor_note_sha256": "a3b17c2731e58b46395b5017e5bbc4c3026eddfed20f99bdb638d9c1f7330a71",
+  "writeback_status_sha256": "1b0b3f98be988de04366ac65bbf6a343813ed5e0ba33cc5fc124a46fd41b17e0",
+  "vectors": [
+    {"id":"TV-001","u_metric":0,"decision":"PROCEED","expected_sha256":"ab1596130d80a9152acfa510e5ce7a8e6beda4a80eb5429526cd2b04d6dde8e8","derivation":{"V_h":12000000,"A_h":120000,"delta":0,"C":0,"u_raw":0}},
+    {"id":"TV-002","u_metric":448387,"decision":"REVIEW","expected_sha256":"c9be4eb5f51f9936236519588cde69bb542d85cba49ae6ce9cb0b8b225d4e470","derivation":{"V_h":14850000,"A_h":148500,"delta":6592641,"C":443948,"u_raw":448387}},
+    {"id":"TV-003","u_metric":1000000,"decision":"BLOCK","expected_sha256":"bb9bae3ca7d2566207a378fa9be1d9bf19e98a98fd7766f156474036bd031837","derivation":{"V_h":27600000,"A_h":276000,"delta":27690000,"C":1003260,"u_raw":1013292}},
+    {"id":"TV-004_DWX_SLICE","u_metric":890371,"decision":"REVIEW","expected_sha256":"9d4114c0333890c012867871d5dfbcba1c6e58af8ace3d6cdb5a6f710e71d7c8","derivation":{"V_h":76540000,"A_h":765400,"delta":67474327,"C":881556,"u_raw":890371}}
+  ],
+  "archived_original_corpus_sha256": "1ea7a02b146bb4989a2ddc47cfbb059eef44156107d20b43abc2c533f42850a4",
+  "reconstructed_corpus_sha256": "f5b97b1b23734196b633e4b2767a1b85d2808276bb1a175def30e79209ea0667",
+  "corpus_fidelity": "The original corpus was embedded in a PDF with line-wrapped preimage strings. The reconstructed whole-file hash is not claimed to match the original. Each regenerated audit preimage and each preserved per-vector SHA-256 match.",
+  "test_scope": "Four vectors: state derivation, metric, decision, compact-JSON audit bytes and SHA-256; plus candidate input/type/range/threshold hardening tests. No Rust parity or Level-4 certification.",
+  "promotion": "HOLD"
+}
