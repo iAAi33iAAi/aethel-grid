@@ -1279,6 +1279,9 @@ class AutonomousRuntime:
         return admitted
 
     def _model_candidates(self, snapshot: dict[str, Any], gaps: dict[str, float]) -> list[CandidateAction]:
+        # Admission evidence is scoped to a single cycle. Never allow prior
+        # cycle outcomes to survive a provider failure or missing provider.
+        self.last_model_admission = []
         if not self.proposal_provider:
             return []
         try:
@@ -1288,10 +1291,38 @@ class AutonomousRuntime:
                 "source_context": ContextWindow(self.repo_root).build(),
             }
             raw = self.proposal_provider.propose(model_input)
-        except Exception:
+        except Exception as exc:
+            self.last_model_admission.append({
+                "index": None,
+                "status": "PROVIDER_FAILED",
+                "reasons": [f"proposal-provider-failed:{type(exc).__name__}"],
+            })
             return []
+        if not isinstance(raw, list):
+            self.last_model_admission.append({
+                "index": None,
+                "status": "REJECTED",
+                "reasons": ["proposal-provider-response-not-list"],
+            })
+            return []
+
+        worker_errors = getattr(self.proposal_provider, "last_errors", [])
+        if isinstance(worker_errors, list):
+            for error in worker_errors[:20]:
+                if not isinstance(error, dict):
+                    continue
+                agent_id = error.get("agent_id", "")
+                error_type = error.get("error_type", "Exception")
+                self.last_model_admission.append({
+                    "index": None,
+                    "agent_id": agent_id if isinstance(agent_id, str) else "",
+                    "status": "PROVIDER_FAILED",
+                    "reasons": [
+                        "proposal-worker-failed:"
+                        + (error_type if isinstance(error_type, str) else "Exception")
+                    ],
+                })
         candidates: list[CandidateAction] = []
-        self.last_model_admission = []
         for idx, item in enumerate(raw[:20]):
             if not isinstance(item, dict):
                 self.last_model_admission.append({
