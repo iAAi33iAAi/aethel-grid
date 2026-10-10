@@ -298,6 +298,10 @@ class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
         return None
 
 
+MAX_PROVIDER_RESPONSE_BYTES = 2_000_000
+MAX_PROVIDER_PROPOSALS = 20
+
+
 class OpenAICompatibleProposalProvider:
     """
     Optional model adapter.
@@ -376,14 +380,40 @@ class OpenAICompatibleProposalProvider:
             method="POST",
         )
         with self.opener.open(req, timeout=45) as response:
-            data = json.loads(response.read().decode("utf-8"))
+            raw_response = response.read(MAX_PROVIDER_RESPONSE_BYTES + 1)
+        if not isinstance(raw_response, (bytes, bytearray)):
+            raise ValueError("model response body must be bytes")
+        if len(raw_response) > MAX_PROVIDER_RESPONSE_BYTES:
+            raise ValueError("model response exceeds maximum byte size")
+        try:
+            data = json.loads(raw_response.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValueError(f"model response is not valid UTF-8 JSON: {type(exc).__name__}") from exc
+        if not isinstance(data, dict):
+            raise ValueError("model response must be a JSON object")
+
         if "proposals" in data:
-            return list(data["proposals"])
-        if "choices" in data:
-            content = data["choices"][0]["message"]["content"]
-            parsed = json.loads(content)
-            return list(parsed.get("proposals", []))
-        return []
+            rows = data["proposals"]
+        elif "choices" in data:
+            choices = data["choices"]
+            if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
+                raise ValueError("model choices response has an invalid shape")
+            message = choices[0].get("message")
+            if not isinstance(message, dict) or not isinstance(message.get("content"), str):
+                raise ValueError("model choice message content must be a string")
+            try:
+                parsed = json.loads(message["content"])
+            except json.JSONDecodeError as exc:
+                raise ValueError("model choice content is not valid JSON") from exc
+            if not isinstance(parsed, dict):
+                raise ValueError("model choice content must decode to a JSON object")
+            rows = parsed.get("proposals", [])
+        else:
+            return []
+
+        if not isinstance(rows, list):
+            raise ValueError("model proposals field must be a JSON array")
+        return [row for row in rows if isinstance(row, dict)][:MAX_PROVIDER_PROPOSALS]
 
 
 class ConstitutionalGate:
