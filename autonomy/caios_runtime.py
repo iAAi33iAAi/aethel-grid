@@ -708,11 +708,15 @@ class ConstitutionalGate:
                     # Lexical checks do not stop a path that crosses an existing
                     # symlinked directory. Resolve every patch path against the
                     # checkout and fail closed when it reaches outside the repo.
-                    resolved_patch_path = (self.repo_root / normalized).resolve()
                     try:
+                        resolved_patch_path = (self.repo_root / normalized).resolve()
                         resolved_patch_path.relative_to(self.repo_root)
                     except ValueError:
                         reasons.append("patch path resolves outside repository root")
+                    except (OSError, RuntimeError) as exc:
+                        reasons.append(
+                            f"patch path resolution failed closed: {type(exc).__name__}"
+                        )
 
                     # Normalize case for portable fail-closed matching on
                     # case-insensitive filesystems (e.g. default Windows volumes).
