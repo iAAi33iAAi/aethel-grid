@@ -619,6 +619,13 @@ class ConstitutionalGate:
             if not isinstance(action.unified_diff, str):
                 reasons.append("patch action unified diff must be a string")
                 return False, reasons
+            diff_lines = action.unified_diff.splitlines()
+            if (
+                sum(line.startswith("diff --git ") for line in diff_lines) != 1
+                or sum(line.startswith("--- ") for line in diff_lines) != 1
+                or sum(line.startswith("+++ ") for line in diff_lines) != 1
+            ):
+                reasons.append("patch must contain exactly one file section")
             if not action.unified_diff:
                 reasons.append("patch action has no unified diff")
             if len(action.unified_diff) > self.max_patch_chars:
