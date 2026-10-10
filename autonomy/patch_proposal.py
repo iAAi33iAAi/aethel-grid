@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import subprocess
 import urllib.parse
@@ -20,7 +21,7 @@ from typing import Any
 from autonomy.agent_attestation import validate_agent_source_binding, validate_proposal
 from autonomy.agent_router import AgentRegistry
 from autonomy.context_window import ContextWindow
-from autonomy.caios_runtime import CandidateAction, ConstitutionalGate, ViabilityPlanner, digest
+from autonomy.caios_runtime import CandidateAction, ConstitutionalGate, ViabilityPlanner, digest, _normalize_string_list
 from autonomy.multi_agent_provider import EndpointSpec, MultiAgentProposalProvider
 from autonomy.model_admission import ModelRegistry
 from autonomy.protocol_admission import ProtocolRegistry
@@ -275,11 +276,21 @@ def load_provider(
     return MultiAgentProposalProvider(tuple(specs))
 
 
-def _number(item: dict[str, Any], key: str, default: float) -> float:
-    value = float(item.get(key, default))
-    if not 0.0 <= value <= 1.0:
-        raise ValueError(f"{key} must be within [0,1]")
+def _unit_interval_number(value: Any, field: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{field} must be a finite number within [0,1]")
+    if isinstance(value, int):
+        # Bound before float conversion so arbitrarily large integers cannot overflow.
+        if value < 0 or value > 1:
+            raise ValueError(f"{field} must be a finite number within [0,1]")
+        return float(value)
+    if not math.isfinite(value) or not 0.0 <= value <= 1.0:
+        raise ValueError(f"{field} must be a finite number within [0,1]")
     return value
+
+
+def _number(item: dict[str, Any], key: str, default: float) -> float:
+    return _unit_interval_number(item.get(key, default), key)
 
 
 def select_candidate(
@@ -290,9 +301,13 @@ def select_candidate(
     max_risk: float,
     max_proposals: int = 20,
 ) -> dict[str, Any]:
+    max_risk_value = _unit_interval_number(max_risk, "max_risk")
     registry = AgentRegistry(repo_root)
-    policy_risk = float(registry.policy.get("high_risk_threshold", ABSOLUTE_RISK_CEILING))
-    risk_ceiling = min(max_risk, policy_risk, ABSOLUTE_RISK_CEILING)
+    policy_risk = _unit_interval_number(
+        registry.policy.get("high_risk_threshold", ABSOLUTE_RISK_CEILING),
+        "registered high_risk_threshold",
+    )
+    risk_ceiling = min(max_risk_value, policy_risk, ABSOLUTE_RISK_CEILING)
     gate = ConstitutionalGate(repo_root)
     planner = ViabilityPlanner()
     eligible: list[tuple[float, str, dict[str, Any]]] = []
@@ -337,7 +352,7 @@ def select_candidate(
                 "resource_cost": _number(item, "resource_cost", 0.30),
                 "evidence_gain": _number(item, "evidence_gain", 0.50),
             }
-        except (TypeError, ValueError) as exc:
+        except (TypeError, ValueError, OverflowError) as exc:
             rejected.append({"index": index, "reasons": [f"invalid-metric:{exc}"]})
             continue
 
@@ -348,11 +363,28 @@ def select_candidate(
             })
             continue
 
+        target = item.get("target", ".")
+        rationale = item.get("rationale", "registered agent patch proposal")
+        invariant_ids = _normalize_string_list(item.get("invariant_ids", []))
+        requested_tool_ids = _normalize_string_list(item.get("tool_ids", []))
+        if not isinstance(target, str) or not target:
+            rejected.append({"index": index, "reasons": ["target-must-be-non-empty-string"]})
+            continue
+        if not isinstance(rationale, str):
+            rejected.append({"index": index, "reasons": ["rationale-must-be-string"]})
+            continue
+        if invariant_ids is None:
+            rejected.append({"index": index, "reasons": ["invariant-ids-must-be-string-array"]})
+            continue
+        if requested_tool_ids is None:
+            rejected.append({"index": index, "reasons": ["tool-ids-must-be-string-array"]})
+            continue
+
         action = CandidateAction(
             action_id=f"model-patch-{index}",
             kind="apply_patch",
-            target=str(item.get("target", ".")),
-            rationale=str(item.get("rationale", "registered agent patch proposal"))[:2000],
+            target=target,
+            rationale=rationale[:2000],
             expected_gain=metrics["expected_gain"],
             risk=metrics["risk"],
             reversibility=metrics["reversibility"],
@@ -365,7 +397,7 @@ def select_candidate(
             model_id=attestation.model_id,
             model_revision=attestation.model_revision,
             attestation_digest=attestation.attestation_digest,
-            invariant_ids=tuple(str(v) for v in item.get("invariant_ids", []) if isinstance(v, (str, int))),
+            invariant_ids=invariant_ids,
             tool_ids=(),
             authority_principal="model",
         )
