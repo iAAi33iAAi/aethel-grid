@@ -489,15 +489,18 @@ class ConstitutionalGate:
         ):
             reasons.append("model-originated actions cannot supply arbitrary executable commands")
 
-        required_capability = "supervise" if action.authority_principal == "caios" else "propose"
-        authorized, authority_reason = self.authority.authorize(
-            action.authority_principal,
-            required_capability,
-        )
-        if not authorized:
-            reasons.append(
-                f"authority principal '{action.authority_principal}' denied {required_capability}: {authority_reason}"
+        if not isinstance(action.authority_principal, str) or not action.authority_principal:
+            reasons.append("authority principal must be a non-empty string")
+        else:
+            required_capability = "supervise" if action.authority_principal == "caios" else "propose"
+            authorized, authority_reason = self.authority.authorize(
+                action.authority_principal,
+                required_capability,
             )
+            if not authorized:
+                reasons.append(
+                    f"authority principal '{action.authority_principal}' denied {required_capability}: {authority_reason}"
+                )
 
         if action.kind == "apply_patch":
             if not self.protected_policy_valid:
