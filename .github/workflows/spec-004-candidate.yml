@@ -17,5 +17,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Test strict candidate vector parsing
+        run: python3 specs/spec-004/test_validate_spec_004.py
       - name: Validate candidate vectors
         run: python3 specs/spec-004/validate_spec_004.py
