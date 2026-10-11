@@ -30,6 +30,28 @@ ANCHORS = {
 }
 
 
+def _reject_json_constant(value: str) -> None:
+    raise ValueError(f"non-standard JSON numeric constant is forbidden: {value}")
+
+
+def _reject_duplicate_object_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON object key: {key}")
+        result[key] = value
+    return result
+
+
+def strict_json_loads(raw: str) -> Any:
+    """Load vector JSON without duplicate-key ambiguity or NaN/Infinity extensions."""
+    return json.loads(
+        raw,
+        parse_constant=_reject_json_constant,
+        object_pairs_hook=_reject_duplicate_object_keys,
+    )
+
+
 def canonical_json_bytes(value: Any) -> bytes:
     """Deterministic UTF-8 JSON; non-finite numeric values are forbidden."""
     return json.dumps(
@@ -178,7 +200,9 @@ def evaluate(vector: dict[str, Any]) -> dict[str, Any]:
 def load_vector(test_id: str) -> dict[str, Any]:
     path = VECTOR_DIR / f"{test_id}.json"
     with path.open("r", encoding="utf-8") as handle:
-        vector = json.load(handle)
+        vector = strict_json_loads(handle.read())
+    if not isinstance(vector, dict):
+        raise ValueError(f"{test_id}: VECTOR_MUST_BE_OBJECT")
     if vector.get("specification_id") != SPECIFICATION_ID:
         raise ValueError(f"{test_id}: SPECIFICATION_ID_MISMATCH")
     if vector.get("specification_version") != SPECIFICATION_VERSION:
