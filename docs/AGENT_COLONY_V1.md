@@ -29,7 +29,13 @@ This is the first safe execution shell for collaborative engineering work across
 
 ## Toolbox contract
 
+The deterministic workers call `ops/agent_colony/toolbox_policy.py` before using a declared capability. The dispatcher records ALLOW/DENY decisions, rejects missing/unknown agents, gives explicit denial rules precedence over allowlists, and fails closed when a requested capability is absent. This is an in-process policy boundary, not an operating-system sandbox; it is suitable only because this first worker set is trusted repository-owned code and never executes inspected repository code.
+
 Toolbox capabilities are allowlists. Denials take precedence over an agent request. Automated agents must deny file writes, pushes, merges, secret reads and network requests. A proposed permission change is not effective until reviewed and tested. The human release owner is a gate, not an automatic source-code publisher.
+
+## Reuse of the existing CAIOS agent stack
+
+The colony does not invent a second model framework. Its architecture report inspects the existing `autonomy/agent_router.py` (capability ranking and independent-family quorum), `autonomy/multi_agent_provider.py` (parallel proposal calls), `autonomy/patch_proposal.py` (proposal-only patch planner), `autonomy/validate_patch_proposal.py` (secret-free network-none validator), and `.github/workflows/caios-autonomous-pr.yml` (proposal-to-PR pipeline). The current `autonomy/provider_endpoint_registry.json` has no endpoints and `autonomy/agent_endpoints.json` is absent, so real external model calls remain unconfigured. The next iteration should connect role-specific tasks and toolbox capabilities to the existing router/provider, prove concurrent collaboration with fake providers, and preserve the existing independent validation and human-reviewed PR boundary.
 
 ## Current deterministic probes
 
