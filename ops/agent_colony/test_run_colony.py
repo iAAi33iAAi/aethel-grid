@@ -32,6 +32,30 @@ class ColonyManifestTests(unittest.TestCase):
         self.assertTrue(any("dependency cycle at" in e for e in validate_manifest(manifest)))
 
 
+    def test_manifest_wrong_top_level_types_fail_closed(self):
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        manifest["policy"] = "HOLD"
+        errors = validate_manifest(manifest)
+        self.assertTrue(any("policy must be an object" in error for error in errors))
+        self.assertTrue(any("allow_repository_writes must be false" in error for error in errors))
+
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        manifest["agents"] = [{"id": ["not-a-string"], "toolbox_id": {}}]
+        errors = validate_manifest(manifest)
+        self.assertTrue(any("non-empty string id" in error for error in errors))
+
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        manifest["toolboxes"][0]["allow"] = ["safe", {"capability": "write_file"}]
+        errors = validate_manifest(manifest)
+        self.assertTrue(any("allow entries must be non-empty strings" in error for error in errors))
+
+    def test_manifest_rejects_overlapping_allow_and_deny_rules(self):
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        box = next(item for item in manifest["toolboxes"] if item["id"] == "tb_security_readonly")
+        box["allow"].append("read_security_docs")
+        self.assertTrue(any("allow/deny overlap" in error for error in validate_manifest(manifest)))
+
+
 
 class ToolboxPolicyTests(unittest.TestCase):
     def _manifest(self):
