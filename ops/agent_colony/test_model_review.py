@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from ops.agent_colony.model_review import (
+    _summarize_proposals,
     run_model_review,
     validate_model_review_config,
 )
@@ -34,6 +35,7 @@ class FakeProvider:
         return [
             {
                 "agent_id": agent_id,
+                "finding_id": "AC-001",
                 "kind": "review_finding",
                 "target": "conformance/GATE_STATUS.json",
                 "rationale": "Review the unresolved gate; api_key=NEVER_EMIT_THIS",
@@ -239,6 +241,50 @@ class ModelReviewTests(unittest.TestCase):
         self.assertNotIn("SHOULD_NOT_RUN", json.dumps(result))
         self.assertNotIn("NEVER_EMIT_THIS", json.dumps(result))
         self.assertEqual(len(result["proposals"]), 4)
+
+
+    def test_model_proposals_must_reference_known_findings_and_cannot_set_evidence_path(self):
+        clean_proposals, rejected_count, reasons = _summarize_proposals(
+            [
+                {
+                    "agent_id": "agent-protocol",
+                    "finding_id": "AC-001",
+                    "kind": "review_finding",
+                    "target": "injected/attacker-controlled/path.py",
+                    "title": "Review known finding",
+                    "rationale": "The finding should remain open until verified.",
+                    "unified_diff": "must-not-escape",
+                },
+                {
+                    "agent_id": "agent-security",
+                    "finding_id": "AC-999",
+                    "kind": "review_finding",
+                    "title": "Invented finding reference",
+                },
+                {
+                    "agent_id": "unregistered-agent",
+                    "finding_id": "AC-001",
+                    "kind": "review_finding",
+                    "title": "Unregistered identity",
+                },
+            ],
+            findings_by_id={
+                "AC-001": {
+                    "id": "AC-001",
+                    "severity": "high",
+                    "evidence_path": "conformance/GATE_STATUS.json",
+                }
+            },
+            agent_roles={"agent-protocol": "protocol_analyst", "agent-security": "security_analyst"},
+        )
+        self.assertEqual(len(clean_proposals), 1)
+        self.assertEqual(rejected_count, 2)
+        self.assertEqual(reasons["unknown_or_missing_finding_id"], 1)
+        self.assertEqual(reasons["unregistered_agent_identity"], 1)
+        self.assertEqual(clean_proposals[0]["target"], "conformance/GATE_STATUS.json")
+        self.assertEqual(clean_proposals[0]["role_id"], "protocol_analyst")
+        self.assertNotIn("unified_diff", json.dumps(clean_proposals))
+        self.assertNotIn("injected/attacker-controlled", json.dumps(clean_proposals))
 
 
 if __name__ == "__main__":
