@@ -92,6 +92,7 @@ def inspect_existing_agent_stack(root: Path) -> dict:
         ("proposal_only_patch_planner", "autonomy/patch_proposal.py", "Existing bounded, proposal-only patch planner"),
         ("isolated_patch_validator", "autonomy/validate_patch_proposal.py", "Existing secret-free, disposable, network-none patch validation"),
         ("existing_autonomous_workflow", ".github/workflows/caios-autonomous-pr.yml", "Existing proposal, validation and pull-request workflow"),
+        ("role_task_context_builder", "ops/agent_colony/collaboration.py", "Role-specific task packets that bind each review role to its declared toolbox"),
     ]
     components=[]
     for component_id, rel, description in specs:
@@ -110,9 +111,17 @@ def inspect_existing_agent_stack(root: Path) -> dict:
             pass
     agent_config=root/"autonomy"/"agent_endpoints.json"
     ready=bool(registry_valid and endpoint_count and agent_config.is_file())
+    provider_source=read_text(root/"autonomy"/"multi_agent_provider.py")
+    collaboration_test=read_text(root/"autonomy"/"test_multi_agent_provider.py")
     return {
         "strategy":"extend-existing-CAIOS-agent-stack; do-not-create-a-parallel-provider-runtime",
         "components":components,
+        "collaboration_contract":{
+            "provider_accepts_role_specific_contexts":"task_contexts" in provider_source,
+            "fake_provider_concurrency_test_present":"test_provider_fans_out_role_specific_toolboxes_concurrently" in collaboration_test,
+            "role_task_contexts_are_tool_authority":False,
+            "test_mode":"fake provider; no network calls",
+        },
         "provider_configuration":{
             "registry_path":"autonomy/provider_endpoint_registry.json",
             "registry_schema_valid":registry_valid,
