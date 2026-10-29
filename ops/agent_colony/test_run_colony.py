@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from run_colony import run, validate_manifest
+from run_colony import make_finding, run, validate_finding_contract, validate_manifest
 from toolbox_policy import ToolboxDispatcher, ToolboxPermissionError
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -14,6 +14,34 @@ class ColonyManifestTests(unittest.TestCase):
     def test_manifest_validates(self):
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         self.assertEqual(validate_manifest(manifest), [])
+
+    def test_report_contract_rejects_invalid_enums_paths_and_extra_fields(self):
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        valid = make_finding(
+            "security_analyst",
+            "high",
+            "Fixture finding",
+            "conformance/GATE_STATUS.json",
+            "Confirm the gate evidence.",
+        )
+        self.assertEqual(validate_finding_contract([valid], manifest), [])
+
+        invalid_severity = dict(valid, severity="extreme")
+        self.assertTrue(any(
+            "unsupported severity" in error
+            for error in validate_finding_contract([invalid_severity], manifest)
+        ))
+
+        unsafe_path = dict(valid, evidence_path="../../.env")
+        self.assertTrue(any(
+            "unsafe evidence path" in error
+            for error in validate_finding_contract([unsafe_path], manifest)
+        ))
+
+        unexpected = dict(valid, secret_value="must not be serialized")
+        errors = validate_finding_contract([unexpected], manifest)
+        self.assertTrue(any("unexpected fields" in error for error in errors))
+        self.assertNotIn("must not be serialized", json.dumps(errors))
 
     def test_mutation_capabilities_are_rejected(self):
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
