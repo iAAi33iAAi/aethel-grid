@@ -85,6 +85,46 @@ def read_text(path):
     return ""
 
 
+def inspect_existing_agent_stack(root: Path) -> dict:
+    specs = [
+        ("agent_router_and_quorum", "autonomy/agent_router.py", "Existing registry-based capability ranking and independent-family quorum planner"),
+        ("parallel_proposal_transport", "autonomy/multi_agent_provider.py", "Existing concurrent proposal transport with registered identity normalization"),
+        ("proposal_only_patch_planner", "autonomy/patch_proposal.py", "Existing bounded, proposal-only patch planner"),
+        ("isolated_patch_validator", "autonomy/validate_patch_proposal.py", "Existing secret-free, disposable, network-none patch validation"),
+        ("existing_autonomous_workflow", ".github/workflows/caios-autonomous-pr.yml", "Existing proposal, validation and pull-request workflow"),
+    ]
+    components=[]
+    for component_id, rel, description in specs:
+        path=root/rel
+        components.append({"id":component_id,"path":rel,"present":path.is_file(),"description":description})
+    registry_path=root/"autonomy"/"provider_endpoint_registry.json"
+    endpoint_count=None
+    registry_valid=False
+    if registry_path.is_file():
+        try:
+            data=json.loads(registry_path.read_text(encoding="utf-8"))
+            if isinstance(data,dict) and data.get("schema")=="caios-provider-endpoints/v1" and isinstance(data.get("endpoints"),list):
+                registry_valid=True
+                endpoint_count=len(data["endpoints"])
+        except (OSError,UnicodeDecodeError,json.JSONDecodeError):
+            pass
+    agent_config=root/"autonomy"/"agent_endpoints.json"
+    ready=bool(registry_valid and endpoint_count and agent_config.is_file())
+    return {
+        "strategy":"extend-existing-CAIOS-agent-stack; do-not-create-a-parallel-provider-runtime",
+        "components":components,
+        "provider_configuration":{
+            "registry_path":"autonomy/provider_endpoint_registry.json",
+            "registry_schema_valid":registry_valid,
+            "registered_endpoint_count":endpoint_count,
+            "agent_endpoint_config_present":agent_config.is_file(),
+            "model_backed_agents_ready":ready,
+            "api_key_values_reported":False
+        },
+        "recommended_next_step":"Use AgentRegistry for capability/family/quorum planning and MultiAgentProposalProvider for parallel role-specific proposals; add a toolbox contract adapter; exercise collaboration with fake providers first. Activate real endpoints only after explicit model/source/protocol/approval pins, egress controls and secret-manager/GitHub-secret configuration."
+    }
+
+
 def scan_env_names(repo, prefix):
     out=[]
     if not repo.is_dir(): return out
@@ -159,7 +199,11 @@ def run(root: Path, manifest_path: Path, portfolio_path: Path):
     def toolbox_agent():
         toolbox.authorize("toolbox_architect", "read_agent_manifest", "ops/agent_colony/manifest.json")
         toolbox.authorize("toolbox_architect", "validate_toolbox_allowlists", "ops/agent_colony/manifest.json")
+        toolbox.authorize("toolbox_architect", "inspect_existing_agent_stack", "autonomy/agent_router.py; autonomy/multi_agent_provider.py; provider registry")
         out=[]; byid={b["id"]:b for b in m["toolboxes"]}
+        stack = inspect_existing_agent_stack(root)
+        if not stack["provider_configuration"]["model_backed_agents_ready"]:
+            out.append(make_finding("toolbox_architect","medium","Model-backed collaboration is not configured in CAIOS","autonomy/provider_endpoint_registry.json","Reuse autonomy/agent_router.py, autonomy/multi_agent_provider.py, autonomy/patch_proposal.py and autonomy/validate_patch_proposal.py; first prove the role/task/toolbox contract with fake providers. Do not add live endpoints or keys until an operator approves exact model/source/protocol pins and egress controls.",f"registered_endpoint_count={stack['provider_configuration']['registered_endpoint_count']}; agent_endpoints_config_present={stack['provider_configuration']['agent_endpoint_config_present']}"))
         for a in m["agents"]:
             box=byid.get(a["toolbox_id"])
             if not box or not box.get("allow"): out.append(make_finding("toolbox_architect","high","Agent has no toolbox allowlist",a["id"],"Give the agent a reviewed, minimal allowlist."))
@@ -196,6 +240,7 @@ def run(root: Path, manifest_path: Path, portfolio_path: Path):
     agent_runs += [{"id":"integration_synthesizer","status":"completed","execution_mode":"parallel-evidence-join","findings_integrated":len(integrated)},{"id":"independent_redteam","status":"completed","execution_mode":"parallel-evidence-contract-challenge","findings_generated":len(redteam_findings)},{"id":"human_release_owner","status":"awaiting-human-review","execution_mode":"human-only-gate"}]
     return {"schema":"aethel-agent-colony-report/v1","generated_at_utc":datetime.now(timezone.utc).isoformat(),"colony_version":m.get("version"),"operating_mode":m.get("operating_mode"),"source_revision":head_sha(root),"source_head_sha":os.getenv("AETHEL_COLONY_HEAD_SHA") or head_sha(root),"source_base_sha":os.getenv("AETHEL_COLONY_BASE_SHA"),
             "portfolio":{"manifest":str(portfolio_path),"repositories_total":len(inv),"repositories_present":sum(r["present"] for r in inv),"repositories":inv},
+            "architecture_review":inspect_existing_agent_stack(root),
             "agents":m["agents"],"agent_runs":agent_runs,"tool_execution_audit":toolbox.audit_log(),"findings_summary":{"total":len(findings),**counts},"release_decision":"HOLD" if hold else "REVIEW","findings":findings,
             "limits":["Deterministic probes, not model-backed LLM agents.","Inspected repository code is not executed.","Environment-file path findings do not prove a credential is valid; values are never reported.","This report is not production-security or protocol certification."]}
 
