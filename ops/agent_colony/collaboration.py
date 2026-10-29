@@ -69,6 +69,21 @@ def build_role_task_contexts(
                 "execution_mode": "proposal-only; capability names are context metadata, not callable tools",
             },
             "output_contract": manifest.get("report_contract", {}),
+            "review_output_contract": {
+                "schema": "aethel-model-review-proposal/v1",
+                "required_fields": ["agent_id", "finding_id", "kind"],
+                "allowed_kinds": [
+                    "review_finding",
+                    "confirm_finding",
+                    "challenge_finding",
+                    "test_recommendation",
+                ],
+                "finding_id_rule": "Must exactly match an ID in input_findings; never invent finding IDs.",
+                "evidence_path_rule": "The host copies evidence_path from the referenced local finding; model-supplied target/path values are ignored.",
+                "text_rule": "Include at least one non-empty title, summary, rationale or recommendation.",
+                "non_executable": True,
+                "commands_and_diffs": "Discarded and never executed.",
+            },
             "egress_policy": {
                 "source_code_context": "NOT_INCLUDED",
                 "secrets": "NEVER_ALLOWED",
