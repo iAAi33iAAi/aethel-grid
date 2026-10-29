@@ -68,6 +68,8 @@ class ColonyRunnerTests(unittest.TestCase):
                 "gate_6": {"status": "BLOCKED"}
             }
             (root / "conformance" / "GATE_STATUS.json").write_text(json.dumps(gate_status), encoding="utf-8")
+            (root / "autonomy").mkdir()
+            (root / "autonomy" / "agent_router.py").write_text("# fixture: registry-based quorum planner\\n", encoding="utf-8")
             peer = root / "federated" / "openclaw-colony" / "backend"
             peer.mkdir(parents=True)
             (root / "federated" / "openclaw-colony" / ".env.windows").write_text("EXAMPLE_SECRET=never-print-this", encoding="utf-8")
