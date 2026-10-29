@@ -360,5 +360,37 @@ class ModelReviewTests(unittest.TestCase):
                 _load_evidence_report(report_path)
 
 
+    def test_rejected_model_proposal_downgrades_status_to_partial(self):
+        class OneInvalidProvider(FakeProvider):
+            def propose(self, snapshot, *, task_contexts=None):
+                rows = super().propose(snapshot, task_contexts=task_contexts)
+                rows[0]["finding_id"] = "AC-DOES-NOT-EXIST"
+                return rows
+
+        findings = [{
+            "id": "AC-001",
+            "severity": "high",
+            "title": "Fixture security finding",
+            "evidence_path": "conformance/GATE_STATUS.json",
+            "status": "open",
+        }]
+        fake = OneInvalidProvider(self.agent_ids)
+        with patch.dict(os.environ, {"CAIOS_ENABLE_MODEL_COLLABORATION": "1"}, clear=True):
+            result = run_model_review(
+                self.root,
+                config_path=self.config_path,
+                manifest_path=self.manifest_path,
+                findings=findings,
+                source_revision="a" * 40,
+                execute=True,
+                provider_loader=lambda _root, _path: fake,
+            )
+        self.assertEqual(result["status"], "PARTIAL")
+        self.assertEqual(result["rejected_proposal_count"], 1)
+        self.assertEqual(result["rejected_proposal_reasons"]["unknown_or_missing_finding_id"], 1)
+        self.assertEqual(result["release_decision"], "HOLD")
+        self.assertFalse(result["code_changes_created"])
+
+
 if __name__ == "__main__":
     unittest.main()
