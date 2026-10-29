@@ -62,11 +62,11 @@ The scanner does not execute source code from the inspected repositories. Portfo
 
 ## Opt-in model-backed review — still disabled by default
 
-The deterministic portfolio scanner remains offline and does not call a model. A separate adapter, \`ops/agent_colony/model_review.py\`, now preflights and can invoke the existing CAIOS proposal provider using the same four S1 role packets. It reuses \`autonomy/patch_proposal.py\` for registered endpoint, agent identity, model and protocol admission; it does not create a parallel provider runtime.
+The deterministic portfolio scanner remains offline and does not call a model. A separate adapter, `ops/agent_colony/model_review.py`, now preflights and can invoke the existing CAIOS proposal provider using the same four S1 role packets. It reuses `autonomy/patch_proposal.py` for registered endpoint, agent identity, model and protocol admission; it does not create a parallel provider runtime.
 
-The adapter intentionally requires all four roles to have distinct registered provider identities: protocol, security, DevOps/QA and toolbox architecture. Every entry must match an exact \`autonomy/provider_endpoint_registry.json\` pin and carry an HTTPS approval reference in that registry. The runtime admission pass also checks the registered agent source and model/protocol allowlists before a call. Model-review entries must set \`send_source_context: false\`; only bounded finding metadata is included. Toolbox names are context labels, not callable tools.
+The adapter intentionally requires all four roles to have distinct registered provider identities: protocol, security, DevOps/QA and toolbox architecture. Every entry must match an exact `autonomy/provider_endpoint_registry.json` pin and carry an HTTPS approval reference in that registry. The runtime admission pass also checks the registered agent source and model/protocol allowlists before a call. Model-review entries must set `send_source_context: false`; only bounded finding metadata is included. Toolbox names are context labels, not callable tools.
 
-No live configuration is committed. \`ops/agent_colony/model_review_config.example.json\` is a placeholder template, not an approved deployment configuration. Real activation requires the operator to register four distinct agent identities, exact endpoint URLs, exact model/revision and protocol/version pins, immutable source references and the appropriate approval references. API key values must remain outside the repository and may only be supplied through the named \`CAIOS_*_API_KEY\` environment variables or an approved secret manager.
+No live configuration is committed. `ops/agent_colony/model_review_config.example.json` is a placeholder template, not an approved deployment configuration. Real activation requires the operator to register four distinct agent identities, exact endpoint URLs, exact model/revision and protocol/version pins, immutable source references and the appropriate approval references. API key values must remain outside the repository and may only be supplied through the named `CAIOS_*_API_KEY` environment variables or an approved secret manager.
 
 ### Commands
 
@@ -74,14 +74,14 @@ Run a no-network preflight first:
 
     python ops/agent_colony/model_review.py --repo-root .
 
-When the approved configuration exists at \`autonomy/agent_endpoints.json\`, this command validates the pinned endpoint/role map without calling a model. If that file is absent, the result is \`DISABLED\`.
+When the approved configuration exists at `autonomy/agent_endpoints.json`, this command validates the pinned endpoint/role map without calling a model. If that file is absent, the result is `DISABLED`.
 
-Only after endpoint reviews, model/license review, egress review and secret setup are complete, execution requires **both** the explicit flag \`--execute-model-calls\` and \`CAIOS_ENABLE_MODEL_COLLABORATION=1\`. Example for PowerShell, using a previously generated redacted evidence report:
+Only after endpoint reviews, model/license review, egress review and secret setup are complete, execution requires **both** the explicit flag `--execute-model-calls` and `CAIOS_ENABLE_MODEL_COLLABORATION=1`. Example for PowerShell, using a previously generated redacted evidence report:
 
     $env:CAIOS_ENABLE_MODEL_COLLABORATION = "1"
     python ops/agent_colony/model_review.py --repo-root . --config autonomy/agent_endpoints.json --evidence-report C:\path\to\aethel-agent-colony-report.json --execute-model-calls
 
-The model call receives evidence metadata only. Returned content is treated as untrusted proposal text; command fields and diffs are discarded, nothing is applied, no tool is called, no branch/PR is created, and the final release decision remains \`HOLD\`. Review the output before considering any separate proposal workflow. Clear the environment switch after the approved test session:
+The model call receives evidence metadata only. Returned content is treated as untrusted proposal text; command fields and diffs are discarded, nothing is applied, no tool is called, no branch/PR is created, and the final release decision remains `HOLD`. Review the output before considering any separate proposal workflow. Clear the environment switch after the approved test session:
 
     Remove-Item Env:CAIOS_ENABLE_MODEL_COLLABORATION
 
