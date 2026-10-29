@@ -26,31 +26,187 @@ def make_finding(agent, severity, title, path, recommendation, details=""):
 
 
 def validate_manifest(m):
-    errors=[]
-    if m.get("schema") != "aethel-agent-colony/v1": errors.append("unsupported schema")
-    for key in ("allow_repository_writes", "allow_merges", "allow_live_payments", "allow_biometric_actions", "allow_secret_access", "allow_unrestricted_shell", "allow_external_network_from_agent_toolbox"):
-        if m.get("policy", {}).get(key) is not False: errors.append(f"unsafe policy: {key} must be false")
-    agents=m.get("agents", []); boxes=m.get("toolboxes", [])
-    if not agents or not boxes: return errors+["agents and toolboxes must be non-empty lists"]
-    aids=[a.get("id") for a in agents]; bids=[b.get("id") for b in boxes]
-    if len(aids)!=len(set(aids)): errors.append("agent IDs must be unique")
-    if len(bids)!=len(set(bids)): errors.append("toolbox IDs must be unique")
-    amap={a.get("id"):a for a in agents}; bmap={b.get("id"):b for b in boxes}
-    for a in agents:
-        box=bmap.get(a.get("toolbox_id")); aid=a.get("id", "missing")
-        if not box: errors.append(f"{aid}: toolbox missing"); continue
-        if not box.get("allow"): errors.append(f"{aid}: empty toolbox allowlist")
-        if aid != "human_release_owner" and not REQUIRED_DENY.issubset(set(box.get("deny", []))): errors.append(f"{aid}: missing mandatory deny rules")
-        for dep in a.get("depends_on", []):
-            if dep not in amap: errors.append(f"{aid}: unknown dependency {dep}")
-    visiting=set(); visited=set()
+    """Validate untrusted manifest structure before creating dispatchers or agents."""
+    errors = []
+    if not isinstance(m, dict):
+        return ["manifest must be a JSON object"]
+    if m.get("schema") != "aethel-agent-colony/v1":
+        errors.append("unsupported schema")
+
+    policy = m.get("policy")
+    if not isinstance(policy, dict):
+        errors.append("policy must be an object")
+        policy = {}
+    for key in (
+        "allow_repository_writes",
+        "allow_merges",
+        "allow_live_payments",
+        "allow_biometric_actions",
+        "allow_secret_access",
+        "allow_unrestricted_shell",
+        "allow_external_network_from_agent_toolbox",
+    ):
+        if policy.get(key) is not False:
+            errors.append(f"unsafe policy: {key} must be false")
+    if policy.get("default_decision") != "HOLD":
+        errors.append("policy default_decision must be HOLD")
+    if policy.get("require_human_review_for_code_changes") is not True:
+        errors.append("policy require_human_review_for_code_changes must be true")
+
+    agents = m.get("agents")
+    boxes = m.get("toolboxes")
+    if not isinstance(agents, list) or not agents:
+        errors.append("agents must be a non-empty list")
+        agents = []
+    if not isinstance(boxes, list) or not boxes:
+        errors.append("toolboxes must be a non-empty list")
+        boxes = []
+
+    valid_agents = []
+    for index, agent in enumerate(agents):
+        if not isinstance(agent, dict):
+            errors.append(f"agent entry {index} must be an object")
+            continue
+        aid = agent.get("id")
+        if not isinstance(aid, str) or not aid.strip():
+            errors.append(f"agent entry {index} must have a non-empty string id")
+            continue
+        valid_agents.append(agent)
+
+    valid_boxes = []
+    for index, box in enumerate(boxes):
+        if not isinstance(box, dict):
+            errors.append(f"toolbox entry {index} must be an object")
+            continue
+        bid = box.get("id")
+        if not isinstance(bid, str) or not bid.strip():
+            errors.append(f"toolbox entry {index} must have a non-empty string id")
+            continue
+        valid_boxes.append(box)
+
+    aids = [a["id"] for a in valid_agents]
+    bids = [b["id"] for b in valid_boxes]
+    if len(aids) != len(set(aids)):
+        errors.append("agent IDs must be unique")
+    if len(bids) != len(set(bids)):
+        errors.append("toolbox IDs must be unique")
+    amap = {a["id"]: a for a in valid_agents}
+    bmap = {b["id"]: b for b in valid_boxes}
+
+    for box in valid_boxes:
+        bid = box["id"]
+        allow = box.get("allow")
+        deny = box.get("deny")
+        if not isinstance(allow, list) or not allow:
+            errors.append(f"{bid}: allow must be a non-empty list")
+            allow = []
+        if not isinstance(deny, list):
+            errors.append(f"{bid}: deny must be a list")
+            deny = []
+        if any(not isinstance(item, str) or not item.strip() for item in allow):
+            errors.append(f"{bid}: allow entries must be non-empty strings")
+        if any(not isinstance(item, str) or not item.strip() for item in deny):
+            errors.append(f"{bid}: deny entries must be non-empty strings")
+        if len(allow) != len(set(item for item in allow if isinstance(item, str))):
+            errors.append(f"{bid}: duplicate allow capabilities")
+        if len(deny) != len(set(item for item in deny if isinstance(item, str))):
+            errors.append(f"{bid}: duplicate deny capabilities")
+        overlap = set(item for item in allow if isinstance(item, str)) & set(
+            item for item in deny if isinstance(item, str)
+        )
+        if overlap:
+            errors.append(f"{bid}: allow/deny overlap: {','.join(sorted(overlap))}")
+
+    for agent in valid_agents:
+        aid = agent["id"]
+        toolbox_id = agent.get("toolbox_id")
+        if not isinstance(toolbox_id, str) or toolbox_id not in bmap:
+            errors.append(f"{aid}: toolbox missing")
+        else:
+            box = bmap[toolbox_id]
+            if aid != "human_release_owner" and not REQUIRED_DENY.issubset(set(
+                item for item in box.get("deny", []) if isinstance(item, str)
+            )):
+                errors.append(f"{aid}: missing mandatory deny rules")
+        deps = agent.get("depends_on", [])
+        if not isinstance(deps, list) or any(not isinstance(dep, str) for dep in deps):
+            errors.append(f"{aid}: depends_on must be a list of agent IDs")
+            continue
+        for dep in deps:
+            if dep not in amap:
+                errors.append(f"{aid}: unknown dependency {dep}")
+
+    visiting = set()
+    visited = set()
+
     def visit(aid):
-        if aid in visiting: errors.append(f"dependency cycle at {aid}"); return
-        if aid in visited or aid not in amap: return
+        if aid in visiting:
+            errors.append(f"dependency cycle at {aid}")
+            return
+        if aid in visited or aid not in amap:
+            return
         visiting.add(aid)
-        for dep in amap[aid].get("depends_on", []): visit(dep)
-        visiting.remove(aid); visited.add(aid)
-    for aid in aids: visit(aid)
+        deps = amap[aid].get("depends_on", [])
+        if isinstance(deps, list):
+            for dep in deps:
+                if isinstance(dep, str):
+                    visit(dep)
+        visiting.remove(aid)
+        visited.add(aid)
+
+    for aid in aids:
+        visit(aid)
+
+    stages = m.get("stages")
+    if not isinstance(stages, list) or not stages:
+        errors.append("stages must be a non-empty list")
+    else:
+        stage_ids = set()
+        staged_agents = []
+        for index, stage in enumerate(stages):
+            if not isinstance(stage, dict):
+                errors.append(f"stage entry {index} must be an object")
+                continue
+            sid = stage.get("id")
+            members = stage.get("agents")
+            if not isinstance(sid, str) or not sid.strip():
+                errors.append(f"stage entry {index} must have a non-empty string id")
+            elif sid in stage_ids:
+                errors.append(f"duplicate stage ID: {sid}")
+            else:
+                stage_ids.add(sid)
+            if not isinstance(members, list) or any(not isinstance(aid, str) for aid in members):
+                errors.append(f"stage entry {index} agents must be a list of IDs")
+                continue
+            staged_agents.extend(members)
+            for aid in members:
+                if aid not in amap:
+                    errors.append(f"stage {sid}: unknown agent {aid}")
+                elif amap[aid].get("stage") != sid:
+                    errors.append(f"{aid}: stage assignment mismatch")
+        if len(staged_agents) != len(set(staged_agents)):
+            errors.append("each agent must appear in only one stage")
+        if set(staged_agents) != set(aids):
+            errors.append("stage membership must cover every agent exactly once")
+
+    contract = m.get("report_contract")
+    if not isinstance(contract, dict):
+        errors.append("report_contract must be an object")
+    else:
+        required_fields = contract.get("required_finding_fields")
+        severity_values = contract.get("severity_values")
+        status_values = contract.get("status_values")
+        if not isinstance(required_fields, list) or any(not isinstance(v, str) for v in required_fields):
+            errors.append("report_contract required_finding_fields must be a list of strings")
+        if not isinstance(severity_values, list) or not severity_values:
+            errors.append("report_contract severity_values must be a non-empty list")
+        elif any(v not in {"critical", "high", "medium", "low", "info"} for v in severity_values):
+            errors.append("report_contract contains unsupported severity")
+        if not isinstance(status_values, list) or not status_values:
+            errors.append("report_contract status_values must be a non-empty list")
+        if not isinstance(contract.get("secret_policy"), str) or not contract["secret_policy"].strip():
+            errors.append("report_contract secret_policy is required")
+
     return sorted(set(errors))
 
 
