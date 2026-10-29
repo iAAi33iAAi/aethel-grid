@@ -171,3 +171,9 @@ def test_multi_agent_provider_rejects_task_context_for_unknown_endpoint():
     provider = MultiAgentProposalProvider((), provider_factory=FakeProvider)
     with pytest.raises(ValueError, match="unconfigured agent IDs"):
         provider.propose({"source_revision": "x"}, task_contexts={"unregistered": {"role_id": "security_analyst"}})
+
+
+def test_multi_agent_provider_rejects_non_mapping_task_contexts():
+    provider = MultiAgentProposalProvider((), provider_factory=FakeProvider)
+    with pytest.raises(ValueError, match="task_contexts must map"):
+        provider.propose({"source_revision": "x"}, task_contexts=[])
