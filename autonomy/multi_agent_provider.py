@@ -80,11 +80,40 @@ class MultiAgentProposalProvider:
             normalized.append(proposal)
         return normalized
 
-    def propose(self, snapshot: dict[str, Any]) -> list[dict[str, Any]]:
+    def propose(
+        self,
+        snapshot: dict[str, Any],
+        *,
+        task_contexts: dict[str, dict[str, Any]] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Fan out one shared evidence snapshot plus an optional role-specific task per endpoint.
+
+        The task context is passed as data only. It grants no tool authority, does not
+        execute returned commands, and is still subject to egress policy, proposal
+        attestation, deterministic gates and isolated validation.
+        """
+        if not isinstance(snapshot, dict):
+            raise TypeError("snapshot must be a dictionary")
+        if task_contexts is None:
+            task_contexts = {}
+        if not isinstance(task_contexts, dict) or any(
+            not isinstance(agent_id, str) or not isinstance(task, dict)
+            for agent_id, task in task_contexts.items()
+        ):
+            raise ValueError("task_contexts must map agent IDs to dictionaries")
+        configured_ids = {spec.agent_id for spec in self.specs}
+        unknown_ids = set(task_contexts) - configured_ids
+        if unknown_ids:
+            raise ValueError("task context supplied for unconfigured agent IDs: " + ",".join(sorted(unknown_ids)))
         proposals = []
         self.last_errors = []
         with ThreadPoolExecutor(max_workers=min(self.max_workers, max(1, len(self.specs)))) as pool:
-            futures = {pool.submit(self._call, spec, snapshot): spec for spec in self.specs}
+            futures = {}
+            for spec in self.specs:
+                worker_snapshot = dict(snapshot)
+                if spec.agent_id in task_contexts:
+                    worker_snapshot["agent_task"] = dict(task_contexts[spec.agent_id])
+                futures[pool.submit(self._call, spec, worker_snapshot)] = spec
             for future in as_completed(futures):
                 spec = futures[future]
                 try:

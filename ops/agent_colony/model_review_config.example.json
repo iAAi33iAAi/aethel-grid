@@ -1,0 +1,62 @@
+{
+  "schema": "caios-agent-endpoints/v1",
+  "_notice": "TEMPLATE ONLY. Not runnable. Replace every REQUIRES_* value only after the corresponding agent, model, protocol and endpoint have been registered and reviewed. Never put API key values here.",
+  "agents": [
+    {
+      "endpoint_id": "REQUIRES_APPROVED_ENDPOINT_ID_PROTOCOL",
+      "agent_id": "REQUIRES_REGISTERED_AGENT_ID_PROTOCOL",
+      "role_id": "protocol_analyst",
+      "endpoint": "https://replace-with-approved-provider.invalid/v1/chat/completions",
+      "model": "REQUIRES_EXACT_MODEL_ID",
+      "model_revision": "REQUIRES_PINNED_MODEL_REVISION",
+      "protocol": "caios-openai-compatible-proposal-transport",
+      "protocol_version": "1.0.0",
+      "agent_version": "REQUIRES_REGISTERED_AGENT_VERSION",
+      "source_ref": "REQUIRES_IMMUTABLE_SOURCE_REFERENCE",
+      "api_key_env": "CAIOS_PROTOCOL_API_KEY",
+      "send_source_context": false
+    },
+    {
+      "endpoint_id": "REQUIRES_APPROVED_ENDPOINT_ID_SECURITY",
+      "agent_id": "REQUIRES_REGISTERED_AGENT_ID_SECURITY",
+      "role_id": "security_analyst",
+      "endpoint": "https://replace-with-approved-provider.invalid/v1/chat/completions",
+      "model": "REQUIRES_EXACT_MODEL_ID",
+      "model_revision": "REQUIRES_PINNED_MODEL_REVISION",
+      "protocol": "caios-openai-compatible-proposal-transport",
+      "protocol_version": "1.0.0",
+      "agent_version": "REQUIRES_REGISTERED_AGENT_VERSION",
+      "source_ref": "REQUIRES_IMMUTABLE_SOURCE_REFERENCE",
+      "api_key_env": "CAIOS_SECURITY_API_KEY",
+      "send_source_context": false
+    },
+    {
+      "endpoint_id": "REQUIRES_APPROVED_ENDPOINT_ID_DEVOPS",
+      "agent_id": "REQUIRES_REGISTERED_AGENT_ID_DEVOPS",
+      "role_id": "devops_qa",
+      "endpoint": "https://replace-with-approved-provider.invalid/v1/chat/completions",
+      "model": "REQUIRES_EXACT_MODEL_ID",
+      "model_revision": "REQUIRES_PINNED_MODEL_REVISION",
+      "protocol": "caios-openai-compatible-proposal-transport",
+      "protocol_version": "1.0.0",
+      "agent_version": "REQUIRES_REGISTERED_AGENT_VERSION",
+      "source_ref": "REQUIRES_IMMUTABLE_SOURCE_REFERENCE",
+      "api_key_env": "CAIOS_DEVOPS_API_KEY",
+      "send_source_context": false
+    },
+    {
+      "endpoint_id": "REQUIRES_APPROVED_ENDPOINT_ID_TOOLBOX",
+      "agent_id": "REQUIRES_REGISTERED_AGENT_ID_TOOLBOX",
+      "role_id": "toolbox_architect",
+      "endpoint": "https://replace-with-approved-provider.invalid/v1/chat/completions",
+      "model": "REQUIRES_EXACT_MODEL_ID",
+      "model_revision": "REQUIRES_PINNED_MODEL_REVISION",
+      "protocol": "caios-openai-compatible-proposal-transport",
+      "protocol_version": "1.0.0",
+      "agent_version": "REQUIRES_REGISTERED_AGENT_VERSION",
+      "source_ref": "REQUIRES_IMMUTABLE_SOURCE_REFERENCE",
+      "api_key_env": "CAIOS_TOOLBOX_API_KEY",
+      "send_source_context": false
+    }
+  ]
+}
