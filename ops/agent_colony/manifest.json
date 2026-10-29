@@ -1,0 +1,31 @@
+{
+  "schema":"aethel-agent-colony/v1","name":"AETHEL Read-only Engineering Colony","version":"0.1.0","operating_mode":"read-only-audit-and-plan",
+  "policy":{"default_decision":"HOLD","require_human_review_for_code_changes":true,"allow_repository_writes":false,"allow_merges":false,"allow_live_payments":false,"allow_biometric_actions":false,"allow_secret_access":false,"allow_unrestricted_shell":false,"allow_external_network_from_agent_toolbox":false},
+  "stages":[
+    {"id":"S0","name":"Inventory","parallel":false,"agents":["portfolio_cartographer"]},
+    {"id":"S1","name":"Parallel domain review","parallel":true,"agents":["protocol_analyst","security_analyst","devops_qa","toolbox_architect"]},
+    {"id":"S2","name":"Integration and challenge","parallel":true,"agents":["integration_synthesizer","independent_redteam"]},
+    {"id":"S3","name":"Human release gate","parallel":false,"agents":["human_release_owner"]}
+  ],
+  "agents":[
+    {"id":"portfolio_cartographer","role":"Repository inventory and dependency mapping","stage":"S0","depends_on":[],"toolbox_id":"tb_inventory_readonly","read_scopes":["manifests","README/docs","workflow names","commit SHAs"],"output":"repository_inventory"},
+    {"id":"protocol_analyst","role":"Canonical math, serialization, event and conformance audit","stage":"S1","depends_on":["portfolio_cartographer"],"toolbox_id":"tb_protocol_readonly","read_scopes":["specs","conformance","federation","interop"],"output":"protocol_findings"},
+    {"id":"security_analyst","role":"Secrets hygiene, identity, authorization, payments and privacy review","stage":"S1","depends_on":["portfolio_cartographer"],"toolbox_id":"tb_security_readonly","read_scopes":["security docs","auth/payment source paths","sensitive file names only","workflow permissions"],"output":"security_findings"},
+    {"id":"devops_qa","role":"CI, tests, dependencies and reproducibility audit","stage":"S1","depends_on":["portfolio_cartographer"],"toolbox_id":"tb_devops_readonly","read_scopes":["workflows","test paths","lockfiles","requirements","declared verification scope"],"output":"qa_findings"},
+    {"id":"toolbox_architect","role":"Agent/toolbox permissions and evidence contract validator","stage":"S1","depends_on":["portfolio_cartographer"],"toolbox_id":"tb_toolbox_readonly","read_scopes":["agent manifest","toolbox manifest","schemas","test harness"],"output":"toolbox_design_findings"},
+    {"id":"integration_synthesizer","role":"Deduplicate findings and order a dependency-aware work queue; never merge code","stage":"S2","depends_on":["protocol_analyst","security_analyst","devops_qa","toolbox_architect"],"toolbox_id":"tb_evidence_join_readonly","read_scopes":["agent reports","evidence index","work queue"],"output":"integrated_work_queue"},
+    {"id":"independent_redteam","role":"Challenge evidence quality, unsafe permissions and test gaps","stage":"S2","depends_on":["protocol_analyst","security_analyst","devops_qa","toolbox_architect"],"toolbox_id":"tb_redteam_readonly","read_scopes":["agent reports","test reports","policy manifest","workflow permissions"],"output":"challenge_report"},
+    {"id":"human_release_owner","role":"Human-only approval/rejection gate","stage":"S3","depends_on":["integration_synthesizer","independent_redteam"],"toolbox_id":"tb_human_release_gate","read_scopes":["integrated report","tests","diff","risk register"],"output":"approval_record"}
+  ],
+  "toolboxes":[
+    {"id":"tb_inventory_readonly","allow":["list_repository_paths","read_nonsecret_text","record_commit_sha","read_declared_manifests"],"deny":["read_secret_values","write_file","push_branch","merge_pr","dispatch_workflow","unrestricted_shell","network_request"]},
+    {"id":"tb_protocol_readonly","allow":["read_specs","read_golden_vectors","read_gate_status","compare_declared_digests","record_evidence_path"],"deny":["read_secret_values","change_normative_spec","rewrite_golden_vectors","promote_candidate","write_file","push_branch","merge_pr","network_request"]},
+    {"id":"tb_security_readonly","allow":["inspect_auth_code","inspect_payment_gates","inspect_workflow_permissions","detect_sensitive_file_paths_without_printing_contents","read_security_docs"],"deny":["read_secret_values","print_secret_values","use_credentials","invoke_live_payment","biometric_enrollment","write_file","push_branch","merge_pr","network_request"]},
+    {"id":"tb_devops_readonly","allow":["read_workflows","read_test_definitions","read_lockfiles","record_ci_run_links","run_colony_self_tests"],"deny":["read_secret_values","install_unpinned_tools_from_agent_task","execute_repository_script_by_default","write_file","push_branch","merge_pr","modify_secrets","network_request"]},
+    {"id":"tb_toolbox_readonly","allow":["read_agent_manifest","validate_toolbox_allowlists","validate_evidence_schema","propose_tool_contracts"],"deny":["read_secret_values","grant_new_permissions","write_file","push_branch","merge_pr","network_request"]},
+    {"id":"tb_evidence_join_readonly","allow":["read_agent_reports","deduplicate_findings","order_dependencies","draft_work_queue"],"deny":["read_secret_values","change_source_code","suppress_unresolved_critical_findings","approve_release","write_file","push_branch","merge_pr","network_request"]},
+    {"id":"tb_redteam_readonly","allow":["challenge_claims","check_evidence_presence","check_permission_boundaries","propose_negative_tests"],"deny":["read_secret_values","exploit_live_systems","run_destructive_tests","write_file","push_branch","merge_pr","network_request"]},
+    {"id":"tb_human_release_gate","allow":["record_human_approval","record_rejection","require_remediation"],"deny":["delegate_approval_to_model","auto_merge","auto_deploy","invoke_live_payment","read_secret_values","network_request","write_file","push_branch","merge_pr"]}
+  ],
+  "report_contract":{"required_finding_fields":["id","agent_id","severity","title","evidence_path","recommendation","status"],"severity_values":["critical","high","medium","low","info"],"status_values":["open","validated","false_positive","resolved"],"secret_policy":"Never emit secret values, biometric data, tokens or credential contents. Report redacted classifications and paths only."}
+}
