@@ -49,6 +49,16 @@ class ColonyManifestTests(unittest.TestCase):
         errors = validate_manifest(manifest)
         self.assertTrue(any("allow entries must be non-empty strings" in error for error in errors))
 
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        next(box for box in manifest["toolboxes"] if box["id"] == "tb_security_readonly")["deny"] = None
+        errors = validate_manifest(manifest)
+        self.assertTrue(any("deny must be a list" in error for error in errors))
+
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        manifest["report_contract"]["severity_values"] = [{}]
+        errors = validate_manifest(manifest)
+        self.assertTrue(any("unsupported severity" in error for error in errors))
+
     def test_manifest_rejects_overlapping_allow_and_deny_rules(self):
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         box = next(item for item in manifest["toolboxes"] if item["id"] == "tb_security_readonly")
