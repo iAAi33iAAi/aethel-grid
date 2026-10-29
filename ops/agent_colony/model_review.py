@@ -44,9 +44,13 @@ REQUIRED_AGENT_FIELDS = (
     "role_id",
 )
 METADATA_FIELDS = ("id", "severity", "title", "evidence_path", "status")
+ALLOWED_PROPOSAL_KINDS = {
+    "review_finding",
+    "confirm_finding",
+    "challenge_finding",
+    "test_recommendation",
+}
 OUTPUT_TEXT_FIELDS = {
-    "kind": 100,
-    "target": 300,
     "title": 300,
     "summary": 1000,
     "rationale": 1200,
@@ -236,27 +240,72 @@ def _scrub_text(value: str, limit: int) -> str:
     return text
 
 
-def _summarize_proposals(proposals: Any) -> list[dict[str, Any]]:
-    """Return bounded, non-executable review summaries; deliberately drop commands and diffs."""
+def _summarize_proposals(
+    proposals: Any,
+    *,
+    findings_by_id: dict[str, dict[str, str]],
+    agent_roles: dict[str, str],
+) -> tuple[list[dict[str, Any]], int, dict[str, int]]:
+    """Accept only bounded proposals tied to an existing evidence finding.
+
+    Model text is always untrusted. A model cannot create its own evidence path,
+    invent a finding ID, claim another registered agent's identity, or smuggle
+    executable commands/diffs into the persisted review summary.
+    """
     if not isinstance(proposals, list):
-        return []
-    output = []
+        return [], 1, {"proposal_list_invalid": 1}
+    output: list[dict[str, Any]] = []
+    rejected_reasons: dict[str, int] = {}
+
+    def reject(reason: str) -> None:
+        rejected_reasons[reason] = rejected_reasons.get(reason, 0) + 1
+
+    if len(proposals) > 100:
+        reject("proposal_limit_exceeded")
+
     for item in proposals[:100]:
         if not isinstance(item, dict):
+            reject("proposal_not_object")
             continue
-        row: dict[str, Any] = {"trust": "UNTRUSTED_MODEL_PROPOSAL"}
         agent_id = item.get("agent_id")
-        if isinstance(agent_id, str):
-            row["agent_id"] = agent_id[:160]
-        for key, limit in OUTPUT_TEXT_FIELDS.items():
-            value = item.get(key)
-            if isinstance(value, str):
-                row[key] = _scrub_text(value, limit)
+        if not isinstance(agent_id, str) or agent_id not in agent_roles:
+            reject("unregistered_agent_identity")
+            continue
+        finding_id = item.get("finding_id")
+        if not isinstance(finding_id, str) or finding_id not in findings_by_id:
+            reject("unknown_or_missing_finding_id")
+            continue
+        kind = item.get("kind")
+        if not isinstance(kind, str) or kind not in ALLOWED_PROPOSAL_KINDS:
+            reject("unsupported_proposal_kind")
+            continue
+        text_fields = {
+            key: _scrub_text(item[key], limit)
+            for key, limit in OUTPUT_TEXT_FIELDS.items()
+            if isinstance(item.get(key), str) and item[key].strip()
+        }
+        if not any(text_fields.get(key) for key in ("title", "summary", "rationale", "recommendation")):
+            reject("proposal_text_empty")
+            continue
+
+        source_finding = findings_by_id[finding_id]
+        row: dict[str, Any] = {
+            "trust": "UNTRUSTED_MODEL_PROPOSAL",
+            "agent_id": agent_id,
+            "role_id": agent_roles[agent_id],
+            "finding_id": finding_id,
+            "source_finding_severity": source_finding.get("severity", "unknown"),
+            # Target is copied from the local evidence record, never the model.
+            "target": source_finding["evidence_path"],
+            "kind": kind,
+            **text_fields,
+        }
         risk = item.get("risk")
         if isinstance(risk, (int, float)) and not isinstance(risk, bool) and 0 <= risk <= 1:
             row["risk"] = float(risk)
         output.append(row)
-    return output
+
+    return output, sum(rejected_reasons.values()), dict(sorted(rejected_reasons.items()))
 
 
 def run_model_review(
@@ -299,6 +348,17 @@ def run_model_review(
         }
 
     clean_findings = _metadata_findings(findings or [])
+    if not any(
+        isinstance(item.get("id"), str) and item.get("id")
+        and isinstance(item.get("evidence_path"), str) and item.get("evidence_path")
+        for item in clean_findings
+    ):
+        return {
+            **preflight,
+            "status": "BLOCKED",
+            "reason": "model review requires at least one evidence finding with an ID and evidence path",
+            "model_calls_attempted": False,
+        }
     manifest = _read_object(manifest_file, "colony manifest")
     config = _read_object(config_file, "model review config")
     agent_bindings = {item["agent_id"]: item["role_id"] for item in config["agents"]}
@@ -340,7 +400,17 @@ def run_model_review(
             "tool_calls_executed": False,
         }
 
-    summarized = _summarize_proposals(proposals)
+    findings_by_id = {
+        row["id"]: row
+        for row in clean_findings
+        if isinstance(row.get("id"), str) and row.get("id")
+        and isinstance(row.get("evidence_path"), str) and row.get("evidence_path")
+    }
+    summarized, rejected_proposal_count, rejected_proposal_reasons = _summarize_proposals(
+        proposals,
+        findings_by_id=findings_by_id,
+        agent_roles=agent_bindings,
+    )
     expected_agents = set(agent_bindings)
     responding_agents = {item.get("agent_id") for item in summarized if isinstance(item.get("agent_id"), str)}
     missing_agents = sorted(expected_agents - responding_agents)
@@ -362,6 +432,8 @@ def run_model_review(
         "missing_agents": missing_agents,
         "provider_errors": sanitized_errors,
         "proposals": summarized,
+        "rejected_proposal_count": rejected_proposal_count,
+        "rejected_proposal_reasons": rejected_proposal_reasons,
         "release_decision": "HOLD",
         "code_changes_created": False,
         "tool_calls_executed": False,
