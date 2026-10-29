@@ -235,6 +235,14 @@ class ModelReviewTests(unittest.TestCase):
             set(ROLES),
         )
         self.assertTrue(all(task["egress_policy"]["tool_execution_authority"] is False for task in fake.task_contexts.values()))
+        self.assertTrue(all(
+            task["review_output_contract"]["finding_id_rule"].startswith("Must exactly match")
+            for task in fake.task_contexts.values()
+        ))
+        self.assertTrue(all(
+            task["review_output_contract"]["non_executable"] is True
+            for task in fake.task_contexts.values()
+        ))
         self.assertTrue(all("details" not in task["input_findings"][0] for task in fake.task_contexts.values()))
         self.assertNotIn("SHOULD_NOT_BE_SENT", json.dumps(fake.snapshot))
         self.assertNotIn("SHOULD_NOT_BE_RETURNED", json.dumps(result))
