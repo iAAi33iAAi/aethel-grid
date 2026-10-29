@@ -59,3 +59,4 @@ The colony does not invent a second model framework. Its architecture report ins
     python ops/agent_colony/run_colony.py --repo-root . --manifest ops/agent_colony/manifest.json --system-manifest federation/system_manifest.json --output /tmp/aethel-agent-colony-report.json
 
 The scanner does not execute source code from the inspected repositories. Portfolio test commands remain the responsibility of explicit CI jobs.
+
