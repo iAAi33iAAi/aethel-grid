@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from ops.agent_colony.model_review import (
+    _metadata_findings,
     _summarize_proposals,
     run_model_review,
     validate_model_review_config,
@@ -293,6 +294,40 @@ class ModelReviewTests(unittest.TestCase):
         self.assertEqual(clean_proposals[0]["role_id"], "protocol_analyst")
         self.assertNotIn("unified_diff", json.dumps(clean_proposals))
         self.assertNotIn("injected/attacker-controlled", json.dumps(clean_proposals))
+
+
+    def test_evidence_intake_rejects_path_traversal_and_absolute_paths(self):
+        base = {
+            "id": "AC-001",
+            "severity": "high",
+            "title": "Fixture security finding",
+            "evidence_path": "../secret.txt",
+            "status": "open",
+        }
+        with self.assertRaisesRegex(ValueError, "unsafe evidence path"):
+            _metadata_findings([base])
+        base["evidence_path"] = "/etc/passwd"
+        with self.assertRaisesRegex(ValueError, "unsafe evidence path"):
+            _metadata_findings([base])
+
+    def test_evidence_intake_rejects_duplicate_finding_ids(self):
+        first = {
+            "id": "AC-001",
+            "severity": "high",
+            "title": "First finding",
+            "evidence_path": "conformance/GATE_STATUS.json",
+            "status": "open",
+            "details": "never-forward-this",
+        }
+        second = {
+            "id": "AC-001",
+            "severity": "critical",
+            "title": "Conflicting duplicate",
+            "evidence_path": "backend/stripe_bridge.py",
+            "status": "open",
+        }
+        with self.assertRaisesRegex(ValueError, "duplicate finding ID"):
+            _metadata_findings([first, second])
 
 
 if __name__ == "__main__":
