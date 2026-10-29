@@ -13,7 +13,7 @@ import os
 import re
 import subprocess
 import sys
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlsplit
 
@@ -253,13 +253,14 @@ def _metadata_findings(findings: Any) -> list[dict[str, str]]:
             raise ValueError(f"finding {finding_id} has invalid title text")
 
         evidence_path = row["evidence_path"]
-        posix_path = PurePosixPath(evidence_path)
+        path_parts = evidence_path.split("/")
         if (
             len(evidence_path) > 500
             or evidence_path.startswith(("/", "\\"))
             or "\\" in evidence_path
             or re.match(r"^[A-Za-z]:", evidence_path)
-            or any(part in {"", ".", ".."} for part in posix_path.parts)
+            or not path_parts
+            or any(part in {"", ".", ".."} for part in path_parts)
             or any(ord(ch) < 32 for ch in evidence_path)
             or "://" in evidence_path
         ):
