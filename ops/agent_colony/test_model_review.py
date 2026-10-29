@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from ops.agent_colony.model_review import (
+    _load_evidence_report,
     _metadata_findings,
     _summarize_proposals,
     run_model_review,
@@ -328,6 +329,35 @@ class ModelReviewTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(ValueError, "duplicate finding ID"):
             _metadata_findings([first, second])
+
+
+    def test_evidence_report_loader_requires_canonical_schema_and_commit(self):
+        with tempfile.TemporaryDirectory() as temp:
+            report_path = Path(temp) / "report.json"
+            report_path.write_text(json.dumps({
+                "schema": "other-report/v1",
+                "source_head_sha": "a" * 40,
+                "findings": [],
+            }), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "schema is not"):
+                _load_evidence_report(report_path)
+
+            report_path.write_text(json.dumps({
+                "schema": "aethel-agent-colony-report/v1",
+                "source_head_sha": "a" * 40,
+                "findings": [],
+            }), encoding="utf-8")
+            revision, findings = _load_evidence_report(report_path)
+            self.assertEqual(revision, "a" * 40)
+            self.assertEqual(findings, [])
+
+            report_path.write_text(json.dumps({
+                "schema": "aethel-agent-colony-report/v1",
+                "source_head_sha": "not-a-commit",
+                "findings": [],
+            }), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "commit SHA"):
+                _load_evidence_report(report_path)
 
 
 if __name__ == "__main__":
