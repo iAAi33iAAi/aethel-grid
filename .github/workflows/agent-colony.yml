@@ -1,0 +1,93 @@
+name: AETHEL Agent Colony — Read-only Portfolio Review
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "ops/agent_colony/**"
+      - "docs/AGENT_COLONY_V1.md"
+      - ".github/workflows/agent-colony.yml"
+      - "federation/system_manifest.json"
+  push:
+    branches: [main]
+    paths:
+      - "ops/agent_colony/**"
+      - "docs/AGENT_COLONY_V1.md"
+      - ".github/workflows/agent-colony.yml"
+      - "federation/system_manifest.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aethel-agent-colony-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  self-test:
+    name: Validate colony policy and runner
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run colony contract tests
+        run: python -m unittest discover -s ops/agent_colony -p 'test_*.py' -v
+
+  portfolio-scan:
+    name: Run read-only agents against portfolio checkouts
+    runs-on: ubuntu-latest
+    needs: self-test
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Checkout portfolio repos without credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p federated
+          while read -r repo; do
+            [ -n "$repo" ] || continue
+            git clone --depth 1 --no-tags "https://github.com/iAAi33iAAi/${repo}.git" "federated/${repo}"
+          done <<'REPOS'
+          safety-kernel
+          project-mono
+          openclaw-governance
+          undermoon
+          alpha-intelligence-hub
+          World-Tribe-Protocol
+          openclaw-colony
+          sports-math-agent-orchestration
+          calcula-colony
+          crew-colony
+          clawhub
+          ALEXARAC
+          REPOS
+      - name: Emit evidence-bearing colony report
+        run: |
+          python ops/agent_colony/run_colony.py \
+            --repo-root . \
+            --manifest ops/agent_colony/manifest.json \
+            --system-manifest federation/system_manifest.json \
+            --output /tmp/aethel-agent-colony-report.json
+      - name: Upload report (redacted findings only)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aethel-agent-colony-report
+          path: /tmp/aethel-agent-colony-report.json
+          if-no-files-found: warn
+          retention-days: 14
