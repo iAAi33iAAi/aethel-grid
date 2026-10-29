@@ -1,6 +1,9 @@
 import json
 import os
 import threading
+from pathlib import Path
+
+from ops.agent_colony.collaboration import build_role_task_contexts
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
@@ -99,3 +102,72 @@ def test_openai_compatible_provider_does_not_follow_redirects():
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+
+def test_provider_fans_out_role_specific_toolboxes_concurrently():
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads((root / "ops" / "agent_colony" / "manifest.json").read_text(encoding="utf-8"))
+    tasks = build_role_task_contexts(
+        manifest,
+        agent_bindings={
+            "provider-protocol": "protocol_analyst",
+            "provider-security": "security_analyst",
+        },
+        source_revision="a" * 40,
+        findings=[{
+            "id": "AC-01", "severity": "high", "title": "fixture finding",
+            "evidence_path": "conformance/GATE_STATUS.json", "details": "SHOULD_NOT_BE_SENT",
+        }],
+    )
+    barrier = threading.Barrier(2)
+    observed = {}
+    lock = threading.Lock()
+
+    class TaskCaptureProvider:
+        def __init__(self, endpoint, model, api_key=None):
+            self.model = model
+
+        def propose(self, snapshot):
+            barrier.wait(timeout=5)
+            with lock:
+                observed[self.model] = snapshot["agent_task"]
+            return [{"kind": "review_finding", "target": self.model, "risk": 0.1}]
+
+    provider = MultiAgentProposalProvider(
+        (
+            EndpointSpec(
+                agent_id="provider-protocol", endpoint="https://example.invalid/protocol",
+                model="model-protocol", model_revision="fixture-1", protocol="openai-compatible",
+                agent_version="1", source_ref="git:" + "1" * 40,
+            ),
+            EndpointSpec(
+                agent_id="provider-security", endpoint="https://example.invalid/security",
+                model="model-security", model_revision="fixture-1", protocol="openai-compatible",
+                agent_version="1", source_ref="git:" + "2" * 40,
+            ),
+        ),
+        provider_factory=TaskCaptureProvider,
+        max_workers=2,
+    )
+    proposals = provider.propose(
+        {"source_revision": "a" * 40, "evidence_mode": "metadata-only"},
+        task_contexts=tasks,
+    )
+
+    assert len(proposals) == 2
+    assert not provider.last_errors
+    assert observed["model-protocol"]["role_id"] == "protocol_analyst"
+    assert observed["model-security"]["role_id"] == "security_analyst"
+    assert "read_specs" in observed["model-protocol"]["toolbox"]["allow"]
+    assert "inspect_auth_code" in observed["model-security"]["toolbox"]["allow"]
+    assert "read_secret_values" in observed["model-security"]["toolbox"]["deny"]
+    assert all(item["egress_policy"]["tool_execution_authority"] is False for item in observed.values())
+    assert all("details" not in item["input_findings"][0] for item in observed.values())
+    assert "SHOULD_NOT_BE_SENT" not in json.dumps(observed)
+
+
+def test_multi_agent_provider_rejects_task_context_for_unknown_endpoint():
+    provider = MultiAgentProposalProvider((), provider_factory=FakeProvider)
+    with pytest.raises(ValueError, match="unconfigured agent IDs"):
+        provider.propose({"source_revision": "x"}, task_contexts={"unregistered": {"role_id": "security_analyst"}})
