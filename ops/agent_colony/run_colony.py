@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Read-only deterministic AETHEL agent-colony runner; inspected repo code is never executed."""
 from __future__ import annotations
-import argparse, hashlib, json, os, subprocess, sys
+import argparse, hashlib, json, os, re, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,6 +23,75 @@ def make_finding(agent, severity, title, path, recommendation, details=""):
     key = hashlib.sha256(f"{agent}|{title}|{path}".encode()).hexdigest()[:12]
     return {"id": f"AC-{key}", "agent_id": agent, "severity": severity, "title": title,
             "evidence_path": path, "recommendation": recommendation, "status": "open", "details": details}
+
+
+
+def validate_finding_contract(findings, manifest):
+    """Return schema errors for the complete deterministic finding set."""
+    contract = manifest.get("report_contract", {})
+    required = contract.get("required_finding_fields", [])
+    allowed_severity = set(contract.get("severity_values", []))
+    allowed_status = set(contract.get("status_values", []))
+    known_agents = {a.get("id") for a in manifest.get("agents", []) if isinstance(a, dict)}
+    errors = []
+    seen_ids = set()
+
+    if not isinstance(findings, list):
+        return ["findings must be a list"]
+
+    permitted_fields = set(required) | {"details"}
+    for index, finding in enumerate(findings):
+        if not isinstance(finding, dict):
+            errors.append(f"finding {index} must be an object")
+            continue
+        missing = set(required) - set(finding)
+        if missing:
+            errors.append(f"finding {index} missing fields: {','.join(sorted(missing))}")
+        extras = set(finding) - permitted_fields
+        if extras:
+            errors.append(f"finding {index} has unexpected fields: {','.join(sorted(str(v) for v in extras))}")
+
+        for field in required:
+            value = finding.get(field)
+            if not isinstance(value, str) or not value.strip():
+                errors.append(f"finding {index} field {field} must be a non-empty string")
+        if any(not isinstance(finding.get(field), str) or not finding[field].strip() for field in required):
+            continue
+
+        finding_id = finding["id"]
+        if not re.fullmatch(r"AC-[0-9a-f]{12}", finding_id):
+            errors.append(f"finding {finding_id} has an invalid ID")
+        if finding_id in seen_ids:
+            errors.append(f"duplicate finding ID: {finding_id}")
+        seen_ids.add(finding_id)
+
+        if finding["agent_id"] not in known_agents:
+            errors.append(f"finding {finding_id} references an unknown agent")
+        if finding["severity"] not in allowed_severity:
+            errors.append(f"finding {finding_id} has unsupported severity")
+        if finding["status"] not in allowed_status:
+            errors.append(f"finding {finding_id} has unsupported status")
+        if len(finding["title"]) > 300 or len(finding["recommendation"]) > 2000:
+            errors.append(f"finding {finding_id} text exceeds the report contract limits")
+
+        evidence_path = finding["evidence_path"]
+        path_part = evidence_path.split("#", 1)[0]
+        path_parts = path_part.split("/")
+        if (
+            len(evidence_path) > 600
+            or evidence_path.startswith(("/", "\\\\"))
+            or "\\\\" in evidence_path
+            or re.match(r"^[A-Za-z]:", evidence_path)
+            or any(part in {"", ".."} for part in path_parts)
+            or (len(path_parts) > 1 and "." in path_parts)
+            or "://" in evidence_path
+            or any(ord(ch) < 32 for ch in evidence_path)
+        ):
+            errors.append(f"finding {finding_id} has an unsafe evidence path")
+        details = finding.get("details")
+        if details is not None and (not isinstance(details, str) or len(details) > 2000):
+            errors.append(f"finding {finding_id} has invalid details")
+    return sorted(set(errors))
 
 
 def validate_manifest(m):
@@ -422,7 +491,8 @@ def run(root: Path, manifest_path: Path, portfolio_path: Path):
         synth_future=pool.submit(synthesize); redteam_future=pool.submit(redteam); integrated=synth_future.result(); redteam_findings=redteam_future.result()
     findings=list({f["id"]:f for f in integrated+redteam_findings}.values())
     findings.sort(key=lambda f:(SEVERITY[f["severity"]],f["agent_id"],f["id"]))
-    if any(not required.issubset(f) for f in findings): raise ValueError("Generated finding fails report contract")
+    contract_errors=validate_finding_contract(findings,m)
+    if contract_errors: raise ValueError("Generated finding fails report contract: "+"; ".join(contract_errors))
     counts={s:sum(1 for f in findings if f["severity"]==s) for s in SEVERITY}
     hold=counts["critical"]>0 or counts["high"]>0 or str(gates.get("gate_6",{}).get("status","UNKNOWN")).upper()=="BLOCKED"
     agent_runs=[{"id":"portfolio_cartographer","status":"completed","execution_mode":"inventory"}]
