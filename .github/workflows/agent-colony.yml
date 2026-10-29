@@ -31,10 +31,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: "3.11"
       - name: Run colony contract tests
@@ -48,10 +48,10 @@ jobs:
       contents: read
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: "3.11"
       - name: Checkout portfolio repos without credentials
@@ -77,6 +77,9 @@ jobs:
           ALEXARAC
           REPOS
       - name: Emit evidence-bearing colony report
+        env:
+          AETHEL_COLONY_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          AETHEL_COLONY_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
         run: |
           python ops/agent_colony/run_colony.py \
             --repo-root . \
@@ -85,7 +88,7 @@ jobs:
             --output /tmp/aethel-agent-colony-report.json
       - name: Upload report (redacted findings only)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: aethel-agent-colony-report
           path: /tmp/aethel-agent-colony-report.json
