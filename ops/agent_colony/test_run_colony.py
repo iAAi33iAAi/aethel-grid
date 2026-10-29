@@ -87,7 +87,7 @@ class ColonyRunnerTests(unittest.TestCase):
             titles = {f["title"] for f in report["findings"]}
             self.assertIn("Workspace contains a non-example environment file (contents not inspected)", titles)
             self.assertIn("Biometric attestation lacks visible request-signature admission", titles)
-            self.assertIn("Live Stripe transfer lacks visible signed-admission check", titles)
+            self.assertIn("Live Stripe transfer lacks complete signed-admission boundary", titles)
             self.assertIn("Model-backed collaboration is not configured in CAIOS", titles)
             self.assertFalse(report["architecture_review"]["provider_configuration"]["model_backed_agents_ready"])
             self.assertTrue(report["architecture_review"]["components"][0]["present"])
@@ -96,6 +96,80 @@ class ColonyRunnerTests(unittest.TestCase):
             self.assertEqual(report["release_decision"], "HOLD")
             self.assertTrue(report["tool_execution_audit"])
             self.assertTrue(all(row["decision"] == "ALLOW" for row in report["tool_execution_audit"]))
+
+
+    def test_security_probe_recognizes_signed_scanner_and_transfer_guards(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "ops" / "agent_colony").mkdir(parents=True)
+            (root / "ops" / "agent_colony" / "manifest.json").write_text(
+                MANIFEST.read_text(encoding="utf-8"), encoding="utf-8"
+            )
+            (root / "conformance").mkdir()
+            (root / "conformance" / "GATE_STATUS.json").write_text(
+                json.dumps({
+                    "gate_1": {"status": "BLOCKED"},
+                    "gate_3": {"status": "PARTIALLY_CLOSED"},
+                    "gate_4": {"status": "NOT_STARTED"},
+                    "gate_6": {"status": "BLOCKED"},
+                }),
+                encoding="utf-8",
+            )
+            (root / "autonomy").mkdir()
+            (root / "autonomy" / "agent_router.py").write_text(
+                "# fixture: capability router\\n", encoding="utf-8"
+            )
+            peer = root / "federated" / "openclaw-colony" / "backend"
+            peer.mkdir(parents=True)
+            (peer / "biometric_routes.py").write_text(
+                'from scanner_auth import verify_scanner_request\\n'
+                '@router.post("/attest")\\n'
+                'async def attest():\\n'
+                '    timestamp = "X-Scanner-Timestamp"\\n'
+                '    nonce = "X-Scanner-Nonce"\\n'
+                '    signature = "X-Scanner-Signature"\\n'
+                '    verify_scanner_request(db, timestamp=timestamp, nonce=nonce, signature=signature, body=signed_body)\\n',
+                encoding="utf-8",
+            )
+            (peer / "stripe_bridge.py").write_text(
+                'def _live_transfer(amount_cents, destination, task_id, label, idempotency_key, *, _permit=None):\\n'
+                '    if _permit is not _TRANSFER_CALL_PERMIT: raise PermissionError("denied")\\n'
+                '    stripe.Transfer.create(amount=amount_cents)\\n'
+                '# ── Main entry point\\n'
+                'def process_manna_payment(task_id, lineage_hash, *, admission=None, db=None):\\n'
+                '    if os.environ.get("COLONY_LIVE_PAYMENTS_ENABLED", "").lower() != "true": return None\\n'
+                '    ok, reason = verify_transfer_admission(db, admission, task_id=task_id, lineage_hash=lineage_hash, amount_cents=MANNA_CENTS)\\n'
+                '    if not ok: return None\\n'
+                '    community_id = _live_transfer(1, "acct", task_id, "community", "k1", _permit=_TRANSFER_CALL_PERMIT)\\n'
+                '    crew_id = _live_transfer(1, "acct", task_id, "crew", "k2", _permit=_TRANSFER_CALL_PERMIT)\\n'
+                '    architect_id = _live_transfer(1, "acct", task_id, "architect", "k3", _permit=_TRANSFER_CALL_PERMIT)\\n'
+                '# ── Webhook verification\\n',
+                encoding="utf-8",
+            )
+            (root / "federated" / "openclaw-colony" / "tests").mkdir(parents=True)
+            (root / "federated" / "openclaw-colony" / "tests" / "test_payment_admission.py").write_text(
+                "def test_raw_transfer_primitive_denies_direct_invocation(): pass\\n",
+                encoding="utf-8",
+            )
+            system = {"repositories": [
+                {"id": "aethel-grid", "path": ".", "role": "root",
+                 "verification": ["python -m unittest"], "verification_scope": "unit tests"},
+                {"id": "openclaw-colony", "path": "federated/openclaw-colony", "role": "colony",
+                 "verification": ["pytest"], "verification_scope": "security tests"},
+            ]}
+            sys_path = root / "federation" / "system_manifest.json"
+            sys_path.parent.mkdir(parents=True)
+            sys_path.write_text(json.dumps(system), encoding="utf-8")
+
+            report = run(root, root / "ops" / "agent_colony" / "manifest.json", sys_path)
+            titles = {finding["title"] for finding in report["findings"]}
+            self.assertNotIn(
+                "Biometric attestation lacks visible request-signature admission", titles
+            )
+            self.assertNotIn(
+                "Live Stripe transfer lacks complete signed-admission boundary", titles
+            )
+            self.assertEqual(report["release_decision"], "HOLD")
 
 
 if __name__ == "__main__":
