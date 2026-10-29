@@ -110,7 +110,12 @@ def load_endpoint_bindings(repo_root: Path) -> dict[str, dict[str, str]]:
     return bindings
 
 
-def load_provider(repo_root: Path, config_path: Path) -> MultiAgentProposalProvider:
+def load_provider(
+    repo_root: Path,
+    config_path: Path,
+    *,
+    require_source_context: bool = True,
+) -> MultiAgentProposalProvider:
     repo_root = repo_root.resolve()
     config_path = config_path.resolve()
     try:
@@ -189,7 +194,7 @@ def load_provider(repo_root: Path, config_path: Path) -> MultiAgentProposalProvi
             )
         )
 
-    if not any(spec.send_source_context for spec in specs):
+    if require_source_context and not any(spec.send_source_context for spec in specs):
         raise ValueError(
             "at least one registered agent must explicitly enable send_source_context for patch planning"
         )
