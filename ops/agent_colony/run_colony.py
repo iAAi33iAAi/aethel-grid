@@ -5,6 +5,7 @@ import argparse, hashlib, json, os, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
+from ops.agent_colony.toolbox_policy import ToolboxDispatcher
 
 SEVERITY = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 REQUIRED_DENY = {"write_file", "push_branch", "merge_pr", "read_secret_values", "network_request"}
@@ -102,11 +103,22 @@ def run(root: Path, manifest_path: Path, portfolio_path: Path):
     if errors: raise ValueError("Colony manifest rejected: "+"; ".join(errors))
     portfolio=load_json(portfolio_path).get("repositories")
     if not isinstance(portfolio,list) or not portfolio: raise ValueError("Portfolio manifest has no repository list")
-    inv=[inventory(root,d) for d in portfolio if isinstance(d,dict)]
+    toolbox = ToolboxDispatcher(m)
+    toolbox.authorize("portfolio_cartographer", "read_declared_manifests", "federation/system_manifest.json")
+    inv=[]
+    for d in portfolio:
+        if not isinstance(d, dict):
+            continue
+        toolbox.authorize("portfolio_cartographer", "list_repository_paths", str(d.get("path", ".")))
+        toolbox.authorize("portfolio_cartographer", "record_commit_sha", str(d.get("path", ".")))
+        inv.append(inventory(root,d))
     gates=load_json(root/"conformance/GATE_STATUS.json") if (root/"conformance/GATE_STATUS.json").is_file() else {}
     paths=[(".",root)]+[(r["path"],(root/r["path"]).resolve()) for r in inv if r["present"] and r["path"] not in ("", ".")]
 
     def protocol_agent():
+        toolbox.authorize("protocol_analyst", "read_gate_status", "conformance/GATE_STATUS.json")
+        toolbox.authorize("protocol_analyst", "read_specs", "specs/")
+        toolbox.authorize("protocol_analyst", "record_evidence_path", "conformance/GATE_STATUS.json")
         out=[]
         rules=[("gate_1","high","Canonical SPEC-004 math remains blocked","Ratify metric law and decision partitions before promotion."),("gate_3","medium","Canonical ledger byte profile remains partially closed","Ratify timestamp/escaping and preimage rules; then run cross-language golden vectors."),("gate_4","medium","Canonical checkpoint/Merkle gate has not started","Specify and test checkpoint semantics before claiming full protocol certification."),("gate_6","high","Level-4 certification remains blocked","Keep promotion on HOLD until prerequisite gates have explicit evidence.")]
         for gid,sev,title,action in rules:
@@ -116,6 +128,9 @@ def run(root: Path, manifest_path: Path, portfolio_path: Path):
         return out
 
     def security_agent():
+        toolbox.authorize("security_analyst", "detect_sensitive_file_paths_without_printing_contents", "portfolio")
+        toolbox.authorize("security_analyst", "inspect_auth_code", "biometric attestation")
+        toolbox.authorize("security_analyst", "inspect_payment_gates", "live transfer path")
         out=[]
         for rel,repo in paths:
             out.extend(scan_env_names(repo,rel))
@@ -132,6 +147,8 @@ def run(root: Path, manifest_path: Path, portfolio_path: Path):
         return out
 
     def devops_agent():
+        toolbox.authorize("devops_qa", "read_workflows", "portfolio workflows")
+        toolbox.authorize("devops_qa", "read_test_definitions", "portfolio test paths")
         out=[]
         for r in inv:
             if not r["present"]: out.append(make_finding("devops_qa","high","Manifest repository checkout is missing",r["path"] or ".","Fix checkout path and record the exact repository revision."))
@@ -140,6 +157,8 @@ def run(root: Path, manifest_path: Path, portfolio_path: Path):
         return out
 
     def toolbox_agent():
+        toolbox.authorize("toolbox_architect", "read_agent_manifest", "ops/agent_colony/manifest.json")
+        toolbox.authorize("toolbox_architect", "validate_toolbox_allowlists", "ops/agent_colony/manifest.json")
         out=[]; byid={b["id"]:b for b in m["toolboxes"]}
         for a in m["agents"]:
             box=byid.get(a["toolbox_id"])
@@ -154,8 +173,15 @@ def run(root: Path, manifest_path: Path, portfolio_path: Path):
         for future in as_completed(futures): stage1.extend(future.result())
     # Integrator and independent evidence challenger collaborate concurrently.
     required=set(m["report_contract"]["required_finding_fields"])
-    def synthesize(): return list({f["id"]:f for f in stage1}.values())
+    def synthesize():
+        toolbox.authorize("integration_synthesizer", "read_agent_reports", "current cycle findings")
+        toolbox.authorize("integration_synthesizer", "deduplicate_findings", "current cycle findings")
+        toolbox.authorize("integration_synthesizer", "order_dependencies", "current cycle findings")
+        return list({f["id"]:f for f in stage1}.values())
     def redteam():
+        toolbox.authorize("independent_redteam", "challenge_claims", "current cycle findings")
+        toolbox.authorize("independent_redteam", "check_evidence_presence", "current cycle findings")
+        toolbox.authorize("independent_redteam", "check_permission_boundaries", "manifest and report")
         return [make_finding("independent_redteam","critical","Agent output missing evidence fields",f.get("evidence_path","unknown"),"Reject output until all evidence fields exist.",f"Missing: {', '.join(sorted(required-set(f)))}") for f in stage1 if required-set(f)]
     with ThreadPoolExecutor(max_workers=2,thread_name_prefix="aethel-review") as pool:
         synth_future=pool.submit(synthesize); redteam_future=pool.submit(redteam); integrated=synth_future.result(); redteam_findings=redteam_future.result()
@@ -170,7 +196,7 @@ def run(root: Path, manifest_path: Path, portfolio_path: Path):
     agent_runs += [{"id":"integration_synthesizer","status":"completed","execution_mode":"parallel-evidence-join","findings_integrated":len(integrated)},{"id":"independent_redteam","status":"completed","execution_mode":"parallel-evidence-contract-challenge","findings_generated":len(redteam_findings)},{"id":"human_release_owner","status":"awaiting-human-review","execution_mode":"human-only-gate"}]
     return {"schema":"aethel-agent-colony-report/v1","generated_at_utc":datetime.now(timezone.utc).isoformat(),"colony_version":m.get("version"),"operating_mode":m.get("operating_mode"),"source_revision":head_sha(root),"source_head_sha":os.getenv("AETHEL_COLONY_HEAD_SHA") or head_sha(root),"source_base_sha":os.getenv("AETHEL_COLONY_BASE_SHA"),
             "portfolio":{"manifest":str(portfolio_path),"repositories_total":len(inv),"repositories_present":sum(r["present"] for r in inv),"repositories":inv},
-            "agents":m["agents"],"agent_runs":agent_runs,"findings_summary":{"total":len(findings),**counts},"release_decision":"HOLD" if hold else "REVIEW","findings":findings,
+            "agents":m["agents"],"agent_runs":agent_runs,"tool_execution_audit":toolbox.audit_log(),"findings_summary":{"total":len(findings),**counts},"release_decision":"HOLD" if hold else "REVIEW","findings":findings,
             "limits":["Deterministic probes, not model-backed LLM agents.","Inspected repository code is not executed.","Environment-file path findings do not prove a credential is valid; values are never reported.","This report is not production-security or protocol certification."]}
 
 
