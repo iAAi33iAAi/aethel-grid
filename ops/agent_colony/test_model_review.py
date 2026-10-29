@@ -228,6 +228,7 @@ class ModelReviewTests(unittest.TestCase):
             )
 
         self.assertEqual(result["status"], "PROPOSALS_ONLY")
+        self.assertEqual(result["egress_validation"]["status"], "ALLOW")
         self.assertTrue(result["model_calls_attempted"])
         self.assertFalse(result["code_changes_created"])
         self.assertFalse(result["tool_calls_executed"])
@@ -390,6 +391,32 @@ class ModelReviewTests(unittest.TestCase):
         self.assertEqual(result["rejected_proposal_reasons"]["unknown_or_missing_finding_id"], 1)
         self.assertEqual(result["release_decision"], "HOLD")
         self.assertFalse(result["code_changes_created"])
+
+
+    def test_egress_policy_blocks_credential_like_evidence_before_provider_call(self):
+        findings = [{
+            "id": "AC-001",
+            "severity": "high",
+            "title": "AWS_SECRET_ACCESS_KEY=never-send-this-secret",
+            "evidence_path": "conformance/GATE_STATUS.json",
+            "status": "open",
+        }]
+        fake = FakeProvider(self.agent_ids)
+        with patch.dict(os.environ, {"CAIOS_ENABLE_MODEL_COLLABORATION": "1"}, clear=True):
+            result = run_model_review(
+                self.root,
+                config_path=self.config_path,
+                manifest_path=self.manifest_path,
+                findings=findings,
+                source_revision="a" * 40,
+                execute=True,
+                provider_loader=lambda _root, _path: fake,
+            )
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertEqual(result["egress_validation"]["status"], "BLOCKED")
+        self.assertIn("credential-like-material-detected", result["egress_validation"]["reasons"])
+        self.assertFalse(result["model_calls_attempted"])
+        self.assertIsNone(fake.snapshot)
 
 
 if __name__ == "__main__":
