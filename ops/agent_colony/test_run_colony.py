@@ -52,7 +52,7 @@ class ColonyManifestTests(unittest.TestCase):
     def test_manifest_rejects_overlapping_allow_and_deny_rules(self):
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         box = next(item for item in manifest["toolboxes"] if item["id"] == "tb_security_readonly")
-        box["allow"].append("read_security_docs")
+        box["allow"].append("read_secret_values")
         self.assertTrue(any("allow/deny overlap" in error for error in validate_manifest(manifest)))
 
 
