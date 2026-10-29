@@ -485,6 +485,8 @@ def run_model_review(
 
 def _load_evidence_report(path: Path) -> tuple[str, list[dict[str, Any]]]:
     report = _read_object(path, "evidence report")
+    if report.get("schema") != "aethel-agent-colony-report/v1":
+        raise ValueError("evidence report schema is not aethel-agent-colony-report/v1")
     revision = report.get("source_head_sha") or report.get("source_revision")
     if not isinstance(revision, str) or not re.fullmatch(r"[0-9a-fA-F]{40}", revision):
         raise ValueError("evidence report must contain source_head_sha or source_revision as a commit SHA")
