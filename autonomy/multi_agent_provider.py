@@ -94,7 +94,8 @@ class MultiAgentProposalProvider:
         """
         if not isinstance(snapshot, dict):
             raise TypeError("snapshot must be a dictionary")
-        task_contexts = task_contexts or {}
+        if task_contexts is None:
+            task_contexts = {}
         if not isinstance(task_contexts, dict) or any(
             not isinstance(agent_id, str) or not isinstance(task, dict)
             for agent_id, task in task_contexts.items()
