@@ -463,7 +463,7 @@ def run_model_review(
                 "agent_id": str(error.get("agent_id", ""))[:160],
                 "error_type": str(error.get("error_type", "ProviderError"))[:120],
             })
-    status = "PROPOSALS_ONLY" if not sanitized_errors and not missing_agents else "PARTIAL"
+    status = "PROPOSALS_ONLY" if not sanitized_errors and not missing_agents and rejected_proposal_count == 0 else "PARTIAL"
     return {
         **preflight,
         "status": status,
