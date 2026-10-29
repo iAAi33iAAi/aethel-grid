@@ -5,7 +5,7 @@ import argparse, hashlib, json, os, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
-from ops.agent_colony.toolbox_policy import ToolboxDispatcher
+from toolbox_policy import ToolboxDispatcher
 
 SEVERITY = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 REQUIRED_DENY = {"write_file", "push_branch", "merge_pr", "read_secret_values", "network_request"}
