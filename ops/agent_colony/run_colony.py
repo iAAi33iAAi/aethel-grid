@@ -124,8 +124,11 @@ def validate_manifest(m):
             errors.append(f"{aid}: toolbox missing")
         else:
             box = bmap[toolbox_id]
+            box_deny = box.get("deny", [])
+            if not isinstance(box_deny, list):
+                box_deny = []
             if aid != "human_release_owner" and not REQUIRED_DENY.issubset(set(
-                item for item in box.get("deny", []) if isinstance(item, str)
+                item for item in box_deny if isinstance(item, str)
             )):
                 errors.append(f"{aid}: missing mandatory deny rules")
         deps = agent.get("depends_on", [])
@@ -200,10 +203,15 @@ def validate_manifest(m):
             errors.append("report_contract required_finding_fields must be a list of strings")
         if not isinstance(severity_values, list) or not severity_values:
             errors.append("report_contract severity_values must be a non-empty list")
-        elif any(v not in {"critical", "high", "medium", "low", "info"} for v in severity_values):
+        elif any(
+            not isinstance(v, str) or v not in {"critical", "high", "medium", "low", "info"}
+            for v in severity_values
+        ):
             errors.append("report_contract contains unsupported severity")
         if not isinstance(status_values, list) or not status_values:
             errors.append("report_contract status_values must be a non-empty list")
+        elif any(not isinstance(v, str) or not v.strip() for v in status_values):
+            errors.append("report_contract status_values must contain non-empty strings")
         if not isinstance(contract.get("secret_policy"), str) or not contract["secret_policy"].strip():
             errors.append("report_contract secret_policy is required")
 
