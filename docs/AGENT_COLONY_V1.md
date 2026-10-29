@@ -72,7 +72,7 @@ No live configuration is committed. `ops/agent_colony/model_review_config.exampl
 
 The adapter does not treat a successful HTTP response as a valid finding. Each accepted model proposal must identify one finding ID already present in the local evidence report, name a registered agent identity, use one of the bounded review kinds (`review_finding`, `confirm_finding`, `challenge_finding`, or `test_recommendation`), and include non-empty review text. The output target path and severity are copied from the trusted input finding, not from model text. Unknown IDs, unregistered identities, unsupported proposal kinds, commands and diffs are rejected or discarded. Rejection counts are reported without logging raw model output. If no evidence finding with a path and ID is provided, the adapter blocks before contacting a provider.
 
-This is evidence linkage, not proof that a model's assessment is correct. Model-backed output remains an untrusted advisory artifact and cannot change the report's `HOLD` disposition.
+The adapter also runs CAIOS `EgressPolicy` on the complete serialized snapshot and task-context map before invoking any provider; credential-like content, source context or oversized payloads block the call. The concrete provider repeats its own egress check. This is defense in depth, not proof that a model's assessment is correct. Model-backed output remains an untrusted advisory artifact and cannot change the report's `HOLD` disposition.
 
 ### Commands
 
