@@ -186,13 +186,31 @@ def run(root: Path, manifest_path: Path, portfolio_path: Path):
             bp=repo/"backend/biometric_routes.py"
             if bp.is_file():
                 src=read_text(bp); marker='@router.post("/attest")'; seg=src.split(marker,1)[1].split("@router.",1)[0] if marker in src else ""
-                if not all(x in seg for x in ("X-Scanner-Timestamp","X-Scanner-Nonce","X-Scanner-Signature")) or "_verify_scanner_signature(" not in seg:
+                scanner_headers=all(x in seg for x in ("X-Scanner-Timestamp","X-Scanner-Nonce","X-Scanner-Signature"))
+                scanner_verifier=("verify_scanner_request(" in seg and "scanner_auth" in src)
+                if not scanner_headers or not scanner_verifier:
                     out.append(make_finding("security_analyst","critical","Biometric attestation lacks visible request-signature admission",f"{rel.rstrip('/')}/backend/biometric_routes.py".lstrip("/"),"Require per-scanner authentication, signed body/liveness, freshness, persistent single-use nonces and replay tests."))
             sp=repo/"backend/stripe_bridge.py"
             if sp.is_file():
-                src=read_text(sp); seg=src.split("def _live_transfer(",1)[1].split("# ── Main entry point",1)[0] if "def _live_transfer(" in src else ""
-                if "stripe.Transfer.create(" in seg and ("verify_execution_admission(" not in seg or "admission_receipt" not in seg):
-                    out.append(make_finding("security_analyst","critical","Live Stripe transfer lacks visible signed-admission check",f"{rel.rstrip('/')}/backend/stripe_bridge.py".lstrip("/"),"Keep live transfer disabled until exact claims, current approval, gate evidence, replay protection and partial-transfer recovery are enforced."))
+                src=read_text(sp)
+                transfer_body=src.split("def _live_transfer(",1)[1].split("# ── Main entry point",1)[0] if "def _live_transfer(" in src else ""
+                payment_body=src.split("def process_manna_payment(",1)[1].split("# ── Webhook verification",1)[0] if "def process_manna_payment(" in src else ""
+                live_flag="COLONY_LIVE_PAYMENTS_ENABLED" in payment_body
+                receipt_check="verify_transfer_admission(" in payment_body
+                receipt_check_precedes_transfer=(
+                    "verify_transfer_admission(" in payment_body
+                    and "_live_transfer(" in payment_body
+                    and payment_body.index("verify_transfer_admission(") < payment_body.index("_live_transfer(")
+                )
+                primitive_guard="if _permit is not _TRANSFER_CALL_PERMIT:" in transfer_body
+                all_three_calls_guarded=payment_body.count("_permit=_TRANSFER_CALL_PERMIT") >= 3
+                admission_tests=read_text(repo/"tests/test_payment_admission.py")
+                direct_bypass_test="test_raw_transfer_primitive_denies_direct_invocation" in admission_tests
+                if "stripe.Transfer.create(" in transfer_body and not all((
+                    live_flag, receipt_check, receipt_check_precedes_transfer,
+                    primitive_guard, all_three_calls_guarded, direct_bypass_test,
+                )):
+                    out.append(make_finding("security_analyst","critical","Live Stripe transfer lacks complete signed-admission boundary",f"{rel.rstrip('/')}/backend/stripe_bridge.py".lstrip("/"),"Keep live transfer disabled until the payment entrypoint verifies a task/lineage/amount-bound receipt before any transfer, the raw Stripe primitive rejects direct invocation, all transfer calls carry the verified permit, and bypass tests pass."))
         return out
 
     def devops_agent():
