@@ -15,23 +15,25 @@ This is a source snapshot of the code refined across the AETHEL agent-colony and
 - Repository: [iAAi33iAAi/openclaw-colony](https://github.com/iAAi33iAAi/openclaw-colony)
 - Draft PR: [#23 — remove tracked Windows environment config](https://github.com/iAAi33iAAi/openclaw-colony/pull/23)
 - Source branch: `security/remove-tracked-env-windows`
-- Source snapshot commit: `cb3613b370c227cb2f5cab0680bc54304e5f237f`
+- Source snapshot commit: `5589d82a57b1c8af96f5427ee1f9026358128919`
 - Scope: environment file ignore rules, redacting scanner, CI workflow, pre-commit hook source, regression tests.
 
 ## Verification status and important limitations
 
-**Do not read this dossier as a production release certification.**
+**This is a source snapshot, not a production-release certification.**
 
-- The agent-colony workflow and several related workflows passed on the earlier recorded colony head. A new Windows-style path-validation change was then added, which triggered another round of CI; its later run must be checked at the PR.
-- The env-guard CI run was observed to fail during the guard step. The scanner over-reports ordinary source identifiers such as `token`, `authorization`, and `secret`, and can flag examples/documentation as potential credentials. The test step was skipped by that run because the guard step failed first. Fix the false positives and rerun the suite before accepting the guard.
-- The local claim of “101/101 tests passing” was supplied in the conversation, but it was not reproduced against the current committed source in this session.
-- The pre-commit script lives at `.githooks/pre-commit`. Git will not use it automatically unless the repository configures `core.hooksPath=.githooks` or a developer installs/copies the hook into `.git/hooks/pre-commit`. The source file alone is not an installed local hook.
-- Model-backed collaboration remains opt-in and is disabled unless the provider endpoint registry is populated and the explicit execution flags are enabled. Fake-provider tests are not evidence that real external model calls have run.
-- Payment and biometric integrations must stay disabled until their separate remediation PRs, secrets provisioning, operational review, and tests are accepted. Never put actual credential values in logs, test output, pull-request text, or this dossier.
+- The agent-colony source snapshot passed all seven relevant workflows at its captured code head. Those checks validate the read-only runner, configuration, and related CI paths; they do not certify outstanding protocol mathematics, production payment rails, or biometric authorization.
+- At OpenClaw env-guard head `5589d82a57b1c8af96f5427ee1f9026358128919`, the dedicated guard workflow passed and the checked-in regression suite reported **25 passed**. The full Colony CI application-test/install jobs, deployment gate, and frontend build also passed.
+- An earlier user-provided claim of “101/101 tests passing” was not reproduced on this source snapshot; the committed suite currently contains 25 tests and those tests passed in CI.
+- Earlier env-guard iterations produced false positives by scanning ordinary code/documentation with an assignment heuristic. The current version limits assignment scanning to environment/config file formats and keeps high-confidence token-format detection across text. The operations guide's static bearer sample was replaced with an environment-variable reference.
+- The env guard still reports the historical existence of `.env.windows` and historical credential-looking assignments as advisory findings. Default CI blocks current-tree findings but does not fail solely because the old filename occurs in history. History review and credential rotation remain necessary.
+- The pre-commit hook source lives at `.githooks/pre-commit`; it is not active until a developer sets `git config core.hooksPath .githooks` or installs the hook locally.
+- Model-backed collaboration remains disabled by default. Fake-provider tests do not establish that real provider calls have been made or approved.
+- All PRs remain draft and unmerged. The system-wide release disposition remains **HOLD** until unresolved metric-law, checkpoint/Merkle, ledger byte-profile, and Level-4 certification gates are closed with evidence.
 
 ## Contents
 
-## A. AETHEL agent colony — full changed source
+### A. Agent Colony source files
 - [`.github/workflows/agent-colony.yml`](#githubworkflowsagent-colonyyml)
 - [`autonomy/multi_agent_provider.py`](#autonomymultiagentproviderpy)
 - [`autonomy/patch_proposal.py`](#autonomypatchproposalpy)
@@ -46,21 +48,27 @@ This is a source snapshot of the code refined across the AETHEL agent-colony and
 - [`ops/agent_colony/test_run_colony.py`](#opsagentcolonytestruncolonypy)
 - [`ops/agent_colony/toolbox_policy.py`](#opsagentcolonytoolboxpolicypy)
 
-## B. OpenClaw environment guard — full changed source
-- `.githooks/pre-commit`
-- `.github/workflows/env_guard.yml`
-- `.gitignore`
-- `aethel_env_guard.py`
-- `test_aethel_env_guard.py`
+### B. Environment and Credential Guard source files
+- [`.env.example`](#envexample)
+- [`.githooks/pre-commit`](#githookspre-commit)
+- [`.github/workflows/env_guard.yml`](#githubworkflowsenvguardyml)
+- [`.gitignore`](#gitignore)
+- [`aethel_env_guard.py`](#aethelenvguardpy)
+- [`docs/ENV_GUARD.md`](#docsenvguardmd)
+- [`docs/audit/06-NODE-OPERATIONS-GUIDE.md`](#docsaudit06-node-operations-guidemd)
+- [`test_aethel_env_guard.py`](#testaethelenvguardpy)
 
 ## Explicit exclusion
-The `.env.windows` file path appears in the historical remediation context, but its contents are not reproduced here. A code archive should never copy the suspected credential-bearing file into another document.
+
+The removed `.env.windows` file is intentionally excluded. It is the subject of the credential-exposure remediation; its contents are not copied into this document.
 
 ## Pull requests
+
 - [AETHEL agent colony PR #44](https://github.com/iAAi33iAAi/aethel-grid/pull/44)
 - [OpenClaw scanner-auth PR #21](https://github.com/iAAi33iAAi/openclaw-colony/pull/21)
 - [OpenClaw signed-payment-admission PR #22](https://github.com/iAAi33iAAi/openclaw-colony/pull/22)
 - [OpenClaw env-remediation PR #23](https://github.com/iAAi33iAAi/openclaw-colony/pull/23)
+
 
 ## A. AETHEL agent colony — full changed source
 
@@ -3234,7 +3242,6 @@ if [ "$status" -ne 0 ]; then
 fi
 exit "$status"
 ```
-
 ### `.github/workflows/env_guard.yml`
 
 - Repository: `iAAi33iAAi/openclaw-colony`
@@ -3278,7 +3285,6 @@ jobs:
       - name: Run env-guard regression tests
         run: python -m pytest -q test_aethel_env_guard.py
 ```
-
 ### `.gitignore`
 
 - Repository: `iAAi33iAAi/openclaw-colony`
@@ -3350,12 +3356,11 @@ htmlcov/
 .envrc
 .envrc.*
 ```
-
 ### `aethel_env_guard.py`
 
 - Repository: `iAAi33iAAi/openclaw-colony`
 - Branch: `security/remove-tracked-env-windows`
-- Blob SHA: `0617c23e9963ba7b44681906c1a2e4a3e3ed465d`
+- Blob SHA: `839e5aadfdac627386400d9b301d7f216ff0673c`
 - Source: https://github.com/iAAi33iAAi/openclaw-colony/blob/security/remove-tracked-env-windows/aethel_env_guard.py
 
 ```python
@@ -3384,9 +3389,7 @@ TEMPLATE_SUFFIXES = (".example", ".sample", ".template", ".dist")
 SENSITIVE_ENV_NAMES = {".envrc", ".envrc.local", ".envrc.private"}
 
 SECRET_NAME = re.compile(
-    r"(?i)(?P<name>[A-Z0-9_.-]*(?:API[_-]?KEY|SECRET|TOKEN|PASSWORD|PASSWD|"
-    r"PRIVATE[_-]?KEY|ACCESS[_-]?KEY|AUTHORIZATION|AUTH[_-]?TOKEN|BEARER)"
-    r"[A-Z0-9_.-]*)\s*[\"']?\s*[:=]\s*[\"']?(?P<value>[^\"'#,;\r\n]+)"
+    r"""^\s*(?:export\s+)?["']?(?P<name>(?:[A-Z][A-Z0-9_]*_)?(?:API[_-]?KEY|ADMIN[_-]?KEY|SECRET|TOKEN|PASSWORD|PASSWD|PRIVATE[_-]?KEY|ACCESS[_-]?KEY|AUTHORIZATION|AUTH[_-]?TOKEN|BEARER|WEBHOOK[_-]?SECRET|KEY)[A-Z0-9_.-]*)["']?\s*[:=]\s*["']?(?P<value>[^"'#,;\r\n]*?)["']?\s*,?\s*(?:#.*)?$"""
 )
 HIGH_CONFIDENCE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("PRIVATE_KEY_BLOCK", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----")),
@@ -3504,6 +3507,8 @@ def _is_placeholder(raw: str) -> bool:
         return True
     if REFERENCE_VALUE.fullmatch(value):
         return True
+    if "..." in value or ("<" in value and ">" in value):
+        return True
     if value and set(value) <= {"x", "X", "*", ".", "_", "-"}:
         return True
     return False
@@ -3526,6 +3531,18 @@ class EnvFileScanner:
         return findings
 
 
+def _supports_assignment_scan(path: str) -> bool:
+    """Only parse key/value assignments in environment/config files; code files use token patterns."""
+    normalized = path.replace("\\", "/")
+    name = PurePosixPath(normalized).name.casefold()
+    suffix = PurePosixPath(name).suffix
+    return (
+        name.startswith(".env")
+        or name.endswith(".env")
+        or suffix in {".ini", ".yaml", ".yml", ".toml", ".cfg", ".conf", ".properties"}
+    )
+
+
 class CredentialPatternScanner:
     """Find likely credential material without retaining or displaying values."""
 
@@ -3542,7 +3559,7 @@ class CredentialPatternScanner:
                         source,
                         "Credential-like material detected; value intentionally redacted.",
                     )
-            assignment = SECRET_NAME.search(line)
+            assignment = SECRET_NAME.search(line) if _supports_assignment_scan(path) else None
             if assignment:
                 name = assignment.group("name").strip(chr(34) + chr(39)).casefold()
                 value = assignment.group("value")
@@ -3768,12 +3785,11 @@ def main(argv: list[str] | None = None) -> int:
 if __name__ == "__main__":
     raise SystemExit(main())
 ```
-
 ### `test_aethel_env_guard.py`
 
 - Repository: `iAAi33iAAi/openclaw-colony`
 - Branch: `security/remove-tracked-env-windows`
-- Blob SHA: `cb8c8d016ba297019b64538a2b5046d36c43aa1a`
+- Blob SHA: `876da702284089694716d927b7342124839baa51`
 - Source: https://github.com/iAAi33iAAi/openclaw-colony/blob/security/remove-tracked-env-windows/test_aethel_env_guard.py
 
 ```python
@@ -3905,7 +3921,39 @@ class CredentialPatternScannerTests(unittest.TestCase):
         ]
         for row in rows:
             with self.subTest(variable=row.split("=")[0]):
-                self.assertTrue(self.scanner.scan_text("config.txt", row, source="tracked"))
+                self.assertTrue(self.scanner.scan_text("settings.env", row, source="tracked"))
+
+    def test_source_code_identifiers_do_not_trigger_assignment_heuristic(self):
+        rows = [
+            ("backend/auth.py", "token = issued_token"),
+            ("backend/federation.py", "authorization = bearer_scheme"),
+            ("backend/aethel_interface.py", "_bas_secret_bytes = secret.encode()"),
+            ("backend/biometric.py", "biometric_token = payload.token"),
+            ("docs/guide.md", "Authorization: Bearer <token>"),
+        ]
+        for path, line in rows:
+            with self.subTest(path=path):
+                findings = self.scanner.scan_text(path, line, source="tracked")
+                self.assertFalse(
+                    any(item.rule_id == "CREDENTIAL_ASSIGNMENT" for item in findings),
+                    msg=f"source-code heuristic triggered for {path}",
+                )
+
+    def test_configuration_assignment_still_triggers(self):
+        findings = self.scanner.scan_text(
+            "settings.yaml",
+            "COLONY_ADMIN_KEY: non-placeholder-value-38176",
+            source="tracked",
+        )
+        self.assertTrue(any(item.rule_id == "CREDENTIAL_ASSIGNMENT" for item in findings))
+
+    def test_ellipses_and_angle_bracket_placeholders_are_allowed(self):
+        for value in ("sk_test_...", "<generated-at-install>", "replace-me"):
+            with self.subTest(placeholder=value):
+                self.assertEqual(
+                    self.scanner.scan_text("template.env", "STRIPE_SECRET_KEY=" + value, source="tracked"),
+                    [],
+                )
 
 
 class GuardReportTests(unittest.TestCase):
@@ -3981,10 +4029,11 @@ class GitIntegrationTests(unittest.TestCase):
         self.assertFalse(any(item.rule_id == "CREDENTIAL_ASSIGNMENT" for item in report.findings))
 
     def test_precommit_blocks_credential_in_staged_normal_file(self):
-        (self.root / "settings.py").write_text("COLONY_ADMIN_" + "KEY=real-secret-value-33822\n", encoding="utf-8")
+        synthetic_token = "sk_live_" + "abcdefghijklmnop1234"
+        (self.root / "settings.py").write_text("payload = '" + synthetic_token + "'\n", encoding="utf-8")
         self.git("add", "settings.py")
         report = self.guard.run_precommit()
-        self.assertTrue(any(item.rule_id == "CREDENTIAL_ASSIGNMENT" for item in report.findings))
+        self.assertTrue(any(item.rule_id == "STRIPE_LIVE_KEY" for item in report.findings))
 
     def test_history_scan_finds_deleted_env_path_and_never_prints_value(self):
         candidate_value = "historic-secret-value-should-not-appear-7782"
@@ -4014,12 +4063,13 @@ class GitIntegrationTests(unittest.TestCase):
         ))
 
     def test_ci_report_detects_secret_in_normal_tracked_file(self):
-        (self.root / "config.py").write_text("COLONY_ADMIN_" + "KEY=committed-real-value-98432\n", encoding="utf-8")
+        synthetic_token = "sk_live_" + "abcdefghijklmnop1234"
+        (self.root / "config.py").write_text("payload = '" + synthetic_token + "'\n", encoding="utf-8")
         self.git("add", "config.py")
         self.git("commit", "-qm", "fixture credential")
         report = self.guard.run_ci()
         self.assertTrue(any(
-            item.rule_id == "CREDENTIAL_ASSIGNMENT" and item.path == "config.py" and item.source == "tracked"
+            item.rule_id == "STRIPE_LIVE_KEY" and item.path == "config.py" and item.source == "tracked"
             for item in report.findings
         ))
 
@@ -4027,3 +4077,338 @@ class GitIntegrationTests(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 ```
+
+### `.env.example`
+
+- Repository: `iAAi33iAAi/openclaw-colony`
+- Branch: `security/remove-tracked-env-windows`
+- Blob SHA: `6f4e1720a50c96b5720e627be414d8a4a529e201`
+- Source: https://github.com/iAAi33iAAi/openclaw-colony/blob/security/remove-tracked-env-windows/.env.example
+
+```dotenv
+# ── OpenClaw Colony — Environment Variables ───────────────────────────────────
+# Copy this file to .env and fill in your values before running:
+#   cp .env.example .env
+#
+# NEVER commit .env to version control.
+
+# ── Stripe Payment Bridge ─────────────────────────────────────────────────────
+# Leave STRIPE_SECRET_KEY blank to run in mock mode (no real charges).
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+
+# Connected account IDs for MANNA splits (84% / 15% / 1%)
+STRIPE_COMMUNITY_ACCOUNT=acct_...
+STRIPE_CREW_ACCOUNT=acct_...
+STRIPE_ARCHITECT_ACCOUNT=acct_...
+
+# ── Runtime Security / API Key Auth ──────────────────────────────────────────
+# Set to "production" to enable fail-closed production guardrails.
+COLONY_ENV=development
+COLONY_BAS_SECRET=replace-me-with-generated-secret
+
+# Set to "false" only for local development; production rejects auth disablement.
+COLONY_AUTH_ENABLED=true
+# Require an explicit admin decision after AETHEL safety approval.
+COLONY_APPROVAL_REQUIRED=false
+
+# Strong random secret for /admin/* routes
+# Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+COLONY_ADMIN_KEY=replace-me-with-random-secret
+
+# ── External runtime integrations ────────────────────────────────────────────
+AETHEL_SPORTS_MATH_URL=
+AETHEL_PROJECT_MONO_URL=
+AETHEL_UNDERMOON_URL=
+AETHEL_GRID_URL=
+# Optional local checkout of ELXaber/chaos-persona/Project_Andrew.
+# Keep the CAIOS repository separate; do not copy its source into Colony.
+CAIOS_SOURCE_PATH=
+# Run CAIOS as an optional advisory reasoning pass for normal requests.
+CAIOS_ADVISORY_ENABLED=false
+
+# Path inside the container (mapped to the colony-data Docker volume)
+COLONY_DB_PATH=/data/colony.db
+
+# ── Rate Limits (requests per minute) ────────────────────────────────────────
+RATE_PROCESS=30
+RATE_ADMIN=60
+RATE_WEBHOOK=120
+# Optional standalone Safety Kernel evidence service.
+AETHEL_PROOF_KERNEL_URL=
+```
+
+### `docs/ENV_GUARD.md`
+
+- Repository: `iAAi33iAAi/openclaw-colony`
+- Branch: `security/remove-tracked-env-windows`
+- Blob SHA: `de07585ae1169353d6aec61637ab7bc8ee66a5ba`
+- Source: https://github.com/iAAi33iAAi/openclaw-colony/blob/security/remove-tracked-env-windows/docs/ENV_GUARD.md
+
+```markdown
+# AETHEL Environment and Credential Guard
+
+## What it checks
+
+Run \`python aethel_env_guard.py ci\` to check the current Git index and review reachable Git history for environment-file names. The report contains filenames, rule identifiers, and line numbers only; it does not print source snippets or candidate values.
+
+Run \`python aethel_env_guard.py precommit\` to check staged files before a local commit. Run \`python aethel_env_guard.py history\` to inspect historical env-file exposure. CI treats historical exposure as an advisory by default because deleting a file now cannot remove it from earlier commits; set \`AETHEL_ENV_GUARD_STRICT_HISTORY=1\` only when a repository intentionally requires history findings to block the build.
+
+The credential-pattern scanner is heuristic. High-confidence token formats are checked throughout text. Key/value assignment checks are restricted to environment and configuration file formats to avoid interpreting normal application identifiers such as \`token\`, \`authorization\`, or \`secret\` as leaked credentials.
+
+## Enable the local pre-commit hook
+
+The hook source is versioned at \`.githooks/pre-commit\`, but Git does not activate it automatically. From the repository root, run once:
+
+\`\`\`bash
+git config core.hooksPath .githooks
+\`\`\`
+
+Verify it is enabled with:
+
+\`\`\`bash
+git config --get core.hooksPath
+\`\`\`
+
+The expected output is \`.githooks\`. This is a local Git setting and does not change another developer's local configuration.
+
+## CI
+
+The \`.github/workflows/env_guard.yml\` workflow runs the guard on pushes and pull requests to \`main\`, checks full history, and runs the guard regression tests. Its workflow permissions are read-only for repository contents, and the action revisions are pinned to full commit SHAs.
+
+## Response to a finding
+
+1. Do not copy the candidate value into an issue, PR, chat, terminal transcript, or log.
+2. Determine privately whether it is a real credential. If real or uncertain, revoke or rotate it with the issuing service and provision its replacement through an approved secret manager or an untracked local environment.
+3. Remove the sensitive file from the current Git tree and review reachable history, clones, forks, artifacts, and deployment copies.
+4. Run the guard and relevant application tests again.
+
+A clean current-tree scan is not proof that history or external copies are clean. History rewriting does not replace credential rotation. The guard is a defense-in-depth detector, not a secret manager and not a substitute for code review.
+```
+
+### `docs/audit/06-NODE-OPERATIONS-GUIDE.md`
+
+- Repository: `iAAi33iAAi/openclaw-colony`
+- Branch: `security/remove-tracked-env-windows`
+- Blob SHA: `b9d6f8b9922abec0ca2c78a33105a189f200535f`
+- Source: https://github.com/iAAi33iAAi/openclaw-colony/blob/security/remove-tracked-env-windows/docs/audit/06-NODE-OPERATIONS-GUIDE.md
+
+````markdown
+# Node Operations Guide
+## Full-Stack Technical Audit — Deliverable 6 of 8
+
+---
+
+## Prerequisites
+
+| Requirement | Minimum | Recommended |
+|-------------|---------|-------------|
+| OS | Linux (Debian/Ubuntu) | Ubuntu 22.04 LTS |
+| RAM | 512MB | 2GB |
+| Disk | 2GB | 20GB |
+| CPU | 1 core | 2 cores |
+| Docker | 24.x | Latest |
+| Docker Compose | 2.x | Latest |
+| Public IP | Optional | Required for federation |
+
+---
+
+## Quick Start (5 minutes)
+
+```bash
+# 1. Install
+curl -sSL https://raw.githubusercontent.com/iAAi33iAAi/openclaw-colony/main/install.sh | bash
+
+# 2. Verify
+curl http://localhost:8000/health
+# Expected: {"status": "healthy", "node_id": "node-001-bethel"}
+
+# 3. Check genesis
+curl http://localhost:8000/federation/status \
+  -H "Authorization: Bearer ${COLONY_ADMIN_KEY}"
+# Expected: lineage.record_count >= 1
+```
+
+---
+
+## Manual Setup
+
+```bash
+# Clone
+git clone https://github.com/iAAi33iAAi/openclaw-colony.git
+cd openclaw-colony
+
+# Configure
+cp .env.example .env
+nano .env  # Edit required values
+
+# Deploy
+docker compose up -d
+
+# Verify
+docker compose logs backend --tail=50
+```
+
+---
+
+## Required Environment Variables
+
+```bash
+# CRITICAL — must be set before first run
+COLONY_NODE_ID=node-001-bethel          # Unique node name
+COLONY_NODE_URL=https://your-node.com   # Public URL
+COLONY_BAS_SECRET=<64-char-hex>         # Biometric token HMAC key
+                                        # Generate: openssl rand -hex 32
+                                        # WARNING: if unset, ephemeral key used
+                                        # All tokens invalidated on restart
+
+COLONY_ADMIN_KEY=<32-char-hex>          # Federation + admin auth
+                                        # Generate: openssl rand -hex 16
+
+# Optional — defaults shown
+COLONY_BIOMETRIC_REQUIRED=true          # Set false for dev only
+COLONY_DEV_MODE=false                   # Set true for dev only
+COLONY_DB_PATH=/data/colony.db          # SQLite path
+COLONY_PEERS=                           # Comma-separated peer URLs
+FEDERATION_SYNC_INTERVAL=60             # Gossip interval (seconds)
+FEDERATION_QUORUM=0.51                  # Quorum fraction
+PROPOSAL_TTL_HOURS=72                   # Proposal expiry
+NODE_ISOLATION_TIMEOUT=180              # Isolation detection (seconds)
+
+# Stripe (optional — mock mode if unset)
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_COMMUNITY_ACCOUNT=acct_...
+STRIPE_CREW_ACCOUNT=acct_...
+STRIPE_ARCHITECT_ACCOUNT=acct_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+COLONY_MANNA_CENTS=100
+```
+
+---
+
+## Verification Checklist
+
+After deployment, verify each item:
+
+```
+□ GET /health → {"status": "healthy"}
+□ GET /federation/status → node_state: "standalone" or "live"
+□ lineage.record_count >= 1 (genesis block exists)
+□ URL starts with https:// (TLS active)
+□ Node reachable from external IP
+□ COLONY_BAS_SECRET is set and stable
+□ COLONY_ADMIN_KEY is set
+□ Docker volumes mounted (data persists across restarts)
+```
+
+---
+
+## Federation Setup (Two Nodes)
+
+```bash
+# Node 001 .env
+COLONY_NODE_ID=node-001-bethel
+COLONY_NODE_URL=https://node001.example.com
+COLONY_PEERS=https://node002.example.com
+COLONY_ADMIN_KEY=shared-secret-both-nodes
+
+# Node 002 .env
+COLONY_NODE_ID=node-002-austin
+COLONY_NODE_URL=https://node002.example.com
+COLONY_PEERS=https://node001.example.com
+COLONY_ADMIN_KEY=shared-secret-both-nodes
+
+# Verify federation
+curl https://node001.example.com/federation/nodes \
+  -H "Authorization: Bearer ${COLONY_ADMIN_KEY}"
+# Expected: peers array with node-002-austin listed
+```
+
+---
+
+## Health Monitoring
+
+```bash
+# Node health
+curl http://localhost:8000/health
+
+# Federation status
+curl http://localhost:8000/federation/status \
+  -H "Authorization: Bearer ${COLONY_ADMIN_KEY}"
+
+# Lineage chain length
+curl http://localhost:8000/federation/status \
+  -H "Authorization: Bearer ${COLONY_ADMIN_KEY}" \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['lineage']['record_count'])"
+
+# Docker health
+docker compose ps
+docker compose logs backend --tail=20
+```
+
+---
+
+## Backup and Recovery
+
+```bash
+# Backup lineage chain (SQLite)
+docker compose exec backend sqlite3 /data/colony.db ".backup /data/colony-backup-$(date +%Y%m%d).db"
+
+# Copy backup off-node
+docker cp colony-backend:/data/colony-backup-*.db ./backups/
+
+# Restore
+docker compose down
+docker cp ./backups/colony-backup-YYYYMMDD.db colony-backend:/data/colony.db
+docker compose up -d
+```
+
+---
+
+## Upgrading
+
+```bash
+# Pull latest
+git pull origin main
+
+# Rebuild and restart
+docker compose build --no-cache
+docker compose up -d
+
+# Verify genesis is idempotent (safe to run again)
+docker compose exec backend python dev_commit_init.py
+# Expected: {"status": "Genesis_Already_Exists", ...}
+```
+
+---
+
+## Secrets Rotation
+
+```bash
+# Rotate COLONY_ADMIN_KEY
+# 1. Generate new key
+NEW_KEY=$(openssl rand -hex 16)
+
+# 2. Update .env on ALL nodes simultaneously
+# 3. Restart all nodes
+docker compose restart
+
+# WARNING: Rotating COLONY_BAS_SECRET invalidates all biometric tokens
+# All enrolled members must re-issue tokens after rotation
+# Schedule during maintenance window
+```
+
+---
+
+## Missing Operations Docs (Gaps)
+
+| Gap | Priority |
+|-----|----------|
+| No disaster recovery runbook | HIGH |
+| No scaling guide (multiple workers) | MEDIUM |
+| No log aggregation setup | MEDIUM |
+| No alerting configuration | MEDIUM |
+| No database migration guide | MEDIUM |
+| No member enrollment ceremony guide | HIGH |
+| No biometric hardware setup guide | HIGH |
+````
