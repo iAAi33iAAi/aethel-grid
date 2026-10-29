@@ -79,8 +79,8 @@ def validate_finding_contract(findings, manifest):
         path_parts = path_part.split("/")
         if (
             len(evidence_path) > 600
-            or evidence_path.startswith(("/", "\\\\"))
-            or "\\\\" in evidence_path
+            or evidence_path.startswith(("/", "\\"))
+            or "\\" in evidence_path
             or re.match(r"^[A-Za-z]:", evidence_path)
             or any(part in {"", ".."} for part in path_parts)
             or (len(path_parts) > 1 and "." in path_parts)
