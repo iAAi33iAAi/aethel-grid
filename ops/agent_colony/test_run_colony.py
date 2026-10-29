@@ -38,6 +38,16 @@ class ColonyManifestTests(unittest.TestCase):
             for error in validate_finding_contract([unsafe_path], manifest)
         ))
 
+        for path in (r"\windows\absolute.txt", r"backend\secrets.txt", r"..\secret.txt"):
+            unsafe_path = dict(valid, evidence_path=path)
+            self.assertTrue(
+                any(
+                    "unsafe evidence path" in error
+                    for error in validate_finding_contract([unsafe_path], manifest)
+                ),
+                msg=f"accepted unsafe evidence path: {path!r}",
+            )
+
         unexpected = dict(valid, secret_value="must not be serialized")
         errors = validate_finding_contract([unexpected], manifest)
         self.assertTrue(any("unexpected fields" in error for error in errors))
