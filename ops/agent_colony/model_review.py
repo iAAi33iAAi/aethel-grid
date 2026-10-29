@@ -22,6 +22,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from autonomy.patch_proposal import load_endpoint_bindings, load_provider
+from autonomy.egress_policy import EgressPolicy, scan_context
 from ops.agent_colony.collaboration import ROLE_TASKS, build_role_task_contexts
 
 CONFIG_SCHEMA = "caios-agent-endpoints/v1"
@@ -420,6 +421,23 @@ def run_model_review(
         "secret_values_included": False,
         "tool_execution_authority": False,
     }
+    # Enforce the CAIOS egress policy here as well as inside the concrete provider.
+    # This keeps test/custom provider adapters from bypassing the metadata-only gate.
+    egress_decision = scan_context(
+        {"snapshot": snapshot, "task_contexts": contexts},
+        EgressPolicy(max_context_bytes=512_000, allow_source_context=False),
+        source_context=False,
+    )
+    egress_validation = egress_decision.as_dict()
+    if egress_decision.status != "ALLOW":
+        return {
+            **preflight,
+            "status": "BLOCKED",
+            "reason": "model input rejected by CAIOS egress policy",
+            "egress_validation": egress_validation,
+            "model_calls_attempted": False,
+            "release_decision": "HOLD",
+        }
 
     # Full provider admission and API-key lookup occur only after both explicit gates.
     if provider_loader is None:
@@ -435,6 +453,7 @@ def run_model_review(
             **preflight,
             "status": "FAILED_CLOSED",
             "reason": "provider call failed: " + type(exc).__name__,
+            "egress_validation": egress_validation,
             "model_calls_attempted": True,
             "source_revision": source_revision.lower(),
             "release_decision": "HOLD",
@@ -473,6 +492,7 @@ def run_model_review(
         "responding_agents": sorted(responding_agents),
         "missing_agents": missing_agents,
         "provider_errors": sanitized_errors,
+        "egress_validation": egress_validation,
         "proposals": summarized,
         "rejected_proposal_count": rejected_proposal_count,
         "rejected_proposal_reasons": rejected_proposal_reasons,
