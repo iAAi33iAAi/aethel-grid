@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from run_colony import run, validate_manifest
+from toolbox_policy import ToolboxDispatcher, ToolboxPermissionError
 
 ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = ROOT / "ops" / "agent_colony" / "manifest.json"
@@ -30,6 +31,28 @@ class ColonyManifestTests(unittest.TestCase):
         next(a for a in manifest["agents"] if a["id"] == "portfolio_cartographer")["depends_on"] = ["human_release_owner"]
         self.assertTrue(any("dependency cycle at" in e for e in validate_manifest(manifest)))
 
+
+
+class ToolboxPolicyTests(unittest.TestCase):
+    def _manifest(self):
+        return json.loads(MANIFEST.read_text(encoding="utf-8"))
+
+    def test_allowlist_grants_declared_capability_and_denies_push(self):
+        dispatcher = ToolboxDispatcher(self._manifest())
+        dispatcher.authorize("security_analyst", "inspect_auth_code")
+        with self.assertRaises(ToolboxPermissionError):
+            dispatcher.authorize("security_analyst", "push_branch")
+        audit = dispatcher.audit_log()
+        self.assertEqual([row["decision"] for row in audit], ["ALLOW", "DENY"])
+
+    def test_explicit_deny_overrides_allowlist(self):
+        manifest = self._manifest()
+        box = next(item for item in manifest["toolboxes"] if item["id"] == "tb_security_readonly")
+        box["allow"].append("read_secret_values")
+        dispatcher = ToolboxDispatcher(manifest)
+        with self.assertRaises(ToolboxPermissionError):
+            dispatcher.authorize("security_analyst", "read_secret_values")
+        self.assertEqual(dispatcher.audit_log()[-1]["decision"], "DENY")
 
 class ColonyRunnerTests(unittest.TestCase):
     def test_runner_reports_findings_without_secret_contents(self):
@@ -66,6 +89,8 @@ class ColonyRunnerTests(unittest.TestCase):
             rendered = json.dumps(report)
             self.assertNotIn("never-print-this", rendered)
             self.assertEqual(report["release_decision"], "HOLD")
+            self.assertTrue(report["tool_execution_audit"])
+            self.assertTrue(all(row["decision"] == "ALLOW" for row in report["tool_execution_audit"]))
 
 
 if __name__ == "__main__":
