@@ -68,6 +68,12 @@ The adapter intentionally requires all four roles to have distinct registered pr
 
 No live configuration is committed. `ops/agent_colony/model_review_config.example.json` is a placeholder template, not an approved deployment configuration. Real activation requires the operator to register four distinct agent identities, exact endpoint URLs, exact model/revision and protocol/version pins, immutable source references and the appropriate approval references. API key values must remain outside the repository and may only be supplied through the named `CAIOS_*_API_KEY` environment variables or an approved secret manager.
 
+### Evidence-bound model output contract
+
+The adapter does not treat a successful HTTP response as a valid finding. Each accepted model proposal must identify one finding ID already present in the local evidence report, name a registered agent identity, use one of the bounded review kinds (`review_finding`, `confirm_finding`, `challenge_finding`, or `test_recommendation`), and include non-empty review text. The output target path and severity are copied from the trusted input finding, not from model text. Unknown IDs, unregistered identities, unsupported proposal kinds, commands and diffs are rejected or discarded. Rejection counts are reported without logging raw model output. If no evidence finding with a path and ID is provided, the adapter blocks before contacting a provider.
+
+This is evidence linkage, not proof that a model's assessment is correct. Model-backed output remains an untrusted advisory artifact and cannot change the report's `HOLD` disposition.
+
 ### Commands
 
 Run a no-network preflight first:
