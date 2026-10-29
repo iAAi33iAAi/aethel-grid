@@ -311,6 +311,11 @@ class ModelReviewTests(unittest.TestCase):
         base["evidence_path"] = "/etc/passwd"
         with self.assertRaisesRegex(ValueError, "unsafe evidence path"):
             _metadata_findings([base])
+        for unsafe in (r"\windows\absolute.txt", r"backend\secrets.txt", r"..\secret.txt"):
+            base["evidence_path"] = unsafe
+            with self.subTest(path=unsafe):
+                with self.assertRaisesRegex(ValueError, "unsafe evidence path"):
+                    _metadata_findings([base])
 
     def test_evidence_intake_rejects_duplicate_finding_ids(self):
         first = {
