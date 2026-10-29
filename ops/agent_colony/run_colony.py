@@ -158,7 +158,7 @@ def run(root: Path, manifest_path: Path, portfolio_path: Path):
     def redteam():
         return [make_finding("independent_redteam","critical","Agent output missing evidence fields",f.get("evidence_path","unknown"),"Reject output until all evidence fields exist.",f"Missing: {', '.join(sorted(required-set(f)))}") for f in stage1 if required-set(f)]
     with ThreadPoolExecutor(max_workers=2,thread_name_prefix="aethel-review") as pool:
-        integrated=pool.submit(synthesize).result(); redteam_findings=pool.submit(redteam).result()
+        synth_future=pool.submit(synthesize); redteam_future=pool.submit(redteam); integrated=synth_future.result(); redteam_findings=redteam_future.result()
     findings=list({f["id"]:f for f in integrated+redteam_findings}.values())
     findings.sort(key=lambda f:(SEVERITY[f["severity"]],f["agent_id"],f["id"]))
     if any(not required.issubset(f) for f in findings): raise ValueError("Generated finding fails report contract")
