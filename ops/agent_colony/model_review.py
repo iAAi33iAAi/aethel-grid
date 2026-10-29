@@ -13,7 +13,7 @@ import os
 import re
 import subprocess
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 from urllib.parse import urlsplit
 
@@ -217,19 +217,60 @@ def validate_model_review_config(
 
 
 def _metadata_findings(findings: Any) -> list[dict[str, str]]:
+    """Validate the evidence contract and discard all unapproved metadata fields."""
     if not isinstance(findings, list):
         raise ValueError("findings must be a list")
+    if len(findings) > 100:
+        raise ValueError("evidence report exceeds the 100-finding model-review limit")
+
     clean: list[dict[str, str]] = []
-    for item in findings[:100]:
+    seen_ids: set[str] = set()
+    allowed_severity = {"critical", "high", "medium", "low", "info"}
+    allowed_status = {"open", "validated", "false_positive", "resolved"}
+
+    for index, item in enumerate(findings):
         if not isinstance(item, dict):
-            continue
-        row = {}
+            raise ValueError(f"finding entry {index} must be an object")
+        row: dict[str, str] = {}
         for key in METADATA_FIELDS:
             value = item.get(key)
-            if isinstance(value, str):
-                row[key] = value[:300]
-        if row:
-            clean.append(row)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"finding entry {index} missing non-empty string field: {key}")
+            row[key] = value.strip()
+
+        finding_id = row["id"]
+        if len(finding_id) > 80 or any(ord(ch) < 32 for ch in finding_id):
+            raise ValueError(f"finding entry {index} has an invalid ID")
+        if finding_id in seen_ids:
+            raise ValueError(f"duplicate finding ID in evidence report: {finding_id}")
+        seen_ids.add(finding_id)
+
+        if row["severity"] not in allowed_severity:
+            raise ValueError(f"finding {finding_id} has unsupported severity")
+        if row["status"] not in allowed_status:
+            raise ValueError(f"finding {finding_id} has unsupported status")
+        if len(row["title"]) > 300 or any(ord(ch) < 32 for ch in row["title"]):
+            raise ValueError(f"finding {finding_id} has invalid title text")
+
+        evidence_path = row["evidence_path"]
+        posix_path = PurePosixPath(evidence_path)
+        if (
+            len(evidence_path) > 500
+            or evidence_path.startswith(("/", "\\"))
+            or "\\" in evidence_path
+            or re.match(r"^[A-Za-z]:", evidence_path)
+            or any(part in {"", ".", ".."} for part in posix_path.parts)
+            or any(ord(ch) < 32 for ch in evidence_path)
+            or "://" in evidence_path
+        ):
+            raise ValueError(f"finding {finding_id} has an unsafe evidence path")
+        clean.append({
+            "id": finding_id[:80],
+            "severity": row["severity"],
+            "title": _scrub_text(row["title"], 300),
+            "evidence_path": evidence_path,
+            "status": row["status"],
+        })
     return clean
 
 
